@@ -1,0 +1,64 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_NET_CompareAdr",
+  "passed": true,
+  "coverage": "reviewed_capability",
+  "semantic_contract": "Compare typed public32 IPv4/TCP or IPv6/TCP6 bytes and unsigned network-order ports; loopback ignores port. Exact family is required; socket/scope are ignored as in the pinned comparison. Bad/null addresses fail.",
+  "cases": [
+    {
+      "name": "native_full_vs_base",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "Full/base, exact-family, loopback, ignored scope/socket and bad/null comparison fixtures",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/build71-console.log",
+        "sha256": "29ea5714bbf6a96422b30b975e52068793b6ff78fcab8585917521072191fb61"
+      },
+      "test": "khz_plugin_net_address",
+      "fixture_source": {
+        "path": "engine/tests/khz_plugin_net_address_tests.cpp",
+        "sha256": "5abbe18d9d614dcf7d4b14c012c6246d35560ff797c26a9ca71fd1970704d897"
+      },
+      "attestation": "Build71 CTest reported this real native suite passed. The named behavioral group is reviewed in its archived test source; this is supplemental to loaded-DLL checks."
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/khz/khz_plugin_net_address.cpp": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [],
+  "pending_semantics": [],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

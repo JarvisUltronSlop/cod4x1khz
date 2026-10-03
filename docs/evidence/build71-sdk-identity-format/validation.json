@@ -1,0 +1,23 @@
+{
+  "build": 71,
+  "entries": {
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:dvar:sv_usesteam64id": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    }
+  },
+  "verifier": {
+    "path": "scripts/capabilities.py",
+    "sha256": "17562aa72394896d957dbefbf6c76b68f0ea5b87d2bc3c5a8dcfde5d62f7ee5c"
+  }
+}

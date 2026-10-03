@@ -1,0 +1,683 @@
+{
+  "schema": 1,
+  "scope": "Windows custom client/server pair on private localhost/LAN; all capabilities discovered in the pinned public sources remain applicable unless a reviewed exclusion is recorded.",
+  "upstreams": {
+    "server": {
+      "path": "upstream/cod4x_server",
+      "revision": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f",
+      "url": "https://github.com/callofduty4x/cod4x_server",
+      "source_roots": [
+        "src",
+        "plugins/function_declarations.h",
+        "plugins/callback_declarations.h",
+        "plugins/declarations.h",
+        "plugins/plugin_declarations.h"
+      ]
+    },
+    "client": {
+      "path": "upstream/cod4x_client",
+      "revision": "17182c7bf04b859dea5c0db4acdb0b83c28d6dd2",
+      "url": "https://github.com/callofduty4x/CoD4x_Client_pub",
+      "source_roots": [
+        "src"
+      ]
+    }
+  },
+  "binaries": {
+    "client": "cod4x1khz.exe",
+    "server": "runtime/cod4x1khz_server.exe"
+  },
+  "capabilities": {
+    "server:sdk_export:Plugin_NET_CompareAdr": {
+      "semantic_contract": "Compare typed public32 IPv4/TCP or IPv6/TCP6 bytes and unsigned network-order ports; loopback ignores port. Exact family is required; socket/scope are ignored as in the pinned comparison. Bad/null addresses fail.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 161,
+          "symbol": "Plugin_NET_CompareAdr"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 82,
+          "symbol": "Compare"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareAdr.json",
+          "sha256": "3e8fb26629172528cd25f09219b936381738708a3914abba1cba83f065f6b8e9"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_CompareBaseAdr": {
+      "semantic_contract": "Compare exact public address family and the full IPv4 or IPv6 byte width while ignoring port/socket/scope; loopback compares equal. Bad/null addresses fail.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 162,
+          "symbol": "Plugin_NET_CompareBaseAdr"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 75,
+          "symbol": "CompareBase"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareBaseAdr.json",
+          "sha256": "6d6980e3f9ce626268d28ade5007773f338b20ef37726123e154409e195610fe"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_CompareBaseAdrMask": {
+      "semantic_contract": "Compare exact family and the first N address bits, including partial bytes; negative or excessive N clamps to full 32/128-bit width. A zero mask still requires matching family. Loopback compares equal.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 163,
+          "symbol": "Plugin_NET_CompareBaseAdrMask"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 75,
+          "symbol": "CompareBase"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareBaseAdrMask.json",
+          "sha256": "722832dc4ceefae982f284f3bb882fd86ca5493ba1d9e614c9b7ea756fab7f58"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_AdrToString": {
+      "semantic_contract": "Return per-thread text for a full IPv4/TCP or bracketed IPv6/TCP6 address with unsigned port and numeric scope; retain pinned loopback/bot and null-literal behavior.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 164,
+          "symbol": "Plugin_NET_AdrToString"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 115,
+          "symbol": "FormatAddress"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToString.json",
+          "sha256": "cec5ed9a1db6032bae59f1f5dce4f97e257cd6bcd2eafff68d48739996ef51f1"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringShort": {
+      "semantic_contract": "Return per-thread address text without a port, preserving IPv6 numeric scope and pinned loopback/bot/null spelling.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 168,
+          "symbol": "Plugin_NET_AdrToStringShort"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 115,
+          "symbol": "FormatAddress"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringShort.json",
+          "sha256": "a6733bb09a2833231ec0fac87ad73d1ebf190c0de0d2a046927092a9dc341149"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringMT": {
+      "semantic_contract": "Format a full IPv4/TCP or bracketed IPv6/TCP6 address into the caller's bounded buffer and return it. Preserve numeric scope, unsigned ports, pinned minimum-buffer error text and null-address literal return; do not overwrite sentinels.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 172,
+          "symbol": "Plugin_NET_AdrToStringMT"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 115,
+          "symbol": "FormatAddress"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringMT.json",
+          "sha256": "5ddff00ae84789a265245fd54b5a136c0c4172b67f4b70ff2928202af17a0f9b"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringShortMT": {
+      "semantic_contract": "Format caller-owned bounded address text without a port, preserving IPv6 numeric scope and special/null return behavior through the common bounded formatter.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 175,
+          "symbol": "Plugin_NET_AdrToStringShortMT"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 115,
+          "symbol": "FormatAddress"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringShortMT.json",
+          "sha256": "7edfe49e4ceef9480e69e7cc3a6d4ab2b475c54d53e09cce2f59ccab6280ea92"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_AdrMaskToStringMT": {
+      "semantic_contract": "Produce pinned masked IPv4 text retaining two octets or masked IPv6 text retaining 48 bits, plus unsigned port, using the caller's bounded formatter buffer.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 178,
+          "symbol": "Plugin_NET_AdrMaskToStringMT"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 115,
+          "symbol": "FormatAddress"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrMaskToStringMT.json",
+          "sha256": "c7951735f051718d4914c4a0d5e2b27562d980834066e0fe6f7d2992129a4ecb"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_IsLANAddress": {
+      "semantic_contract": "Classify loopback, pinned IPv4 private/127 prefixes and IPv6 link-local/ULA prefixes as LAN; otherwise compare exact-family bytes against copied local-interface masks. Reject bad addresses and invalid catalogs without scanning.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 160,
+          "symbol": "Plugin_IsLANAddress"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 191,
+          "symbol": "IsLAN"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_IsLANAddress.json",
+          "sha256": "7075092b3e65fb59bdb70d18c7dbdc93ce0e023db99ed12f340797d24fc9b008"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_NET_StringToAdr": {
+      "semantic_contract": "Parse bounded numeric IPv4/IPv6/TCP/TCP6/UNSPEC with explicit network-order port (return1), default28960 (return2), IPv4-mapped IPv6 and numeric scope; malformed input returns0 with cleared public output. Hostnames return success only after real resolution in a pinned SDK worker, using a five-second bounded resolver with generation retirement. Main/tick hostname requests fail and clear output instead of blocking. IPv4 public sock is the configured native socket, all other public families use0; no DNS result implies a connected TCP socket.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 181,
+          "symbol": "Plugin_NET_StringToAdr"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net_address.cpp",
+          "sha256": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+          "line": 139,
+          "symbol": "ParseNumeric"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_dns.cpp",
+          "sha256": "37351a056f74c7236298de89e07d1f7b844154ef17e1a2f70876e12c8ef16c50",
+          "line": 158,
+          "symbol": "Resolve"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_NET_StringToAdr.json",
+          "sha256": "9dae622cd47496366be26097c97f3ae2295ecd7e221f6b19957db90d1ca7a551"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_UdpSendData": {
+      "semantic_contract": "For current IPv4 custom pair, validate bounded datagram arguments and module generation, send through the configured native server socket, preserve actual source port, publish its public sock and return true only for actual kernel acceptance. Direct send bypasses OnUdpNetSend. Pinned API IPv6 transport is still applicable and pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 198,
+          "symbol": "Plugin_UdpSendData"
+        },
+        {
+          "path": "engine/src/win32/win_net.cpp",
+          "sha256": "0ce8adb6d6d1b409fe2478e5fc32a1837180a58790b55856c38866b90a6dc592",
+          "line": 57,
+          "symbol": "KHZ_NativeUdpSend"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_UdpSendData.json",
+          "sha256": "ec32c5e5116200832fd37ed3283ee6f63f137d7d9e29479e61d6bf19484de25d"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    "server:sdk_export:Plugin_ServerPacketEvent": {
+      "semantic_contract": "For current IPv4 custom pair, copy address and packet bytes into a bounded host-owned mailbox and defer native dispatch to outer owner service. Recheck module generation/session/serverId/epoch, bypass the physical receive callback and retain native protocol10002/local-key proof validation. Disabled module generations are dropped. Native IPv6 input remains applicable and pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 209,
+          "symbol": "Plugin_ServerPacketEvent"
+        },
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 74,
+          "symbol": "pluginNetworkService"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_ServerPacketEvent.json",
+          "sha256": "d088eb091a7aa735dd2f638472adc71782d68439107e504036af6ab02d7aa6f9"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    "server:sdk_callback:OnUdpNetEvent": {
+      "semantic_contract": "For current physical IPv4 server datagrams, pass explicit public32 endpoint fields and mutable owned bytes to enabled plugins on native owner service before parsing. Honor veto, propagate byte/address edits and bypass the callback for plugin-injected packets. Native IPv6 event producers remain pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 120,
+          "symbol": "KHZ_PluginUdpReceive"
+        },
+        {
+          "path": "engine/src/qcommon/common.cpp",
+          "sha256": "223512be04e51a86f12ab87e069c26fdeb68a989506ffe471814419eb862d421",
+          "line": 1034,
+          "symbol": "Com_EventLoop"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/OnUdpNetEvent.json",
+          "sha256": "dfd08c8b2b2576d0bd97cdde0285c988fc8ec1ec831ce9dac18b20ed47d6eee0"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    "server:sdk_callback:OnUdpNetSend": {
+      "semantic_contract": "For current normal native IPv4 server sends, pass public32 destination and mutable bytes through the main-owner callback, honor veto and apply payload/destination edits to the real datagram. Direct SDK send bypasses this event. Native IPv6 event producers remain pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugin_net.inl",
+          "sha256": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+          "line": 134,
+          "symbol": "KHZ_PluginUdpSend"
+        },
+        {
+          "path": "engine/src/qcommon/net_chan_mp.cpp",
+          "sha256": "8ed4fa7dc787d321043890f01af874f213ff81fca05969d8663c292070693d36",
+          "line": 277,
+          "symbol": "NET_SendPacket"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/OnUdpNetSend.json",
+          "sha256": "3d9494e45eeed4a8a8b8a66fd5195e0bff4ae5c3fe1261d82ff6ff1e3723aa3d"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    "server:sdk_export:Plugin_PlayerAddBanByip": {
+      "semantic_contract": "Current native IPv4 public32 IP-ban adapter preserves base-address identity, remaining-time reason text, configured NAT expiry bounds, bounded outputs and exact removal. All fixture bans are removed. IPv6 bans remain applicable and pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 754,
+          "symbol": "Plugin_PlayerAddBanByip"
+        },
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb",
+          "line": 527,
+          "symbol": "KHZ_AdminAddIpBan"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_PlayerAddBanByip.json",
+          "sha256": "b84858ca7398967773c1eea93b501b7eb7289fbfb4e33920bbdc7c3f814988b0"
+        }
+      ],
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    "server:sdk_export:Plugin_PlayerBannedByip": {
+      "semantic_contract": "Current native IPv4 public32 IP-ban adapter preserves base-address identity, remaining-time reason text, configured NAT expiry bounds, bounded outputs and exact removal. All fixture bans are removed. IPv6 bans remain applicable and pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 759,
+          "symbol": "Plugin_PlayerBannedByip"
+        },
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb",
+          "line": 532,
+          "symbol": "KHZ_AdminFormatIpBanMessage"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_PlayerBannedByip.json",
+          "sha256": "6b07905a242f3db5e9c457eed42b5f2968bf42c5ead45cc2c2f7bf90a7fe48c1"
+        }
+      ],
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    "server:sdk_export:Plugin_RemoveBanByip": {
+      "semantic_contract": "Current native IPv4 public32 IP-ban adapter preserves base-address identity, remaining-time reason text, configured NAT expiry bounds, bounded outputs and exact removal. All fixture bans are removed. IPv6 bans remain applicable and pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 749,
+          "symbol": "Plugin_RemoveBanByip"
+        },
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb",
+          "line": 530,
+          "symbol": "KHZ_AdminRemoveIpBan"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/Plugin_RemoveBanByip.json",
+          "sha256": "9d2b6a0cb03488319681359c8f6964021ab3cb20e08b09330a86e2d0bc8d4122"
+        }
+      ],
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    "server:sdk_callback:OnPlayerConnect": {
+      "semantic_contract": "Current admitted native IPv4 human receives a source-compatible callback containing an explicit public32 endpoint copy, current configured socket and original human endpoint. Native20 proof/connection ownership remains unchanged. IPv6 admission callbacks remain pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 386,
+          "symbol": "KHZ_PluginEvent"
+        },
+        {
+          "path": "engine/src/server_mp/sv_client_mp.cpp",
+          "sha256": "0a3d290e1dfb728981c963d182d82282bbac49e76582079daf55b76cadb3d192",
+          "line": 676,
+          "symbol": "SV_DirectConnect"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/OnPlayerConnect.json",
+          "sha256": "f169d67e2b37556cff056e7b67ed6a2bec04bc77fb2d9345d991efb0838aea43"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 human admission and corresponding public callback endpoint remain applicable and pending."
+      ]
+    },
+    "server:sdk_callback:OnPlayerWantReservedSlot": {
+      "semantic_contract": "Current native IPv4 private-slot human receives a public32 address callback and an output grant pointer; granting the actual callback admits that human to the configured reserved slot. IPv6 reserved admission remains pending.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 386,
+          "symbol": "KHZ_PluginEvent"
+        },
+        {
+          "path": "engine/src/server_mp/sv_client_mp.cpp",
+          "sha256": "0a3d290e1dfb728981c963d182d82282bbac49e76582079daf55b76cadb3d192",
+          "line": 676,
+          "symbol": "SV_DirectConnect"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-network/OnPlayerWantReservedSlot.json",
+          "sha256": "987a5b1e5f000b19c33e56ea3465022dbdab96cbec750558898045d5c529b11b"
+        }
+      ],
+      "pending_semantics": [
+        "Native core IPv6 human admission and corresponding public callback endpoint remain applicable and pending."
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "semantic_contract": "Read the synchronized current sv_usesteam64id value: true emits whole uint64 decimal, false emits pinned Steam3 spelling with type/universe validation. Null/nonpositive outputs are safe. Decimal capacity below20 or insufficient capacity clears only byte0; twenty-digit values require21. Steam3 follows bounded truncation with a terminator. This is an export runtime contract; startup-config preservation and disk persistence are not proven here.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 733,
+          "symbol": "Plugin_SteamIDToString",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 57,
+          "symbol": "Selected",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 31,
+          "symbol": "Steam3",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 12,
+          "symbol": "Steam64",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.h",
+          "line": 8,
+          "symbol": "KHZ_DvarScope",
+          "sha256": "94531e27937f133d4cf31d9a445f6a98b4b56b8a7cb9925b0406e7b712e9aed2"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.cpp",
+          "line": 19,
+          "symbol": "KHZ_DvarEnter",
+          "sha256": "7ee18bc8722d8ac83fc3556d1688dcb37b16dc3747d9ecfcaff75385ef8711bd"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/Plugin_SteamIDToString.json",
+          "sha256": "8c3228d86d7e2728b17eb33dcf5b6547449b148f9e97105a47bd51b57ed40f7b"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "semantic_contract": "Always emit complete uint64 decimal regardless of current sv_usesteam64id. Null/nonpositive outputs write nothing. Positive capacity below20 clears only byte0; twenty-digit values require capacity21, so capacity20 refuses without touching the remaining bytes. Success terminates inside capacity and preserves surrounding caller storage.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 742,
+          "symbol": "Plugin_SteamIDTo64String",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 12,
+          "symbol": "Steam64",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/Plugin_SteamIDTo64String.json",
+          "sha256": "f4a1eabf98e669e16725bd3d027dea49fce13b50c31d49984b6e651430446bdf"
+        }
+      ]
+    },
+    "server:dvar:sv_usesteam64id": {
+      "semantic_contract": "Register true by default, expose synchronized live mode selection, preserve archive policy, and eventually preserve explicitly configured startup/saved values. Only fresh default1 and live0/1 selection/restoration are actually proven by this Build73 run.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "line": 401,
+          "symbol": "KHZ_AdminInit",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/sv_usesteam64id.json",
+          "sha256": "5f2afb7c73200210d4f90b1aec29cfb6e1e5805592787a5cce2b9fdb9b11f9dc"
+        }
+      ],
+      "pending_semantics": [
+        "Separate startup explicitly configured0 was not rerun on this binary.",
+        "Actual saved archived configuration and independent restart/reload persistence remain untested."
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDIsIndividual": {
+      "semantic_contract": "Classify the uint64 numeric bit fields exactly: type must equal 1 and the 20-bit instance must equal 1; universe must equal 1 or be 32 through 39 inclusive. The low 32 account bits do not affect the result. Return the corresponding boolean; this does not authenticate an account or contact a service.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 746,
+          "symbol": "Plugin_SteamIDIsIndividual",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "engine/src/khz/khz_identity.cpp",
+          "line": 291,
+          "symbol": "SteamIdIndividual",
+          "sha256": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-contract/Plugin_SteamIDIsIndividual.json",
+          "sha256": "4a7abba82bbf79e8a5ed8593011759df9da7b20812f107daabddfdf1c04d91ae"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDIsIndividualAndSteamAccount": {
+      "semantic_contract": "Classify the uint64 numeric bit fields exactly: type must equal 1 and the 20-bit instance must equal 1; universe must equal 1. The low 32 account bits do not affect the result. Return the corresponding boolean; this does not authenticate an account or contact a service.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 747,
+          "symbol": "Plugin_SteamIDIsIndividualAndSteamAccount",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "engine/src/khz/khz_identity.cpp",
+          "line": 291,
+          "symbol": "SteamIdIndividual",
+          "sha256": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-contract/Plugin_SteamIDIsIndividualAndSteamAccount.json",
+          "sha256": "4a472ee4aa8cb71bb6ac1388008e38e12692267dcbd16452e7ced1460d1a3d62"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_GUID2PlayerID": {
+      "semantic_contract": "Parse a NUL-terminated exact 32-character case-insensitive hexadecimal GUID without modifying caller storage. For valid input, derive four little-endian bytes with pinned 256-byte salt and PBKDF2-HMAC-SHA256/100, and assemble private universe32/type1/instance1 identifier. Malformed length/hex or null returns zero. Local cryptographic failure returns zero by implementation; its native failure branch is not proven here.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 748,
+          "symbol": "Plugin_GUID2PlayerID",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "engine/src/khz/khz_identity.cpp",
+          "line": 295,
+          "symbol": "GuidToPlayerId",
+          "sha256": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+        },
+        {
+          "path": "engine/src/khz/khz_identity.cpp",
+          "line": 222,
+          "symbol": "DecodeHex",
+          "sha256": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+        },
+        {
+          "path": "engine/src/khz/khz_identity.cpp",
+          "line": 59,
+          "symbol": "hexValue",
+          "sha256": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-contract/Plugin_GUID2PlayerID.json",
+          "sha256": "055ea2030bd5c520b8e45040c99e5b7c8bada9019f9bee440775a0c9b2deaa7c"
+        }
+      ],
+      "pending_semantics": [
+        "Actual local crypto-provider failure injection/return path remains untested."
+      ]
+    }
+  },
+  "evidence_contract": {
+    "implemented": "Each applicable capability needs nonempty implementation entries with project-relative path, exact file sha256, positive line, symbol present in uncommented source, and reviewed semantic_contract.",
+    "regression": "Each capability needs a hashed semantic_regression JSON artifact declaring that exact capability_id, passed=true, nonempty passing cases with assertions, matching implementation source hashes, and the current relevant binary hash. A name match, registration, stub, source scan, or performance-only benchmark cannot satisfy this contract.",
+    "excluded": "An inapplicable capability needs a reason and a hashed review artifact with the exact capability_id, kind=scope_review and applicable=false. Exclusions are explicit and remain visible.",
+    "unresolved": "Dynamic registration names and opaque field registries are retained as pending entries. They cannot silently disappear or count as parity. Literal #if 0 branches and comments are excluded; unknown preprocessor branches are conservatively included."
+  }
+}

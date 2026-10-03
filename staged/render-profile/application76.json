@@ -1,0 +1,25 @@
+{
+  "applied": true,
+  "diagnostic_default": "off",
+  "gameplay_changed": false,
+  "before_sha256": {
+    "CMakeLists.txt": "fb2f410450249004d68965fedfeb62c7cca92ffe35554c4d6ee90bb321609e0b",
+    "engine/src/khz/khz_runtime.cpp": "0912fd5f42c66f954cba311023fa7f6934f542712691d2c909232334df591286",
+    "engine/src/khz/khz_ui.cpp": "182cab1804dd06ec079f65d7c1936ce4c27f7ea137878be6b7d3fac5f5065b1f",
+    "engine/src/qcommon/threads.cpp": "5161c222098f3962081d64093b474d0f353a7318993eb1e63ba95cad96bc155d",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "2cca5c9182f6e7139104f67388a607ae5f52e4259c40b808fcc80cb9ca6928f4",
+    "engine/src/gfx_d3d/r_workercmds.cpp": "97dabf4566dc41c8cb3b7394e100be60d2001edd572cf46a32a0582e1ae7941c",
+    "engine/src/gfx_d3d/rb_backend.cpp": "ef8785e94484e8448a2d904c99c695c1fcb3a937d60444283a4b28b10d99f964",
+    "engine/src/gfx_d3d/r_init.cpp": "c417e276e2b2f1fdca95c91b766fde611f526b7c6d07952cf20ddaba262a05ca"
+  },
+  "after_sha256": {
+    "CMakeLists.txt": "c8fd8921cd2530adba44436f49db7021d112e249a90d27077dc566d85af5765a",
+    "engine/src/khz/khz_runtime.cpp": "6477dd9fa8006e1efdd409fe2e4f198f94fb1264dd088ee0eaa8f9af3661c85f",
+    "engine/src/khz/khz_ui.cpp": "0ddc6cd1f9aab167d16c2419eba95c210880acc1e074c98b68b5300e035742e8",
+    "engine/src/qcommon/threads.cpp": "900b7ccc258f1fa8f04d08e11b9330d363aede6896eda82829736aaec06734ee",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "2da07fc161477f24b64c303dbf4dbd78010af543448179486db62e6a9df54a47",
+    "engine/src/gfx_d3d/r_workercmds.cpp": "1b4c59cb3f39d6a881dcbdab415ab109c1a05b0e587b1699e8cd22a61f0c4194",
+    "engine/src/gfx_d3d/rb_backend.cpp": "bdbd2c92bcadeb875e49f0122544b7019513bc0bc7f5004f5c007332065bd6af",
+    "engine/src/gfx_d3d/r_init.cpp": "bd4d7e98cd411cce0aa502d8c13fb4de3993251b3f8eb7e59bd239e0c16af30f"
+  }
+}

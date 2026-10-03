@@ -1,0 +1,594 @@
+{
+  "protocol": 10002,
+  "server_pin": "ddd65fc",
+  "sdk_version": 1,
+  "release_gate": "pending",
+  "summary": "Scoped native evidence draft; no full export or public parity promotion. Harness/source/binary hashes are frozen in the referenced run.",
+  "run": "results/plugin-native-55-20261003-032926/result.json",
+  "run_sha256": "e61a3461b21966a5ab4fa4fc9192e3f9ac71104f626f7c882044518f48679dfc",
+  "log_sha256": "54c2bf87099db068de89c183b3e225391761c75c2eb5150e05c05f9fb517d5a2",
+  "elapsed_seconds": 15.621067400090396,
+  "owned_processes_exited": true,
+  "binary_source_hashes": {
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_server.exe": "35d952c2420b5ff58d4b6767bcef6b57270fc75c8ee2894e9bc498383a0c75cc",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_bench.exe": "fed8bb8d74f8e13245631db42b0a92766f385bb1d8cd9b9d6278cde21ba2d3fb",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\plugins\\khz_regression.dll": "edce5aeb7954c788a0cbc4cc679779f7276b85ad1c9d7c417785b460bb1ec856",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\main\\zz_cod4x1khz_bots.iwd": "1bcaa19e1f8258a296a19468c03d921d727cdda71923fc4c03e049f2ee67accd",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\regression_plugin.c": "2c1acc1133bcb6a55c726ab0fbcc2bbc031309560f11c2c5bbc90fa91225cc01",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\plugin_fixture.gsc": "791929ec2c1e4a5d333f99f32bcb5393e01298e3de076008e1f07b2775461e85",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_thread_probe.inc": "ed72c4e6a1104ea8555f9b3179d0ba0762fe49e9f87fc410ecdfd1579279fd5f",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_http_probe.inc": "ce552f65e5cae5c34782f36c954e951f72183dbb10e4123959e3f0ae404d2b4b",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_stats_probe.inc": "bdc987abf537b939f1f9994fa43975ba0289c1b6485db8799510188dbde0f9ab",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\scripts\\plugin_native_probe.py": "3c1ac0bfff1cb4ad238cc8cf4378308bdf4f9283f69bb64806eb09d374c62d40",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\results\\plugin-native-55-20261003-032926\\server-native.log": "54c2bf87099db068de89c183b3e225391761c75c2eb5150e05c05f9fb517d5a2",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\results\\plugin-native-55-20261003-032926\\client-native.log": "532cfe6ab5a924ae535037c809607a44fedf4c9050b69f4f2bfca4a1285f990c"
+  },
+  "exports": [
+    {
+      "name": "Plugin_SetPlayerGUID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_SetPlayerUID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_SetPlayerNoPB",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_SetServerToUseUids",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_GetPlayerUID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_GetPlayerUid",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_GetPlayerGUID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_DoesServerUseUids",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_IsLoaded",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_GetVersion",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_ClientToSlot",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerName",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_Cmd_GetSteamID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerSteamID",
+      "status": "candidate_tested_scope",
+      "case": "aliases",
+      "passed": true,
+      "scope": "Pinned deprecated no-ops/zero/empty values, loaded/absent checks, fresh OnInfoRequest, null/native slot conversion and RCON identity aliases. Disable/unload/reload and adversarial pointers remain untested.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_ALIAS_FIXTURE deprecated=1 loaded=1 refreshed=1 missing=1 clienttoslot=1 invoker_name=System/Rcon steam_alias=1 main=1"
+      }
+    },
+    {
+      "name": "Plugin_StringToSteamID",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_SteamIDToString",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_SteamIDTo64String",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_GUID2PlayerID",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_SteamIDIsIndividual",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_SteamIDIsIndividualAndSteamAccount",
+      "status": "candidate_tested_scope",
+      "case": "identity",
+      "passed": true,
+      "scope": "Known Steam2/Steam3/numeric and GUID vectors, uppercase GUID, invalid and overflow rejection, truncation NUL. Official identity providers remain unavailable.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_IDENTITY_FIXTURE conversions=1 guid_golden=2310346614158149229 official_provider=unavailable"
+      }
+    },
+    {
+      "name": "Plugin_CreateNewThread",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_CreateCallbackThread",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_SetupThreadCallback",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_ExitThread",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_EnterCriticalSection",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_LeaveCriticalSection",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_SleepMSec",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_GetCurrentThreadId",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_ThreadisSame",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_IsMainThread",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_EnableThreadDebug",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_DisableThreadDebug",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_GetPluginID",
+      "status": "candidate_tested_scope",
+      "case": "native threads and cooperative exit",
+      "passed": true,
+      "scope": "Actual DLL raw/callback threads, copied eight arguments, one owner completion, SEH exit without executing following instruction, abandoned private recursive locks reclaimed; creation rejected inside OnFrame. Saturation/unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_THREAD_FIXTURE start=1 raw=1 worker_owner=1 arguments=1 setup=1 finished=1 callbacks=1 callback_owner=1 exit_unreachable=1 tick_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_CanPlayerUseCommand",
+      "status": "candidate_tested_scope",
+      "case": "command membership policy",
+      "passed": true,
+      "scope": "Known command membership changed false-to-true for a proven admitted human and unknown registration remained denied. Does not prove player command dispatch or slot-reuse permission invalidation.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_POLICY_FIXTURE slot=0 before=0 after=1 probes=1"
+      }
+    },
+    {
+      "name": "Plugin_AddCommandForClientToWhitelist",
+      "status": "candidate_tested_scope",
+      "case": "command membership policy",
+      "passed": true,
+      "scope": "Known command membership changed false-to-true for a proven admitted human and unknown registration remained denied. Does not prove player command dispatch or slot-reuse permission invalidation.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_POLICY_FIXTURE slot=0 before=0 after=1 probes=1"
+      }
+    },
+    {
+      "name": "Plugin_GetStat",
+      "status": "candidate_tested_scope",
+      "case": "received native stat boundaries/restoration",
+      "passed": true,
+      "scope": "Native received-stat mask127; byte0/1999 and long2000/2301/3497 writes read back and each restored, invalid indices and overflowing byte rejected. Full received-field checksum fixture is prepared for56, not this binary.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_STATS_FIXTURE slot=0 roundtrip=1 restored=1 fields=0,1999,2000,2301,3497 invalid_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_SetStat",
+      "status": "candidate_tested_scope",
+      "case": "received native stat boundaries/restoration",
+      "passed": true,
+      "scope": "Native received-stat mask127; byte0/1999 and long2000/2301/3497 writes read back and each restored, invalid indices and overflowing byte rejected. Full received-field checksum fixture is prepared for56, not this binary.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_STATS_FIXTURE slot=0 roundtrip=1 restored=1 fields=0,1999,2000,2301,3497 invalid_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_CreateString_x_www_form_urlencoded",
+      "status": "candidate_tested_scope",
+      "case": "HTTP forms and owner blocking rejection",
+      "passed": true,
+      "scope": "Literal plus/space/ampersand/equals/percent encoding, repeated case-insensitive lookup, missing field and NUL rejection; synchronous GET rejected on owner. Real GET transfer remains separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FORM_FIXTURE form=1 repeated=1 main_blocking_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_ParseFormDataBody",
+      "status": "candidate_tested_scope",
+      "case": "HTTP forms and owner blocking rejection",
+      "passed": true,
+      "scope": "Literal plus/space/ampersand/equals/percent encoding, repeated case-insensitive lookup, missing field and NUL rejection; synchronous GET rejected on owner. Real GET transfer remains separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FORM_FIXTURE form=1 repeated=1 main_blocking_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_GetFormDataItem",
+      "status": "candidate_tested_scope",
+      "case": "HTTP forms and owner blocking rejection",
+      "passed": true,
+      "scope": "Literal plus/space/ampersand/equals/percent encoding, repeated case-insensitive lookup, missing field and NUL rejection; synchronous GET rejected on owner. Real GET transfer remains separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FORM_FIXTURE form=1 repeated=1 main_blocking_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_GET",
+      "status": "candidate_tested_scope",
+      "case": "HTTP forms and owner blocking rejection",
+      "passed": true,
+      "scope": "Literal plus/space/ampersand/equals/percent encoding, repeated case-insensitive lookup, missing field and NUL rejection; synchronous GET rejected on owner. Real GET transfer remains separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FORM_FIXTURE form=1 repeated=1 main_blocking_rejected=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_Request",
+      "status": "candidate_tested_scope",
+      "case": "HTTP wrapper job and owner completion",
+      "passed": true,
+      "scope": "Real exact form/auth POST through a DLL job reached controlled loopback endpoint once; parsed HTTP200 response; free and one owner/service completion. Backend71-case recovery fixture is independent. Async Make/Poll wrappers and unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FIXTURE active=0 worker_response=1 completions=1 owner=1"
+      }
+    },
+    {
+      "name": "Plugin_HTTP_FreeObj",
+      "status": "candidate_tested_scope",
+      "case": "HTTP wrapper job and owner completion",
+      "passed": true,
+      "scope": "Real exact form/auth POST through a DLL job reached controlled loopback endpoint once; parsed HTTP200 response; free and one owner/service completion. Backend71-case recovery fixture is independent. Async Make/Poll wrappers and unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FIXTURE active=0 worker_response=1 completions=1 owner=1"
+      }
+    },
+    {
+      "name": "Plugin_QueueJob",
+      "status": "candidate_tested_scope",
+      "case": "HTTP wrapper job and owner completion",
+      "passed": true,
+      "scope": "Real exact form/auth POST through a DLL job reached controlled loopback endpoint once; parsed HTTP200 response; free and one owner/service completion. Backend71-case recovery fixture is independent. Async Make/Poll wrappers and unload races remain separate.",
+      "evidence": {
+        "source": "server-native.log",
+        "record": "KHZ_PLUGIN_HTTP_FIXTURE active=0 worker_response=1 completions=1 owner=1"
+      }
+    },
+    {
+      "name": "Plugin_ScrAddFunction",
+      "status": "candidate_tested_scope",
+      "case": "Native script function and usercall",
+      "passed": true,
+      "scope": "Actual packaged GSC compilation/bootstrap invoked dynamically registered function and function usercall, checked10002 and exact returned string.",
+      "evidence": "server-native.log"
+    },
+    {
+      "name": "Plugin_Scr_AddInt",
+      "status": "candidate_tested_scope",
+      "case": "Native script function and usercall",
+      "passed": true,
+      "scope": "Actual packaged GSC compilation/bootstrap invoked dynamically registered function and function usercall, checked10002 and exact returned string.",
+      "evidence": "server-native.log"
+    },
+    {
+      "name": "Plugin_Scr_AddString",
+      "status": "candidate_tested_scope",
+      "case": "Native script function and usercall",
+      "passed": true,
+      "scope": "Actual packaged GSC compilation/bootstrap invoked dynamically registered function and function usercall, checked10002 and exact returned string.",
+      "evidence": "server-native.log"
+    },
+    {
+      "name": "Plugin_ScrAddMethod",
+      "status": "candidate_tested_scope",
+      "case": "Native script entity method and usercall",
+      "passed": true,
+      "scope": "Actual admitted human invoked registered entity method and method usercall, matched entity number.",
+      "evidence": "server-native.log"
+    },
+    {
+      "name": "Plugin_G_LogPrintf",
+      "status": "candidate_tested_scope",
+      "case": "Native timestamped game logging",
+      "passed": true,
+      "scope": "Current-run game log contains seconds timestamp and exact fixture slot/before/after record.",
+      "evidence": "  0:00 ------------------------------------------------------------\r\n  0:00 InitGame: \\g_antilag\\1\\g_compassShowEnemies\\0\\g_gametype\\dm\\gamename\\KisakCoD4\\khz_tickrate\\1000\\mapname\\mp_killhouse\\protocol\\10002\\shortversion\\1.0\\sv_allowAnonymous\\0\\sv_disableClientConsole\\0\\sv_floodProtect\\1\\sv_hostname\\cod4x1khz local test\\sv_maxclients\\16\\sv_maxPing\\0\\sv_maxRate\\2000000\\sv_minPing\\0\\sv_privateClients\\0\\sv_punkbuster\\1\\sv_pure\\1\\sv_voice\\0\\ui_maxclients\\16\r\n  0:03 J;a0c34fccd743dc46e3b543c418e1aa2f;0;sdk-native-fixt\r\n  0:06 KHZ_PLUGIN_GAME_LOG_FIXTURE slot=0 before=0 after=1\r\n  0:12 ShutdownGame:\r\n  0:12 ------------------------------------------------------------\r\n"
+    },
+    {
+      "name": "Plugin_PrintAdministrativeLog",
+      "status": "candidate_tested_scope",
+      "case": "Native timestamped administration logging",
+      "passed": true,
+      "scope": "Current-run audit record includes epoch, plugin name, RCON invoker/power100 and exact fixture payload.",
+      "evidence": "1791016168 power=100 issuer=console/rcon name=rcon action=khz_json target=127.0.0.1:50682\n1791016169 power=100 issuer=console/rcon name=rcon action=khz_json target=127.0.0.1:50683\n1791016169 power=100 issuer=console/rcon name=rcon action=khz_fixture_aliases target=127.0.0.1:50684\n1791016170 power=100 issuer=console/rcon name=rcon action=khz_fixture_identity target=127.0.0.1:62322\n1791016171 power=100 issuer=console/rcon name=rcon action=khz_fixture_http_forms target=127.0.0.1:60769\n1791016172 power=100 issuer=console/rcon name=rcon action=khz_fixture_threads_start target=127.0.0.1:55764\n1791016173 power=100 issuer=console/rcon name=rcon action=exec target=127.0.0.1:55765\n1791016174 power=100 issuer=console/rcon name=rcon action=khz_fixture_policy target=127.0.0.1:55769\n1791016174 power=100 issuer=console/rcon name=rcon plugin=khz_regression action=plugin_log text=KHZ_PLUGIN_ADMIN_LOG_FIXTURE slot=0 invoker=-1 power=100\n1791016176 power=100 issuer=console/rcon name=rcon action=khz_fixture_stats target=127.0.0.1:49897\n1791016177 power=100 issuer=console/rcon name=rcon action=khz_fixture_threads_report target=127.0.0.1:49905\n1791016178 power=100 issuer=console/rcon name=rcon action=khz_fixture_http_report target=127.0.0.1:49907\n1791016179 power=100 issuer=console/rcon name=rcon action=khz_fixture_report target=127.0.0.1:60268\n1791016180 power=100 issuer=console/rcon name=rcon action=khz_json target=127.0.0.1:60282\n"
+    }
+  ],
+  "callbacks": [
+    {
+      "name": "OnInfoRequest",
+      "scope": "Fresh GetVersion invoked current metadata callback, exact1.0 response."
+    },
+    {
+      "name": "OnFrame",
+      "scope": "Actual authoritative dispatch; frame/tick counts matched with gaps0."
+    },
+    {
+      "name": "OnClientMoveCommand",
+      "scope": "Actual admitted human delivered nonzero unique command callbacks."
+    },
+    {
+      "name": "OnScrUsercallFunction",
+      "scope": "Native function usercall GSC golden result."
+    },
+    {
+      "name": "OnScrUsercallMethod",
+      "scope": "Native admitted entity method usercall golden result."
+    }
+  ],
+  "custom_extensions": [
+    {
+      "name": "OnTick",
+      "scope": "Custom1ms callback; native count equals OnFrame and gaps0."
+    }
+  ],
+  "limitations": [
+    "No blanket192-export or2126-feature parity claim.",
+    "Official authentication/identity services are unavailable.",
+    "Broad live-profile hash is observational because gameplay can change counters; command-local stat restoration is the current oracle.",
+    "RCON argument fix, full3498-field checksum, FS/TCP/IPv6 and native lifecycle/recovery fixtures remain pending."
+  ]
+}

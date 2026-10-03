@@ -1,0 +1,21 @@
+{
+  "applied": true,
+  "diagnostic_default": "off",
+  "gameplay_changed": false,
+  "before_sha256": {
+    "engine/src/gfx_d3d/r_init.cpp": "bd4d7e98cd411cce0aa502d8c13fb4de3993251b3f8eb7e59bd239e0c16af30f",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "2da07fc161477f24b64c303dbf4dbd78010af543448179486db62e6a9df54a47",
+    "engine/src/cgame_mp/cg_view_mp.cpp": "1a1d7dc17297a0c79fb15a3829b2ae8d9130bad20d5d32c869cbde8113a66b49",
+    "engine/src/gfx_d3d/r_scene.cpp": "71666277bdb258e62f357f80f4c6d89497a495a769f336a78eb8d296081f5ccd",
+    "engine/src/cgame_mp/cg_ents_mp.cpp": "4a89674918f172c776a294cb8c5d630a83e1c63b2415fe97824b2c3acc8570e6",
+    "engine/src/cgame_mp/cg_draw_mp.cpp": "eae9aa3206d221bc0617ab3e9229553840b18460ae99e8ba1bdca431d9770047"
+  },
+  "after_sha256": {
+    "engine/src/gfx_d3d/r_init.cpp": "e8380dbf36dfe13b621472772c0a93c8f352a923ea92c08f8730371242451e76",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "bc54711f2c6dfcfd97aca6a8b4b0dcc914233024c9921606bf46a5e7539e0900",
+    "engine/src/cgame_mp/cg_view_mp.cpp": "f783ee7b2448d8929257178d76280d7a9fb173e7608678e49bd455122143a014",
+    "engine/src/gfx_d3d/r_scene.cpp": "2f9416d57652aa89d61c7ae4c76a67b52b4d3f7859e2f05c97248d4764446334",
+    "engine/src/cgame_mp/cg_ents_mp.cpp": "dced1939f7c1cdfd198baf52a0cf016d723f5a4ef24d507059b62f0fdbdf0bf0",
+    "engine/src/cgame_mp/cg_draw_mp.cpp": "e6f011b7a49e532d46a64265a38f49ab246b1435e2e709e19ec49b0929b02f81"
+  }
+}

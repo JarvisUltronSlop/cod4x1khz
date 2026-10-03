@@ -1,0 +1,402 @@
+{
+  "completed": true,
+  "passed": true,
+  "scope": "Python harness schema/adversarial validators and exact native printf field-width capacity calculation only",
+  "game_launched": false,
+  "native_codec_executed": false,
+  "full_world_restore": false,
+  "authoritative_replay": false,
+  "positive_cases": 1,
+  "negative_cases": 55,
+  "cases": [
+    {
+      "name": "false completed",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: completed"
+      ]
+    },
+    {
+      "name": "false passed",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: passed"
+      ]
+    },
+    {
+      "name": "false cleanup_complete",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: cleanup_complete"
+      ]
+    },
+    {
+      "name": "false native_codec_executed",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: native_codec_executed"
+      ]
+    },
+    {
+      "name": "false full_delta",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: full_delta"
+      ]
+    },
+    {
+      "name": "false live_serialization_oracle",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: live_serialization_oracle"
+      ]
+    },
+    {
+      "name": "false logical_delay",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: logical_delay"
+      ]
+    },
+    {
+      "name": "false real_msg_overflow",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: real_msg_overflow"
+      ]
+    },
+    {
+      "name": "false phantom_rejected",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: phantom_rejected"
+      ]
+    },
+    {
+      "name": "false descriptor_headroom",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: descriptor_headroom"
+      ]
+    },
+    {
+      "name": "false client_64_row_headroom",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: client_64_row_headroom"
+      ]
+    },
+    {
+      "name": "false split_byte_ring",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: split_byte_ring"
+      ]
+    },
+    {
+      "name": "false byte_eviction",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: byte_eviction"
+      ]
+    },
+    {
+      "name": "false observed_world_unchanged",
+      "rejected": true,
+      "errors": [
+        "Native codec condition failed: observed_world_unchanged"
+      ]
+    },
+    {
+      "name": "zero native_decodes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: native_decodes"
+      ]
+    },
+    {
+      "name": "boolean native_decodes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: native_decodes"
+      ]
+    },
+    {
+      "name": "zero serialized_comparisons",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: serialized_comparisons"
+      ]
+    },
+    {
+      "name": "boolean serialized_comparisons",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: serialized_comparisons"
+      ]
+    },
+    {
+      "name": "zero float_comparisons",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: float_comparisons"
+      ]
+    },
+    {
+      "name": "boolean float_comparisons",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: float_comparisons"
+      ]
+    },
+    {
+      "name": "zero full_records",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: full_records"
+      ]
+    },
+    {
+      "name": "boolean full_records",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: full_records"
+      ]
+    },
+    {
+      "name": "zero delta_records",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: delta_records"
+      ]
+    },
+    {
+      "name": "boolean delta_records",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: delta_records"
+      ]
+    },
+    {
+      "name": "zero allocation_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: allocation_bytes"
+      ]
+    },
+    {
+      "name": "boolean allocation_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: allocation_bytes"
+      ]
+    },
+    {
+      "name": "zero profile_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: profile_bytes"
+      ]
+    },
+    {
+      "name": "boolean profile_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: profile_bytes"
+      ]
+    },
+    {
+      "name": "zero hashed_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: hashed_bytes"
+      ]
+    },
+    {
+      "name": "boolean hashed_bytes",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: hashed_bytes"
+      ]
+    },
+    {
+      "name": "zero native_time",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: native_time"
+      ]
+    },
+    {
+      "name": "boolean native_time",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: native_time"
+      ]
+    },
+    {
+      "name": "zero tick",
+      "rejected": true,
+      "errors": [
+        "Codec does not retain its actual unchanged owned tick/map identity",
+        "Missing meaningful actual native codec count: tick"
+      ]
+    },
+    {
+      "name": "boolean tick",
+      "rejected": true,
+      "errors": [
+        "Codec does not retain its actual unchanged owned tick/map identity",
+        "Missing meaningful actual native codec count: tick"
+      ]
+    },
+    {
+      "name": "zero reused_id",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: reused_id"
+      ]
+    },
+    {
+      "name": "boolean reused_id",
+      "rejected": true,
+      "errors": [
+        "Missing meaningful actual native codec count: reused_id"
+      ]
+    },
+    {
+      "name": "wrong origin direct_owned_command",
+      "rejected": true,
+      "errors": [
+        "Codec invocation is not the exact created parent/owned child direct command"
+      ]
+    },
+    {
+      "name": "wrong origin server_pid",
+      "rejected": true,
+      "errors": [
+        "Codec invocation is not the exact created parent/owned child direct command"
+      ]
+    },
+    {
+      "name": "wrong origin parent_pid",
+      "rejected": true,
+      "errors": [
+        "Codec invocation is not the exact created parent/owned child direct command"
+      ]
+    },
+    {
+      "name": "wrong origin request_sequence",
+      "rejected": true,
+      "errors": [
+        "Authenticated host command has no actual request sequence"
+      ]
+    },
+    {
+      "name": "wrong origin session",
+      "rejected": true,
+      "errors": [
+        "Accepted client/native codec/owned command session differ"
+      ]
+    },
+    {
+      "name": "wrong origin tick",
+      "rejected": true,
+      "errors": [
+        "Codec does not retain its actual unchanged owned tick/map identity"
+      ]
+    },
+    {
+      "name": "wrong origin server_id",
+      "rejected": true,
+      "errors": [
+        "Codec does not retain its actual unchanged owned tick/map identity"
+      ]
+    },
+    {
+      "name": "wrong native aborted",
+      "rejected": true,
+      "errors": [
+        "Probe refused/aborted or retained a native failure reason"
+      ]
+    },
+    {
+      "name": "wrong native reason",
+      "rejected": true,
+      "errors": [
+        "Probe refused/aborted or retained a native failure reason"
+      ]
+    },
+    {
+      "name": "wrong native full_world_restore",
+      "rejected": true,
+      "errors": [
+        "Codec-only fixture incorrectly attests full world restore/replay"
+      ]
+    },
+    {
+      "name": "wrong native authoritative_replay",
+      "rejected": true,
+      "errors": [
+        "Codec-only fixture incorrectly attests full world restore/replay"
+      ]
+    },
+    {
+      "name": "wrong native clients",
+      "rejected": true,
+      "errors": [
+        "Native codec did not encode the expected real16-player/linked-entity world"
+      ]
+    },
+    {
+      "name": "wrong native entities",
+      "rejected": true,
+      "errors": [
+        "Native codec did not encode the expected real16-player/linked-entity world"
+      ]
+    },
+    {
+      "name": "wrong native logical_cases",
+      "rejected": true,
+      "errors": [
+        "All actual logical-delay or32MiB split placement cases did not execute"
+      ]
+    },
+    {
+      "name": "wrong native split_records",
+      "rejected": true,
+      "errors": [
+        "All actual logical-delay or32MiB split placement cases did not execute"
+      ]
+    },
+    {
+      "name": "wrong native diagnostic_fnv64_after",
+      "rejected": true,
+      "errors": [
+        "Exact codec scope restore diagnostic hashes differ/malformed"
+      ]
+    },
+    {
+      "name": "missing wall time",
+      "rejected": true,
+      "errors": [
+        "Missing caller-visible synchronous native diagnostic wall time"
+      ]
+    },
+    {
+      "name": "boolean wall time",
+      "rejected": true,
+      "errors": [
+        "Missing caller-visible synchronous native diagnostic wall time"
+      ]
+    }
+  ],
+  "syntax_passed": true,
+  "max_native_codec_chars": 1337,
+  "max_host_reply_chars_with_marker": 1610,
+  "capacity_method": "Every unsigned field maximum, int signed-minimum width, booleans false width, last reason full319 escaped-output chars; actual printf template extracted from native_probe.inl",
+  "source_sha256": {
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\native_codec_probe.py": "3bfa301fd8cef4bb84b470e245e15e724eefeb0c89fe63f65517ec606360583f",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\native_probe.inl": "42feec4bcc9d774df3f8e7030b6fb7e6b51486e39779377d0e5c2cbed8966634",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\native_probe_host.inl": "b6bdb43eff91f62117cb4e70a941be50b1d37865ffc89c1f20f6038c269bc0ed"
+  }
+}

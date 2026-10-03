@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(frontend_upload_contracts LANGUAGES CXX)
+if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+    message(FATAL_ERROR "Requires the project's Win32 MSVC compiler")
+endif()
+add_executable(frontend_upload_contracts tests.cpp generated/native_upload.inc)
+target_compile_features(frontend_upload_contracts PRIVATE cxx_std_17)
+target_compile_options(frontend_upload_contracts PRIVATE /W4 /fp:precise)

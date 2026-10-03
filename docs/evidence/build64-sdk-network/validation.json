@@ -1,0 +1,99 @@
+{
+  "build": 64,
+  "entries": {
+    "server:sdk_export:Plugin_NET_CompareAdr": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_CompareBaseAdr": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_CompareBaseAdrMask": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_AdrToString": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringShort": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringMT": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_AdrToStringShortMT": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_AdrMaskToStringMT": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_IsLANAddress": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_NET_StringToAdr": {
+      "status": "proven",
+      "reasons": []
+    },
+    "server:sdk_export:Plugin_UdpSendData": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_export:Plugin_ServerPacketEvent": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_callback:OnUdpNetEvent": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_callback:OnUdpNetSend": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_export:Plugin_PlayerAddBanByip": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_export:Plugin_PlayerBannedByip": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_export:Plugin_RemoveBanByip": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_callback:OnPlayerConnect": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    },
+    "server:sdk_callback:OnPlayerWantReservedSlot": {
+      "status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ]
+    }
+  }
+}

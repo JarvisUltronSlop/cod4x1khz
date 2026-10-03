@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.25)
+project(native_timestep_contracts LANGUAGES CXX)
+add_executable(contracts contracts_driver.cpp)
+target_compile_features(contracts PRIVATE cxx_std_20)
+target_compile_options(contracts PRIVATE /W4 /UNDEBUG /fp:precise)
+target_compile_definitions(contracts PRIVATE COD4X1KHZ=1 KISAK_MP=1)
+set_property(TARGET contracts PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)

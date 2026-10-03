@@ -1,0 +1,64 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 64,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_NET_CompareBaseAdr",
+  "passed": true,
+  "coverage": "reviewed_capability",
+  "semantic_contract": "Compare exact public address family and the full IPv4 or IPv6 byte width while ignoring port/socket/scope; loopback compares equal. Bad/null addresses fail.",
+  "cases": [
+    {
+      "name": "native_full_vs_base",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-051551-805200/result.json",
+        "sha256": "e1f6e38af383eff00b6567a5a034996f4f0c95d9d60a1a3c2bbdf13de0bb6ac4"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "Typed base comparisons and full-width IPv4/IPv6/null fixtures",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/build64-console.log",
+        "sha256": "1304819e8d6b6226fc3c81d5e205dabfaa799f8dd939598daa85639ae57f5a63"
+      },
+      "test": "khz_plugin_net_address",
+      "fixture_source": {
+        "path": "engine/tests/khz_plugin_net_address_tests.cpp",
+        "sha256": "5abbe18d9d614dcf7d4b14c012c6246d35560ff797c26a9ca71fd1970704d897"
+      },
+      "attestation": "Build64 CTest reported this real native suite passed. The named behavioral group is reviewed in its archived test source; this is supplemental to loaded-DLL checks."
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/khz/khz_plugin_net_address.cpp": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3"
+  },
+  "binary_sha256": {
+    "server": "623960b8f3375fe5ba000e7aa002a66cb7dc222a70a0776637353ff22d17da1e"
+  },
+  "regression_dll_sha256": "ef8d214867f6b1bec5760ff200e3eec42feb6bf3fad6608b8efdca4a9dada045",
+  "build_archive": {
+    "path": "results/build64-source-and-binary-hashes.json",
+    "sha256": "940cce4cb947e802ba003b3aac08f1e343c044540113b5596c60dc5049ecd09b"
+  },
+  "compiled_fixture_source_supplement": {
+    "path": "results/build64-compiled-fixture-source-supplement.json",
+    "sha256": "c9a792d8eea2d4046f4e96555e5ec2fb6e412d8288f216eba06550a3576b61a2"
+  },
+  "limitations": [],
+  "pending_semantics": [],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

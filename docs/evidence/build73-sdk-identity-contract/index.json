@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "build": 73,
+  "build_archive": {
+    "path": "results/build73-source-and-binary-hashes.json",
+    "sha256": "e95dfbf375cf8fcc172239e5aa807ca20a1c87d76c16bd6332923c781435a9d3"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+    "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+  },
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_contract_evidence.py",
+    "sha256": "d12177e4bab68aaaf931a576cea6b657d467886679057a9104bba09f3674efae"
+  },
+  "entries": [
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDIsIndividual",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build73-sdk-identity-contract/Plugin_SteamIDIsIndividual.json",
+        "sha256": "4a7abba82bbf79e8a5ed8593011759df9da7b20812f107daabddfdf1c04d91ae"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDIsIndividualAndSteamAccount",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build73-sdk-identity-contract/Plugin_SteamIDIsIndividualAndSteamAccount.json",
+        "sha256": "4a472ee4aa8cb71bb6ac1388008e38e12692267dcbd16452e7ced1460d1a3d62"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_GUID2PlayerID",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build73-sdk-identity-contract/Plugin_GUID2PlayerID.json",
+        "sha256": "055ea2030bd5c520b8e45040c99e5b7c8bada9019f9bee440775a0c9b2deaa7c"
+      },
+      "pending_semantics": [
+        "Actual local crypto-provider failure injection/return path remains untested."
+      ]
+    }
+  ],
+  "complete_contract_candidates": 2,
+  "partial_pending_candidates": 1,
+  "published": false,
+  "full_public_feature_parity": false
+}

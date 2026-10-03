@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.25)
+project(native_physics_entry_unwind LANGUAGES CXX)
+add_executable(contracts contracts.cpp)
+target_compile_features(contracts PRIVATE cxx_std_20)
+target_compile_options(contracts PRIVATE /W4 /UNDEBUG)
+target_compile_definitions(contracts PRIVATE COD4X1KHZ_SERVER_CHECKPOINT=1 KISAK_DEDICATED=1)

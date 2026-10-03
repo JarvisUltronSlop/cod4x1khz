@@ -1,0 +1,3222 @@
+{
+  "server_pin": "ddd65fc",
+  "protocol": 10002,
+  "sdk_version": 2,
+  "release_gate": "pending",
+  "summary": "Source adapters and fixtures only. No declared API or callback counts as tested parity.",
+  "fixtures": [
+    "tests/plugin_registry_tests.cpp",
+    "sdk/tests/regression_plugin.c",
+    "sdk/tests/plugin_fixture.gsc",
+    "tests/identity_admin_tests.cpp",
+    "sdk/tests/header_smoke.c",
+    "sdk/tests/native_stats_probe.inc",
+    "tests/stats_offsets_tests.cpp",
+    "tests/webadmin_policy_tests.cpp",
+    "tests/webadmin_service_tests.cpp",
+    "sdk/tests/native_thread_probe.inc",
+    "sdk/tests/native_http_probe.inc",
+    "tests/plugin_io_policy_tests.cpp",
+    "engine/tests/khz_plugin_fs_tests.cpp",
+    "engine/tests/khz_plugin_tcp_tests.cpp",
+    "sdk/tests/native_file_probe.inc",
+    "sdk/tests/native_tcp_probe.inc",
+    "scripts/plugin_io_native_probe.py",
+    "engine/tests/khz_plugin_net_address_tests.cpp",
+    "engine/tests/khz_public_net_address_smoke.c",
+    "sdk/tests/native_net_address_probe.inc",
+    "scripts/plugin_net_native_probe.py",
+    "engine/tests/khz_plugin_dns_tests.cpp",
+    "engine/tests/khz_plugin_packet_mailbox_tests.cpp",
+    "sdk/tests/native_udp_probe.inc",
+    "scripts/plugin_udp_native_probe.py"
+  ],
+  "exports": [
+    {
+      "name": "PHandler_Error",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_internal.c:276",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_internal.c:276",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_AddCommand",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:181",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:181",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:126",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_AddCommandForClientToWhitelist",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:183",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:183",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:66",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_BanClient",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:194",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:194",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:585",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_BoldPrintf",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:179",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:179",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:459",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_CanPlayerUseCommand",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:296",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:296",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:67",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cbuf_AddText",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:51",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:51",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:169",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ChatPrintf",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:178",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:178",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:439",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ClientToSlot",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:83",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:83",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_Argc",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:36",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:36",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:79",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_Args",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:37",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:37",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:80",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_Argv",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:35",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:35",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:78",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerClnum",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:291",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:291",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:73",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerName",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:294",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:294",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:76",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerPower",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:292",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:292",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:74",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerSlot",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:289",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:289",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:102",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerSteamID",
+      "status": "external_provider_unavailable",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:293",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:293",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:75",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetInvokerUID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:290",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:290",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cmd_GetSteamID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:98",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:98",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_CreateCallbackThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:362",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:362",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:954",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_CreateNewThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:358",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:358",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:817",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_GetBoolean",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:69",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:69",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:502",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_GetInteger",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:68",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:68",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:479",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_GetString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:71",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:71",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:551",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_GetValue",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:70",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:70",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:526",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_RegisterBool",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:59",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:59",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:88",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_RegisterFloat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:62",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:62",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:91",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_RegisterInt",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:60",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:60",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:89",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_RegisterString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:58",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:58",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:87",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_Set",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:79",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:79",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:96",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_SetBool",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:64",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:64",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:93",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_SetFloat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:66",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:66",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:95",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_SetInt",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:63",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:63",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:92",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_SetString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:65",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:65",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:94",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_VariableBooleanValue",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:76",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:76",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:86",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_VariableIntegerValue",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:75",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:75",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:85",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_VariableStringBuffer",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:73",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:73",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:83",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Cvar_VariableValue",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:74",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:74",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:84",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_DisableThreadDebug",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:366",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:366",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:857",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_DoesServerUseUids",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:388",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:388",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_DPrintf",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:50",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:50",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1088",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_DropClient",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:193",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:193",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:575",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_EnableThreadDebug",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:365",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:365",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:852",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_EnterCriticalSection",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:329",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:329",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:781",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Error",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:186",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:186",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:65",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ExitThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:364",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:364",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:841",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ExportFunction",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_com.c:71",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_com.c:71",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FormatBanMessage",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:311",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:311",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:59",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Free",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:185",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:185",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:55",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_FCloseFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:124",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:124",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:110",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_FOpenFileAppend",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:117",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:117",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:100",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_FOpenFileRead",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:115",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:115",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:99",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_FOpenFileWrite",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:116",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:116",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:98",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_FreeFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:106",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:106",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_Read",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:119",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:119",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:104",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_ReadFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:128",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:128",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:105",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_ReadLine",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:122",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:122",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:107",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_BaseWriteFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:144",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:144",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:112",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileAppend",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:114",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:114",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:103",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileRead",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:84",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:84",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:101",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileWrite",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:113",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:113",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:102",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_HomeCopyFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:147",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:147",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:113",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_HomeWriteFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:143",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:143",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:111",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_WriteFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:683",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:683",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_Write",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:120",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:120",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:108",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_FS_WriteFile",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:138",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:138",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:109",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_G_LogPrintf",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:46",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:46",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:165",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetClientForClientNum",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:280",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:280",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:669",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetClientNumForClient",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:281",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:281",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:678",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetClientScoreboard",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:174",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:174",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:88",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetCommonVersionString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:372",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:372",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:157",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetCurrentThreadId",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:331",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:331",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetGentityForEntityNum",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:279",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:279",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:660",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetLevelBase",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:373",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:373",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1107",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetLevelTime",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:187",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:187",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:400",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerGUID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:376",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:376",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:218",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:218",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:345",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerName",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:180",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:180",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:122",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerSteamID",
+      "status": "external_provider_unavailable",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:219",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:219",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:330",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerUid",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:175",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:175",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:106",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPlayerUID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:370",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:370",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetPluginID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:215",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:215",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1006",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetRealtime",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:189",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:189",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:53",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetServerTime",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:188",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:188",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:405",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetSlotCount",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:176",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:176",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:111",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetStat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:370",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:370",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:72",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GetVersion",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_com.c:48",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_com.c:48",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_GUID2PlayerID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:304",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:304",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_CreateString_x_www_form_urlencoded",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:324",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:324",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:176",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_FreeObj",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:322",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:322",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:773",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_GET",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:316",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:316",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:768",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_GetFormDataItem",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:326",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:326",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:178",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_MakeHttpRequest",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:319",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:319",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:693",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_ParseFormDataBody",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:325",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:325",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:177",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_Request",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:315",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:315",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:724",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_HTTP_SendReceiveData",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:320",
+      "implementation": "engine/src/khz/khz_plugin_http.inl + engine/src/khz/khz_plugin_http.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:320",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:688",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ImportFunction",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_com.c:106",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_com.c:106",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_IsLANAddress",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:158",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:158",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:128",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_IsLoaded",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_com.c:26",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_com.c:26",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_IsMainThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:332",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:332",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_IsSvRunning",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:177",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:177",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:115",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_LeaveCriticalSection",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:330",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:330",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:804",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Malloc",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:184",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:184",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:39",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Milliseconds",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:232",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:232",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:125",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_AdrMaskToStringMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:166",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:166",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:121",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_AdrToString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:117",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:117",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_AdrToStringMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:165",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:165",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:119",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_AdrToStringShort",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:118",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:118",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_AdrToStringShortMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:164",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:164",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:120",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_CompareAdr",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:154",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:154",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:124",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_CompareBaseAdr",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:156",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:156",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:122",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_CompareBaseAdrMask",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:155",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:155",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:123",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_NET_StringToAdr",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:153",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:153",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:116",
+          "kind": "pexport"
+        }
+      ],
+      "notes": "Numeric IPv4/IPv6 and actual bounded pinned-worker hostname resolution implemented in Build64 source. Owner DNS fails0; IPv4 uses the real configured communication socket. Native hostname fixture pending; no queued-success stub."
+    },
+    {
+      "name": "Plugin_PlayerAddBanByip",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:309",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:309",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:56",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_PlayerBannedByip",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:310",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:310",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_PrintAdministrativeLog",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:53",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:53",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:55",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_PrintError",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:49",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:49",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1068",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Printf",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:47",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:47",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1022",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_PrintWarning",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:48",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:48",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:1044",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_RandomBytes",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:233",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:233",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:51",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_RemoveBanByip",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:308",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:308",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:57",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_RemoveCommand",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:182",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:182",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:151",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddArray",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:260",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:260",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:150",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddArrayKeys",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:262",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:262",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:152",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddArrayStringIndexed",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:263",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:263",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:153",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddBool",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:256",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:256",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:146",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddEntity",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:241",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:241",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:130",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddFloat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:255",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:255",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:145",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddInt",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:254",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:254",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:144",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:257",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:257",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:147",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddUndefined",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:258",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:258",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:148",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AddVector",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:259",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:259",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:149",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AllocArray",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:131",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:131",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_AllocString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:273",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:273",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:163",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_Error",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:251",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:251",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:141",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_ExecEntThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:264",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:264",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:154",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_ExecThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:265",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:265",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:155",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_FreeThread",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:266",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:266",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:156",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetConstString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:247",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:247",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:137",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetEntity",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:246",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:246",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:136",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetFloat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:244",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:244",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:134",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetFunc",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:250",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:250",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:140",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetInt",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:243",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:243",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:133",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetNumParam",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:242",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:242",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:132",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:245",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:245",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:135",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetType",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:248",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:248",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:138",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_GetVector",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:249",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:249",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:139",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_MakeArray",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:261",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:261",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:151",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_Notify",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:272",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:272",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:159",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_NotifyLevel",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:270",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:270",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:161",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_NotifyNum",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:271",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:271",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:160",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_ObjectError",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:253",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:253",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:143",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_Scr_ParamError",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:252",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:252",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:142",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ScrAddFunction",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:236",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:236",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:410",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ScrAddMethod",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:237",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:237",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:417",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ScrReplaceFunction",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:238",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:238",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:424",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ScrReplaceMethod",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:239",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:239",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:431",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ServerPacketEvent",
+      "status": "pending",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:212",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:212",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:316",
+          "kind": "P_P_F"
+        }
+      ],
+      "notes": "Actual bounded copied IPv4 injection implemented; all callers defer outside tick and retain native protocol/proof checks. Coherent native fixture and full native IPv6 endpoint migration remain pending."
+    },
+    {
+      "name": "Plugin_SetPlayerGUID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:359",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:359",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SetPlayerNoPB",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:382",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:382",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SetPlayerUID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:364",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:364",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SetServerToUseUids",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/plugin_exports.c:394",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:394",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SetStat",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:369",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:369",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:71",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SetupThreadCallback",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:361",
+      "implementation": "engine/src/khz/khz_plugin_threads.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:361",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:910",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SL_ConvertToString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:283",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:283",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:174",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SleepMSec",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:368",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:368",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:127",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SleepSec",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:367",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:367",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:126",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SteamIDIsIndividual",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:302",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:302",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:64",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SteamIDIsIndividualAndSteamAccount",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:303",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:303",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:65",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SteamIDTo64String",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:300",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:300",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:62",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SteamIDToString",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:299",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:299",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:61",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_StringToSteamID",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:301",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:301",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:63",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_Cmd_GetPlayerClByHandle",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:42",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:42",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:68",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_Cmd_GetPlayerIDByHandle",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:43",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:43",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_Cmd_GetPlayerNameByHandle",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:41",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:41",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:69",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_Cmd_GetPlayerSteamIDByHandle",
+      "status": "external_provider_unavailable",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:40",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:40",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:70",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_GameClientNum",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:277",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:277",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:167",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_GetConfigstring",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:286",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:286",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:171",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_SV_SetConfigstring",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:285",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:285",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:172",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpCloseConnection",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:209",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:209",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:284",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpCloseConnectionMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:210",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:210",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:266",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpConnect",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:203",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:203",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:196",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpConnectMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:204",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:204",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:178",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpGetData",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:205",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:205",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:227",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpGetDataMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:206",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:206",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:205",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpSendData",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:207",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:207",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:258",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_TcpSendDataMT",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:208",
+      "implementation": "engine/src/khz/khz_plugin_tcp.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:208",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:236",
+          "kind": "P_P_F"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_ThreadisSame",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:333",
+      "implementation": "engine/src/khz/khz_plugin_aliases.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:333",
+          "kind": "declaration"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_UdpSendData",
+      "status": "pending",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:211",
+      "implementation": "engine/src/khz/khz_plugin_net.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:211",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/plugin_exports.c:293",
+          "kind": "P_P_F"
+        }
+      ],
+      "notes": "Actual configured-socket IPv4 nonblocking kernel send implemented, preserving native source port and bypassing redundant send callbacks. Native fixture, closed-socket lifecycle and complete IPv6/multicast transport remain pending."
+    },
+    {
+      "name": "Plugin_unzSetPassword",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:168",
+      "implementation": "engine/src/khz/khz_plugin_files.inl",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:168",
+          "kind": "pexport"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_UpdatePlayername",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:374",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:374",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:180",
+          "kind": "ralias"
+        }
+      ]
+    },
+    {
+      "name": "Plugin_WriteBanTimelimit",
+      "status": "implemented_unverified",
+      "pinned_source": "upstream/cod4x_server/plugins/function_declarations.h:312",
+      "implementation": "engine/src/khz/khz_plugins.cpp",
+      "semantic_evidence": [],
+      "pinned_sources": [
+        {
+          "source": "upstream/cod4x_server/plugins/function_declarations.h:312",
+          "kind": "declaration"
+        },
+        {
+          "source": "upstream/cod4x_server/src/asmsource/pluginexports.asm:58",
+          "kind": "ralias"
+        }
+      ]
+    }
+  ],
+  "adapted_exports": [
+    "Plugin_QueueJob",
+    "Plugin_GetAuthoritativeTick",
+    "Plugin_IsAuthoritativeTick",
+    "Plugin_FS_GetZipHandle"
+  ],
+  "pending_callback_producers": [
+    "OnClientAuthorized",
+    "OnTcpServerPacket",
+    "OnUdpNetEvent",
+    "OnUdpNetSend",
+    "OnPlayerGotAuthInfo",
+    "OnPlayerAddBan",
+    "OnPlayerGetBanStatus",
+    "OnPlayerRemoveBan",
+    "OnModuleLoaded",
+    "OnScreenshotArrived",
+    "OnDemoArrived"
+  ],
+  "census": {
+    "method": "Union of active declarations, pexport/ralias invocations, and P_P_F definitions; comments excluded. Source presence is not semantic parity.",
+    "generated_by": "scripts/update-plugin-census.ps1",
+    "union_count": 192,
+    "declaration_count": 172,
+    "assembly_count": 111,
+    "definition_count": 74
+  }
+}

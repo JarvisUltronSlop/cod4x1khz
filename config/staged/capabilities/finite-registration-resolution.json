@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "staged_only": true,
+  "semantic_proof": false,
+  "manifest_mutated": false,
+  "user_scope_exclusions": [],
+  "declaration_false_positive_ids": [
+    "client:dvar:dynamic@upstream/cod4x_client/src/q_shared.h:1077",
+    "client:dvar:dynamic@upstream/cod4x_client/src/q_shared.h:1078",
+    "client:dvar:dynamic@upstream/cod4x_client/src/q_shared.h:1079",
+    "server:dvar:dynamic@upstream/cod4x_server/src/cvar.h:160",
+    "server:dvar:dynamic@upstream/cod4x_server/src/cvar.h:161",
+    "server:dvar:dynamic@upstream/cod4x_server/src/cvar.h:162"
+  ],
+  "families": [
+    {
+      "id_prefix": "server:gsc_field:_g_hudelem:",
+      "existing_named_entries": true,
+      "expected_names": 19,
+      "names": ["x", "y", "z", "fontscale", "font", "alignx", "aligny", "horzalign", "vertalign", "color", "alpha", "label", "sort", "foreground", "hidewhendead", "hidewheninmenu", "glowcolor", "glowalpha", "archived"],
+      "source": {"path": "upstream/cod4x_server/src/asmsource/_g_hudelem.asm", "table_line": 2536, "registration_line": 2469, "class": 1, "row_stride": 28},
+      "merge_ids": ["server:gsc_field:dynamic@upstream/cod4x_server/src/asmsource/_g_hudelem.asm:2469", "server:gsc_field_registry:GScr_AddFieldsForHudElems"],
+      "reviewed_source_mapping_only": true,
+      "result_status": "pending",
+      "pending_semantics": "Each native getter/setter/type/bitmask and lifetime behavior; registry existence is insufficient."
+    },
+    {
+      "id_prefix": "server:gsc_field:_g_spawn_mp:",
+      "existing_named_entries": true,
+      "expected_names": 10,
+      "names": ["classname", "origin", "model", "spawnflags", "target", "targetname", "count", "health", "dmg", "angles"],
+      "source": {"path": "upstream/cod4x_server/src/asmsource/_g_spawn_mp.asm", "table_line": 1649, "registration_line": 1628, "class": 0, "row_stride": 16},
+      "merge_ids": ["server:gsc_field:dynamic@upstream/cod4x_server/src/asmsource/_g_spawn_mp.asm:1628", "server:gsc_field_registry:GScr_AddFieldsForEntity"],
+      "reviewed_source_mapping_only": true,
+      "result_status": "pending",
+      "pending_semantics": "Specific origin/angle/health setters, read-only fields, generic types, plus client-field registration edge."
+    },
+    {
+      "id_prefix": "server:gsc_field:",
+      "existing_named_entries": true,
+      "expected_names": 20,
+      "names": ["sessionteam", "name", "maxhealth", "headiconteam", "kills", "deaths", "assists", "killcamentity", "score", "sessionstate", "statusicon", "spectatorclient", "archivetime", "psoffsettime", "pers", "headicon", "groundentity", "hasradar", "isbot", "localization"],
+      "source": {"path": "upstream/cod4x_server/src/g_client_fields.cpp", "table_line": 422, "registration_line": 460, "class": 0, "field_mask": 49152},
+      "merge_ids": ["server:gsc_field:dynamic@upstream/cod4x_server/src/g_client_fields.cpp:460"],
+      "reviewed_source_mapping_only": true,
+      "result_status": "pending",
+      "pending_semantics": "Each getter/setter/read-only contract, time semantics on 1ms clock, score and bot slot ownership."
+    },
+    {
+      "id_prefix": "server:dvar:",
+      "existing_named_entries": false,
+      "expected_names": 4,
+      "names": ["con_gameMsgWindow0Filter", "con_gameMsgWindow1Filter", "con_gameMsgWindow2Filter", "con_gameMsgWindow3Filter"],
+      "defaults": ["gamenotify obituary", "boldgame", "subtitle", ""],
+      "flags": 41,
+      "source": {"path": "upstream/cod4x_server/src/asmsource/_con_channels.asm", "registration_lines": [535, 733], "defaults_line": 842, "format_line": 876},
+      "merge_ids": ["server:dvar:dynamic@upstream/cod4x_server/src/asmsource/_con_channels.asm:535", "server:dvar:dynamic@upstream/cod4x_server/src/asmsource/_con_channels.asm:733"],
+      "reviewed_source_mapping_only": true,
+      "result_status": "pending",
+      "pending_semantics": "Actual console/HUD filter routing, per-window defaults, archive/systeminfo/latch behavior."
+    }
+  ]
+}

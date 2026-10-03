@@ -1,0 +1,81 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_PlayerAddBanByip",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "Current native IPv4 public32 IP-ban adapter preserves base-address identity, remaining-time reason text, configured NAT expiry bounds, bounded outputs and exact removal. All fixture bans are removed. IPv6 bans remain applicable and pending.",
+  "cases": [
+    {
+      "name": "native_public32_ipban_remaining_text",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_rejected_ipv6_cannot_replace_ipv4_ban",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_ipban_permanent_request_bounded_four_hours",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugins.cpp": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+    "engine/src/khz/khz_admin_server.cpp": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [
+    "Native fixture tests real temporary bans and the configured four-hour cap for permanent requests; actual clock expiry is independently policy-tested, not waited out in this run."
+  ],
+  "pending_semantics": [
+    "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+  ],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

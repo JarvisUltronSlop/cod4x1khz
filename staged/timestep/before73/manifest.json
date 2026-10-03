@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "build": 73,
+  "native_sources": {
+    "engine/src/game/g_items.cpp": "2634622037bf2766aad6303c5b295f160f044fc47ba5cd1f2025e384a06152f4",
+    "engine/src/game_mp/g_scr_helicopter.cpp": "84a384db48a1de298ea8e7af3028c8b2b041a7d938a0e2222b6cc6ad4b86a333",
+    "engine/src/game/g_missile.cpp": "6d2c745fefe0127bf2e3f78623732157813703feb96028ae550a34398729a153",
+    "engine/src/game/g_helicopter.cpp": "85b6e8de47a9da1beaf509c89550ceb5b2e9509516b30b43980501464fa62a0a",
+    "engine/src/game/g_scr_vehicle.cpp": "2e26a675b234d544e5f9bb4cc9795e69f736c0f40aa321f3e310471b3b4b383c",
+    "engine/src/bgame/bg_misc.cpp": "314f945bac0aaf541267beb87d006ddf2b5300d75086c0d0b82f1f5111181441",
+    "engine/src/game_mp/g_utils_mp.cpp": "4b24bd0b78ea614b3d16a3353d95254edef4795dfa49ee2822f680758898c45a"
+  }
+}

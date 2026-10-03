@@ -1,0 +1,10 @@
+/* Independent Python PBKDF2-SHA256/100 golden data; staged, not proof. */
+static const struct identity_guid_golden identity_guid_goldens[] = {
+    {"00000000000000000000000000000000", 2310346614281832120ULL},
+    {"ffffffffffffffffffffffffffffffff", 2310346616461335339ULL},
+    {"000102030405060708090a0b0c0d0e0f", 2310346614110419531ULL},
+    {"0f0e0d0c0b0a09080706050403020100", 2310346617253057279ULL},
+    {"5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a", 2310346614304358351ULL},
+    {"a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5", 2310346614399020859ULL},
+    {"0123456789abcdef0123456789abcdef", 2310346614158149229ULL},
+};

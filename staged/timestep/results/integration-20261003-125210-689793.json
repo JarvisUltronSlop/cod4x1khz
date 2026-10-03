@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "applied": false,
+  "contract": "staged/timestep/results/20261003-125022-040380/result.json",
+  "contract_sha256": "9667b80a8eded1fb3342bcffe31d346cc9f33cf8d5446df8780c6e03f06d4db8",
+  "changes": {
+    "engine/src/game/g_items.cpp": {
+      "before": "2634622037bf2766aad6303c5b295f160f044fc47ba5cd1f2025e384a06152f4",
+      "after": "6f7934f290e6ca9259229f6ea8094f82557b624abad25019879cd79f5cecde9b"
+    },
+    "engine/src/game_mp/g_scr_helicopter.cpp": {
+      "before": "84a384db48a1de298ea8e7af3028c8b2b041a7d938a0e2222b6cc6ad4b86a333",
+      "after": "42f67d52998b5802a68b91f4fc8d57703c9a4e2399182a7b0f9d99168ba5ac10"
+    },
+    "engine/src/game/g_missile.cpp": {
+      "before": "6d2c745fefe0127bf2e3f78623732157813703feb96028ae550a34398729a153",
+      "after": "24d0119e88d0dbe22cac95a896ec564f6abcb5e5bca5d19a9fb4a26e4f94a8a9"
+    }
+  }
+}

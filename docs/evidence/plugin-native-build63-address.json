@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "build": 63,
+  "sdk_version": 2,
+  "protocol": 10002,
+  "scope": "Actual SDK2 public32 numeric/mask/format/LAN exports, IPv4 native callbacks/reserved admission and transient IP-ban text; DNS/IPv6 UDP/IPv6 bans pending",
+  "full_sdk_parity": false,
+  "result": "results/plugin-net-native-20261003-044955-353100/result.json",
+  "result_sha256": "df968f41ebd381477282bea3334283d4b3dca0834f867dd8148f6aca49702f75",
+  "passed": true,
+  "elapsed_seconds": 9.9191512002144,
+  "native_assertions": {
+    "address": 40,
+    "transient_ipv4_bans": 8,
+    "failures": 0
+  },
+  "capabilities": [
+    {
+      "exports": [
+        "Plugin_NET_AdrToString",
+        "Plugin_NET_AdrToStringShort",
+        "Plugin_NET_AdrToStringMT",
+        "Plugin_NET_AdrToStringShortMT",
+        "Plugin_NET_AdrMaskToStringMT"
+      ],
+      "cases": [
+        "native_nonmt_full",
+        "native_nonmt_short",
+        "native_mt_ipv6_full",
+        "native_mt_ipv6_short",
+        "native_mt_ipv4_mask",
+        "native_mt_ipv6_mask",
+        "native_mt_buffer_bounds",
+        "native_null_format_literal",
+        "native_scope_format"
+      ],
+      "limits": "Native fixture IPv4/IPv6 formats and bounds; exact remaining inputs also require their independent standalone fixture."
+    },
+    {
+      "exports": [
+        "Plugin_NET_CompareAdr",
+        "Plugin_NET_CompareBaseAdr",
+        "Plugin_NET_CompareBaseAdrMask"
+      ],
+      "cases": [
+        "native_full_vs_base",
+        "native_ipv4_mask_boundaries",
+        "native_ipv6_mask_boundaries",
+        "native_exact_family_comparison",
+        "native_export_prefix_self"
+      ],
+      "limits": "Native type/port/full-vs-base/mask semantics plus independent standalone byte-boundary golden cases."
+    },
+    {
+      "exports": [
+        "Plugin_IsLANAddress"
+      ],
+      "cases": [
+        "native_ipv6_link_local_lan",
+        "native_ipv6_ula_lan",
+        "native_ipv4_private_lan",
+        "native_documentation_ipv6_non_lan"
+      ],
+      "limits": "These native cases prove prefix classification; actual interface-mask refresh/restart behavior is not proven by this run."
+    },
+    {
+      "exports": [
+        "Plugin_NET_StringToAdr"
+      ],
+      "cases": [
+        "native_numeric_ipv4_unsigned_port",
+        "native_numeric_ipv6_public_bytes",
+        "native_forced_v6_mapped_literal_default_port",
+        "native_numeric_scope",
+        "native_malformed_port_clears_output",
+        "native_dns_pending_never_reported_success"
+      ],
+      "limits": "Numeric portion only; hostname DNS and configured communication-socket assignment remain pending."
+    },
+    {
+      "exports": [
+        "Plugin_PlayerAddBanByip",
+        "Plugin_PlayerBannedByip",
+        "Plugin_RemoveBanByip"
+      ],
+      "cases": [
+        "native_public32_ipban_remaining_text",
+        "native_ipban_distinct_address",
+        "native_ipban_base_address_ignores_port",
+        "native_ipban_message_bounds",
+        "native_ipv6_ipban_pending_without_truncation",
+        "native_rejected_ipv6_cannot_replace_ipv4_ban",
+        "native_ipban_remove_exact_address",
+        "native_ipban_permanent_request_bounded_four_hours"
+      ],
+      "limits": "Native IPv4 transient cache only; actual IPv6 bans remain pending. All fixture IP entries removed."
+    },
+    {
+      "callbacks": [
+        "OnPlayerConnect",
+        "OnPlayerWantReservedSlot"
+      ],
+      "cases": [
+        "actual native IPv4 connect callback translated to public32",
+        "actual native reserved callback translated/grant honored"
+      ],
+      "limits": "One actual IPv4 headless human and one private slot; copied public32 addresses/ports. IPv6 admission and endpoint field mutation propagation are not tested."
+    }
+  ],
+  "pending": [
+    "Hostname DNS",
+    "Configured default-socket assignment",
+    "Generic UDP exports and physical receive/send veto producers",
+    "IPv6 core game transport/admission",
+    "IPv6 transient bans",
+    "Full public SDK parity"
+  ],
+  "sha256": {
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_server.exe": "48b73a3142b56a298a04451c1c4f26f4905f597f39767080e19ce710f2774c8d",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_bench.exe": "05620738c5b5063f3cdecd4b79221433f14c1b23b60adec079e62ed13af78065",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\plugins\\khz_regression.dll": "2b8564aa23a1785da729b10f12610aaaa59553b7b7ad4b837e83de8fcdc42dbd",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugins.cpp": "6a4fd4c8da2e8c1a121a3e89a3822c2440631d00da2dc89650471be0238775a2",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_net.inl": "944135fe25628cacd42dc7be7b0dd4ca4f711b3cab00a7a79e241085d4a2deab",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_net_address.cpp": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\include\\pinc.h": "a7d2e43a1bd406a7fa2ebca1947a6a96ff7bad71a3909255fde1e18768979734",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\include\\public_net_address.h": "48a509a6bf187bdfe9a03b1de24b16206cb37e97e87b240429d1836212e6d6eb",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\include\\public_http_api.h": "56e55de40db1226336cdad4526d1700082f0a09b35bd95a9a0dc529da5ab5ba6",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_net_address_probe.inc": "3861665e46784bed946df1496b3780732a50e7926b170a705809ab37885294dd",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\regression_plugin.c": "b39a0090ad6d7a721a5998dfe39dd58c83bde8288858da13e11fa33f064e3402",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\scripts\\plugin_net_native_probe.py": "811c711e77c4fab440502086d23b013beeb50c847e4df6f1523a65a4dd41021e",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_admin.cpp": "35bf8c567f88d2d9f1138e454bf733451d22389bb4d9bf359b4b942fb559b867",
+    "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_admin_server.cpp": "0cf0ff3ea8dc357b16ef8898a4e7dcef4aa437edb1dd1a89f908450e48cd9f34"
+  },
+  "owned_processes_exited": true
+}

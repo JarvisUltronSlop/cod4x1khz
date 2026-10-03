@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "prepared_utc": "2026-10-03T13:12:07.732073+00:00",
+  "applied": false,
+  "compiled": false,
+  "native_error_attestation": false,
+  "source_sha256": {
+    "engine/src/khz/khz_server_physics_guards.h": "7404b7498a49530d8569f8d6c0b9d649fa63df8f540ddbc8578bf71fb127bc97",
+    "engine/src/khz/khz_server_physics_fence.inl": "2f5267fb549bc31fd07399ff0ba9a3e361068939e39a573e1acab1d3d1ad8280",
+    "engine/src/qcommon/common.cpp": "8200abd06f0394eee0cbeeece86c9a7ea1362d6b26438af1022455a7c49b1890"
+  },
+  "prepared_sha256": {
+    "engine/src/khz/khz_server_physics_guards.h": "2fd75ef675c1aa824a4cf594f468361c9ac16b873a923e148fda7136bbdc9196",
+    "engine/src/khz/khz_server_physics_fence.inl": "67c317c656cee695b3ba6b405e62e11f2f4be63f380c7be08d7b3c6b5d3175eb",
+    "engine/src/qcommon/common.cpp": "431fa3a879db415713945816930d54f77bf7b164aac13482e4ba09b8312162ba"
+  },
+  "scope": "Opt-in Physics entry leases only; animation/asset admission and full native checkpoint integration remain separate"
+}

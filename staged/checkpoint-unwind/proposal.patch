@@ -1,0 +1,81 @@
+--- a/engine/src/khz/khz_server_physics_guards.h
++++ b/engine/src/khz/khz_server_physics_guards.h
+@@ -512,7 +512,11 @@
+     bool allowed() const { return entered_; }
+ private:
+     bool entered_;
++    std::uint64_t epoch_;
+ };
++// Only immediately before native Com_Error takes its ERR_JMP path.
++// Normal-return notices keep full-function leases intact.
++void KHZ_ServerPhysicsAbortMainEntryLeases();
+ [[noreturn]] void KHZ_ServerPhysicsFatalRejection(khz::server_physics_guard::Site);
+ const char* KHZ_ServerPhysicsGuardStatsJSON();
+ 
+--- a/engine/src/khz/khz_server_physics_fence.inl
++++ b/engine/src/khz/khz_server_physics_fence.inl
+@@ -20,6 +20,9 @@
+ std::atomic<std::uint64_t> foreignRefusals{0}, fenceClosures{0}, fenceReleases{0};
+ std::atomic<std::uint64_t> unknownRefusals{0};
+ KHZ_ServerCheckpointFrame fenceFrame; // Owner only; never read by foreign code.
++thread_local unsigned nativeEntryDepth = 0;
++thread_local std::uint64_t nativeEntryEpoch = 1;
++std::atomic<std::uint64_t> abandonedErrorEntries{0};
+ 
+ bool owner() { return ownerThread.load(std::memory_order_seq_cst) == GetCurrentThreadId(); }
+ void recordRefusal(unsigned site, bool foreign) {
+@@ -65,9 +68,33 @@
+ }
+ 
+ KHZ_ServerPhysicsEntry::KHZ_ServerPhysicsEntry(khz::server_physics_guard::Site site)
+-    : entered_(khz_server_physics_fence_detail::entry(unsigned(site))) {}
++    : entered_(khz_server_physics_fence_detail::entry(unsigned(site))),
++      epoch_(khz_server_physics_fence_detail::nativeEntryEpoch) {
++    if (entered_) ++khz_server_physics_fence_detail::nativeEntryDepth;
++}
+ KHZ_ServerPhysicsEntry::~KHZ_ServerPhysicsEntry() {
+-    if (entered_) khz_server_physics_fence_detail::gate.fetch_sub(1, std::memory_order_seq_cst);
++    using namespace khz_server_physics_fence_detail;
++    // A native longjmp may skip destructors. An old lease must never release
++    // entries admitted later, even if platform unwinding invokes it afterward.
++    if (!entered_ || epoch_ != nativeEntryEpoch) return;
++    if (!owner() || !nativeEntryDepth) std::abort();
++    --nativeEntryDepth;
++    const auto before = gate.fetch_sub(1, std::memory_order_seq_cst);
++    if ((before & Closed) || !(before & ActiveMask)) std::abort();
++}
++void KHZ_ServerPhysicsAbortMainEntryLeases() {
++    using namespace khz_server_physics_fence_detail;
++    // Foreign native entries are refused before admission and may not access
++    // main coordinator state. Main is the sole admitted Physics owner.
++    if (!owner() || !Sys_IsMainThread() || !nativeEntryDepth) return;
++    unsigned expected = nativeEntryDepth;
++    if (nativeEntryEpoch == UINT64_MAX ||
++        !gate.compare_exchange_strong(expected, 0, std::memory_order_seq_cst,
++                                      std::memory_order_seq_cst)) std::abort();
++    abandonedErrorEntries.fetch_add(nativeEntryDepth, std::memory_order_seq_cst);
++    nativeEntryDepth = 0;
++    ++nativeEntryEpoch;
++    recordRefusal(Count, false);
+ }
+ void KHZ_ServerPhysicsDrainGuardRefusals() {
+     using namespace khz_server_physics_fence_detail;
+--- a/engine/src/qcommon/common.cpp
++++ b/engine/src/qcommon/common.cpp
+@@ -1,3 +1,6 @@
++#if defined(COD4X1KHZ_SERVER_CHECKPOINT) && defined(KISAK_DEDICATED)
++#include <khz/khz_server_physics_guards.h>
++#endif
+ 
+ #if defined(COD4X1KHZ) && defined(KISAK_MP) && defined(KISAK_DEDICATED)
+ #include "khz/khz_archive_probe_boundary.h"
+@@ -742,6 +745,9 @@
+         errorcode = code;
+         Sys_LeaveCriticalSection(CRITSECT_COM_ERROR);
+         Value = (jmp_buf *)Sys_GetValue(2);
++#if defined(COD4X1KHZ_SERVER_CHECKPOINT) && defined(KISAK_DEDICATED)
++        KHZ_ServerPhysicsAbortMainEntryLeases();
++#endif
+         longjmp(*Value, -1);
+     }
+     if (code == ERR_SCRIPT_DROP)

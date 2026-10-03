@@ -1,0 +1,27 @@
+{
+  "applied": true,
+  "diagnostic_default": "off",
+  "gameplay_changed": false,
+  "before_sha256": {
+    "engine/src/khz/khz_render_profile.h": "9aa9beb225ffb07f4a36d92c185bef05a488b416f6aa19cd2ccb1ea766696de6",
+    "engine/src/khz/khz_render_profile.cpp": "dd7b6ab48bfe440fd91b8ea852ff2ea870b712e3fc9a474f1c16df306e881d60",
+    "engine/src/gfx_d3d/r_buffers.cpp": "fc8a7a43faaf1140913678939468f744782912a6e7e542a6fe56e1c2dcffba6a",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "bc54711f2c6dfcfd97aca6a8b4b0dcc914233024c9921606bf46a5e7539e0900",
+    "engine/src/gfx_d3d/r_model_lighting.cpp": "49d83031d8dfee29e6ab7f16de6583f23a4e8a13fd70953a18c89cade5656aba",
+    "engine/src/gfx_d3d/r_pretess.cpp": "ee00c061fab32317613a220bd4b157843095f6ce66d3e4b0a2f222c1a37923b1",
+    "engine/src/client_mp/cl_main_mp.cpp": "4e00dcda7d1b85cd93e193be2efb59dda3b77b8ca845bcd2d3ecc5e3a993ddf5",
+    "engine/src/qcommon/common.cpp": "8200abd06f0394eee0cbeeece86c9a7ea1362d6b26438af1022455a7c49b1890",
+    "engine/src/gfx_d3d/r_scene.cpp": "2f9416d57652aa89d61c7ae4c76a67b52b4d3f7859e2f05c97248d4764446334"
+  },
+  "after_sha256": {
+    "engine/src/khz/khz_render_profile.h": "530eaca01eeccaeade47f9a415846e9488b0ae9d371f6f68f1e4fb0fc15bafed",
+    "engine/src/khz/khz_render_profile.cpp": "dd04444a97f9ccbb07860f819a590d42d649e6940f5781781bab2363d73512c6",
+    "engine/src/gfx_d3d/r_buffers.cpp": "a9466156fb9b52b3c90875f90ec7fbe8feee058aec8bc1c4ac8fb5244e8a0cb7",
+    "engine/src/gfx_d3d/r_rendercmds.cpp": "6678c04094ff49530dfc9be8394753c41d2c2da8c2561331884d019ad678aeb5",
+    "engine/src/gfx_d3d/r_model_lighting.cpp": "50b726caf17e99406169d0da662423369c2426f08356a673e6eb1fae1e6b6c93",
+    "engine/src/gfx_d3d/r_pretess.cpp": "59937caa9db36cb6d909f6e1bd4d9bea77af2ea3df62893d6c992ad665e5287e",
+    "engine/src/client_mp/cl_main_mp.cpp": "c25ce65c7f8a5a1293317149adb872a66cb6c01bbf0ab855df4e2cdf2ceed3e4",
+    "engine/src/qcommon/common.cpp": "29be1a2fb4fe8549ec0e15c3092e35f47f490c9a066f793bb17dc9c4b9c791e1",
+    "engine/src/gfx_d3d/r_scene.cpp": "bb61539afcfeaa78794d42fee42685eca11f792213938599323f061931b7fcc6"
+  }
+}

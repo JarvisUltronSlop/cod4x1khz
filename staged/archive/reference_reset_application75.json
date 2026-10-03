@@ -1,0 +1,10 @@
+{
+  "applied": true,
+  "native_codec_changed": false,
+  "comparisons_weakened": false,
+  "game_built": false,
+  "evidence_sha256": "267ef11e8e5a4b8fa128389078835279b51de0c134c760c84d527e9f128f099b",
+  "patch_sha256": "e161d31209ab1f44e478f8485e41ebfd2c0d2482e09abdb230d292f2bb697bb8",
+  "before_sha256": "ca67bf8b784261a1ad37cf09a7a62054eb6aa5e3fd382b75dbb8966805e96dce",
+  "after_sha256": "66d6f467fd2927f96ab693193e43441f26efdac6f3095b51365e2c49ea6e9de3"
+}

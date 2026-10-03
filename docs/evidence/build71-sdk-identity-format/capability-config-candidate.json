@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "build": 71,
+  "target": "config/public-capability-evidence.json",
+  "capabilities": {
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "semantic_contract": "Read synchronized sv_usesteam64id and select whole Steam64 decimal or pinned Steam3 spelling with allowed universe/type validation and bounded output. Preserve startup-configured values and original fixture setting; null/nonpositive outputs are safe. Decimal mode follows pinned capacity-below20 refusal and safely rejects twenty-digit values at capacity20.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 733,
+          "symbol": "Plugin_SteamIDToString"
+        },
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb",
+          "line": 401,
+          "symbol": "KHZ_AdminInit"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f",
+          "line": 57,
+          "symbol": "Selected"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f",
+          "line": 31,
+          "symbol": "Steam3"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f",
+          "line": 12,
+          "symbol": "Steam64"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.h",
+          "sha256": "94531e27937f133d4cf31d9a445f6a98b4b56b8a7cb9925b0406e7b712e9aed2",
+          "line": 8,
+          "symbol": "KHZ_DvarScope"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.cpp",
+          "sha256": "7ee18bc8722d8ac83fc3556d1688dcb37b16dc3747d9ecfcaff75385ef8711bd",
+          "line": 19,
+          "symbol": "KHZ_DvarEnter"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-identity-format/Plugin_SteamIDToString.json",
+          "sha256": "5ef02ce9041a4bbb8b2edf9c1a6c7c208391fd59eefecc80db8b8bfd2f6c4bfb"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "semantic_contract": "Always emit complete uint64 decimal independently of sv_usesteam64id. Positive capacity below20 clears only byte0; null/nonpositive requests write nothing. Values needing twenty digits require capacity21, with capacity20 refusal clearing only byte0; successful outputs include their terminator and never cross capacity.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+          "line": 742,
+          "symbol": "Plugin_SteamIDTo64String"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f",
+          "line": 12,
+          "symbol": "Steam64"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build71-sdk-identity-format/Plugin_SteamIDTo64String.json",
+          "sha256": "2298a4d4c356371da0b8280953f0ad76a63c9a92bea49b39f49e89c4526f844b"
+        }
+      ]
+    },
+    "server:dvar:sv_usesteam64id": {
+      "semantic_contract": "Register true by default with archive semantics, preserve explicitly configured values, and select public identifier formatting. Actual saved-config persistence remains required.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb",
+          "line": 401,
+          "symbol": "KHZ_AdminInit"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build71-sdk-identity-format/sv_usesteam64id.json",
+          "sha256": "d6762353feed7141096dacd51f2137403a7c6ebafa30555ee93ffd4278be85ac"
+        }
+      ],
+      "pending_semantics": [
+        "Actual saved archived configuration and a separate restart/reload preserving its value have not been exercised"
+      ]
+    }
+  }
+}

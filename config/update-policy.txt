@@ -1,0 +1,6 @@
+KHZ_UPDATE_POLICY_1
+project=cod4x1khz
+origin=
+manifest_url=
+trusted_key_cng_rsa2048=
+private_http_fixture=0

@@ -1,0 +1,16 @@
+{
+  "applied": true,
+  "gameplay_changed": false,
+  "before_sha256": {
+    "CMakeLists.txt": "c8fd8921cd2530adba44436f49db7021d112e249a90d27077dc566d85af5765a",
+    "engine/src/gfx_d3d/r_buffers.cpp": "a9466156fb9b52b3c90875f90ec7fbe8feee058aec8bc1c4ac8fb5244e8a0cb7",
+    "engine/src/gfx_d3d/rb_backend.cpp": "bdbd2c92bcadeb875e49f0122544b7019513bc0bc7f5004f5c007332065bd6af",
+    "engine/src/khz/khz_render_profile.cpp": "1d9c1b19fee0e29913f2f7fa86b7f3c1acfe7c70dd99390370a9cf8e00f1c0d0"
+  },
+  "after_sha256": {
+    "CMakeLists.txt": "268d8738a152439e8101cc82e0913a951bfc5834b65d270aebf3167124690c61",
+    "engine/src/gfx_d3d/r_buffers.cpp": "3c80e824b3a553e144c8c8d94840327e360ad071b9cf46d475d048fb082c01f2",
+    "engine/src/gfx_d3d/rb_backend.cpp": "8832ef2684ad77aaa6bc1a43aebe43da97b8e96787c2f8ac07e6153c503cfe1b",
+    "engine/src/khz/khz_render_profile.cpp": "cea6d1966b4cd5b4a5ed3f8c437fc29c9e341a16f69cd0df99ce943cfd0768ac"
+  }
+}

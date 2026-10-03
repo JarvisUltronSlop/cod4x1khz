@@ -1,0 +1,9 @@
+{
+  "description": "Complete project-local source snapshots; engine includes cod4x1khz edits over the stated foundation. Original local nested Git metadata is preserved in the private full-workspace backup, not as Git submodules.",
+  "sources": [
+    { "path": "engine", "base_commit": "8aadf94cc82795d6829ca06052996a5ec79001c3", "sentinel": "CMakeLists.txt" },
+    { "path": "upstream/cod4x_server", "base_commit": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f", "sentinel": "README.md" },
+    { "path": "upstream/cod4x_client", "base_commit": "17182c7bf04b859dea5c0db4acdb0b83c28d6dd2", "sentinel": "README.md" },
+    { "path": "upstream/bot_warfare", "base_commit": "7b52b462e40fa68287b9e54602e52da83b17766c", "sentinel": "README.md" }
+  ]
+}

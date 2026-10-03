@@ -1,0 +1,27 @@
+{
+  "build": 73,
+  "entries": {
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "candidate_verifier_status": "proven",
+      "reasons": [],
+      "published_status_changed": false
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "candidate_verifier_status": "proven",
+      "reasons": [],
+      "published_status_changed": false
+    },
+    "server:dvar:sv_usesteam64id": {
+      "candidate_verifier_status": "pending",
+      "reasons": [
+        "Missing semantic regression artifacts."
+      ],
+      "published_status_changed": false
+    }
+  },
+  "verifier": {
+    "path": "scripts/capabilities.py",
+    "sha256": "b59cc82f50354303de174367c1ae47372a5845767e2659783e550edb3f27636c"
+  },
+  "review_only": true
+}

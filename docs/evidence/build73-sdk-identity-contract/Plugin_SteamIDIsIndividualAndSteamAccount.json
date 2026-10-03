@@ -1,0 +1,156 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 73,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_SteamIDIsIndividualAndSteamAccount",
+  "passed": true,
+  "coverage": "reviewed_capability",
+  "publication_state": "candidate_requires_root_review",
+  "semantic_contract": "Classify the uint64 numeric bit fields exactly: type must equal 1 and the 20-bit instance must equal 1; universe must equal 1. The low 32 account bits do not affect the result. Return the corresponding boolean; this does not authenticate an account or contact a service.",
+  "cases": [
+    {
+      "name": "Independently assemble all 256 universes, all 16 types, four instance boundaries, both account extremes",
+      "passed": true,
+      "assertions": 32768,
+      "fixture_assertion_group": "assembled_field_matrix",
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_contract_probe.inc",
+        "sha256": "210e1d6ba2ac802ae79f5d4144092527e88a722aef3a457af2b416b68f44c502"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_STEAM_ACCOUNT cases=32838 failures=0 matrix=32768 bit_flips=64 literals=6 provider_authentication=0",
+        "fields": {
+          "cases": 32838,
+          "failures": 0,
+          "matrix": 32768,
+          "bit_flips": 64,
+          "literals": 6,
+          "provider_authentication": 0
+        }
+      },
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      }
+    },
+    {
+      "name": "Flip each of 64 bits of independent public-account literal and check account/private-universe effects",
+      "passed": true,
+      "assertions": 64,
+      "fixture_assertion_group": "independent_single_bit_oracle",
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_contract_probe.inc",
+        "sha256": "210e1d6ba2ac802ae79f5d4144092527e88a722aef3a457af2b416b68f44c502"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_STEAM_ACCOUNT cases=32838 failures=0 matrix=32768 bit_flips=64 literals=6 provider_authentication=0",
+        "fields": {
+          "cases": 32838,
+          "failures": 0,
+          "matrix": 32768,
+          "bit_flips": 64,
+          "literals": 6,
+          "provider_authentication": 0
+        }
+      },
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      }
+    },
+    {
+      "name": "Independent literal zero/max/public/private/invalid-instance/invalid-type goldens",
+      "passed": true,
+      "assertions": 6,
+      "fixture_assertion_group": "literal_goldens",
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_contract_probe.inc",
+        "sha256": "210e1d6ba2ac802ae79f5d4144092527e88a722aef3a457af2b416b68f44c502"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_STEAM_ACCOUNT cases=32838 failures=0 matrix=32768 bit_flips=64 literals=6 provider_authentication=0",
+        "fields": {
+          "cases": 32838,
+          "failures": 0,
+          "matrix": 32768,
+          "bit_flips": 64,
+          "literals": 6,
+          "provider_authentication": 0
+        }
+      },
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugins.cpp": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+    "engine/src/khz/khz_identity.cpp": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4"
+  },
+  "binary_sha256": {
+    "server": "536ea9aa5b0c2641e9825a5839eed7cf699bff3b8c1b537367aaaf05bf90e1b5"
+  },
+  "regression_dll_sha256": "a3a1b3891215cb2a6b4d41e01ce1695e19d406810bec036b8a6180f5828b4ffb",
+  "build_archive": {
+    "path": "results/build73-source-and-binary-hashes.json",
+    "sha256": "e95dfbf375cf8fcc172239e5aa807ca20a1c87d76c16bd6332923c781435a9d3"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+    "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+  },
+  "native_logs": [
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/server-stdio.log",
+      "sha256": "71a7e545bf44e2cefa20af1d3b79150d08e689cb604f00572215aca96412f314"
+    },
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/native-server.log",
+      "sha256": "86d7555c26f733e38df86bd1d8066890c48d2be29e1ea5e83d961f4fb155c500"
+    }
+  ],
+  "independent_oracle_review": {
+    "path": "results/identity-contract-review-20261003-072018-9729663/result.json",
+    "sha256": "9ee5c779f7828e7e465fa8cfb60383e3ad6d84e983b554edd6834e2906beadb2"
+  },
+  "compiled_fixture": {
+    "path": "sdk/tests/native_identity_contract_probe.inc",
+    "sha256": "210e1d6ba2ac802ae79f5d4144092527e88a722aef3a457af2b416b68f44c502"
+  },
+  "compiled_guid_goldens": {
+    "path": "sdk/tests/identity_guid_goldens.inc",
+    "sha256": "5c62f13a2ba90a2d9baffad8c79afdd56ba677d693a53ab9dad4fb415afe4938"
+  },
+  "harness": {
+    "path": "scripts/plugin_identity_contract_native_probe.py",
+    "sha256": "fefd22cf8bbc1a879e6a3bc8a4b967cfd9373093a347b6aa594fd9f68f3ec84b"
+  },
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_contract_evidence.py",
+    "sha256": "d12177e4bab68aaaf931a576cea6b657d467886679057a9104bba09f3674efae"
+  },
+  "postarchive_tooling": "Harness/proof tooling is independently hashed; immutable build archive remains unchanged.",
+  "upstream_contract": {
+    "revision": "ddd65fc",
+    "path": "upstream/cod4x_server/src/sapi.c",
+    "symbol": "SV_SApiSteamIDIndividualSteamOnly",
+    "line": 261,
+    "source": {
+      "path": "upstream/cod4x_server/src/sapi.c",
+      "sha256": "aca73b8c9e49605a2b59378e886d1958cc61d490d85d8b80c050d8792e993cb6"
+    },
+    "export_alias": {
+      "path": "upstream/cod4x_server/src/asmsource/pluginexports.asm",
+      "sha256": "99754ea0a3453fceebac2e966c1a0ede33eaeb5d1ea90dcec0d276e42f35eef4"
+    }
+  },
+  "safety_adaptations": [],
+  "pending_semantics": [],
+  "official_authentication_proven": false,
+  "full_public_feature_parity": false,
+  "numeric_classification_only": true,
+  "review": "Actual rebuilt C DLL calls with independently assembled cases; no registry/name-only inference."
+}

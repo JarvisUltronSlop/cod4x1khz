@@ -1,0 +1,102 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:dvar:sv_usesteam64id",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "Register true by default with archive semantics, preserve explicitly configured values, and select public identifier formatting. Actual saved-config persistence remains required.",
+  "cases": [
+    {
+      "name": "fresh-default: fresh default or startup-configured zero survives registration and restores",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-identity-format-native-20261003-064911-596900/result.json",
+        "sha256": "a2edc3579b0900dfcf8dd02cf42e6c023ced4bc5695b8e04b98d77551f045ec1"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_format_probe.inc",
+        "sha256": "e3569b86386a4076bbfe0065013161ea91bf7540be5d61e7cc2f34c6cac04e3f"
+      },
+      "phase": "fresh-default",
+      "observed": {
+        "text": "KHZ_IDENTITY_FORMAT_SELECTED cases=99 failures=0 initial=1 restored=1 provider_authentication=0",
+        "fields": {
+          "cases": 99,
+          "failures": 0,
+          "initial": 1,
+          "restored": 1,
+          "provider_authentication": 0
+        }
+      }
+    },
+    {
+      "name": "configured-zero: fresh default or startup-configured zero survives registration and restores",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-identity-format-native-20261003-064911-596900/result.json",
+        "sha256": "a2edc3579b0900dfcf8dd02cf42e6c023ced4bc5695b8e04b98d77551f045ec1"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_format_probe.inc",
+        "sha256": "e3569b86386a4076bbfe0065013161ea91bf7540be5d61e7cc2f34c6cac04e3f"
+      },
+      "phase": "configured-zero",
+      "observed": {
+        "text": "KHZ_IDENTITY_FORMAT_SELECTED cases=99 failures=0 initial=0 restored=1 provider_authentication=0",
+        "fields": {
+          "cases": 99,
+          "failures": 0,
+          "initial": 0,
+          "restored": 1,
+          "provider_authentication": 0
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_admin_server.cpp": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-format-native-20261003-064911-596900/result.json",
+    "sha256": "a2edc3579b0900dfcf8dd02cf42e6c023ced4bc5695b8e04b98d77551f045ec1"
+  },
+  "native_logs": [
+    {
+      "path": "results/plugin-identity-format-native-20261003-064911-596900/fresh-default-stdio.log",
+      "sha256": "d1841df68b125e8ae49ce0deb6da5e5385628927a3ccff09cdce430acebda838"
+    },
+    {
+      "path": "results/plugin-identity-format-native-20261003-064911-596900/configured-zero-stdio.log",
+      "sha256": "11bab3c580fccccb31cddda6f95a89e5548f3585b13e2c89529e0de132bf1b5b"
+    }
+  ],
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_format_evidence.py",
+    "sha256": "80cf4c15dbdc0607bcd63e35d996c9120767d1affdb719e853e4f86afd97dac4"
+  },
+  "proof_writer_provenance": "Post-archive proof tooling, independently hashed; never overwrites or claims inclusion in the coherent compiled-source archive",
+  "safety_adaptations": [],
+  "pending_semantics": [
+    "Actual saved archived configuration and a separate restart/reload preserving its value have not been exercised"
+  ],
+  "official_authentication_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Actual loaded-C-DLL boundary behavior plus independently native-tested helper; syntax/registration/names are not semantic proof"
+}

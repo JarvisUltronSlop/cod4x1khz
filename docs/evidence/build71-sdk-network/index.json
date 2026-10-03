@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "build": 71,
+  "full_public_feature_parity": false,
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437",
+    "regression_dll": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e"
+  },
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "native_results": [
+    {
+      "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+      "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+    },
+    {
+      "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+      "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+    }
+  ],
+  "entries": [
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_CompareAdr",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareAdr.json",
+        "sha256": "3e8fb26629172528cd25f09219b936381738708a3914abba1cba83f065f6b8e9"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_CompareBaseAdr",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareBaseAdr.json",
+        "sha256": "6d6980e3f9ce626268d28ade5007773f338b20ef37726123e154409e195610fe"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_CompareBaseAdrMask",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_CompareBaseAdrMask.json",
+        "sha256": "722832dc4ceefae982f284f3bb882fd86ca5493ba1d9e614c9b7ea756fab7f58"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_AdrToString",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToString.json",
+        "sha256": "cec5ed9a1db6032bae59f1f5dce4f97e257cd6bcd2eafff68d48739996ef51f1"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_AdrToStringShort",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringShort.json",
+        "sha256": "a6733bb09a2833231ec0fac87ad73d1ebf190c0de0d2a046927092a9dc341149"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_AdrToStringMT",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringMT.json",
+        "sha256": "5ddff00ae84789a265245fd54b5a136c0c4172b67f4b70ff2928202af17a0f9b"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_AdrToStringShortMT",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrToStringShortMT.json",
+        "sha256": "7edfe49e4ceef9480e69e7cc3a6d4ab2b475c54d53e09cce2f59ccab6280ea92"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_AdrMaskToStringMT",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_AdrMaskToStringMT.json",
+        "sha256": "c7951735f051718d4914c4a0d5e2b27562d980834066e0fe6f7d2992129a4ecb"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_IsLANAddress",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_IsLANAddress.json",
+        "sha256": "7075092b3e65fb59bdb70d18c7dbdc93ce0e023db99ed12f340797d24fc9b008"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_NET_StringToAdr",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_NET_StringToAdr.json",
+        "sha256": "9dae622cd47496366be26097c97f3ae2295ecd7e221f6b19957db90d1ca7a551"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_UdpSendData",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_UdpSendData.json",
+        "sha256": "ec32c5e5116200832fd37ed3283ee6f63f137d7d9e29479e61d6bf19484de25d"
+      },
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_ServerPacketEvent",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_ServerPacketEvent.json",
+        "sha256": "d088eb091a7aa735dd2f638472adc71782d68439107e504036af6ab02d7aa6f9"
+      },
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_callback:OnUdpNetEvent",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/OnUdpNetEvent.json",
+        "sha256": "dfd08c8b2b2576d0bd97cdde0285c988fc8ec1ec831ce9dac18b20ed47d6eee0"
+      },
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_callback:OnUdpNetSend",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/OnUdpNetSend.json",
+        "sha256": "3d9494e45eeed4a8a8b8a66fd5195e0bff4ae5c3fe1261d82ff6ff1e3723aa3d"
+      },
+      "pending_semantics": [
+        "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_PlayerAddBanByip",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_PlayerAddBanByip.json",
+        "sha256": "b84858ca7398967773c1eea93b501b7eb7289fbfb4e33920bbdc7c3f814988b0"
+      },
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_PlayerBannedByip",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_PlayerBannedByip.json",
+        "sha256": "6b07905a242f3db5e9c457eed42b5f2968bf42c5ead45cc2c2f7bf90a7fe48c1"
+      },
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_RemoveBanByip",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/Plugin_RemoveBanByip.json",
+        "sha256": "9d2b6a0cb03488319681359c8f6964021ab3cb20e08b09330a86e2d0bc8d4122"
+      },
+      "pending_semantics": [
+        "Actual IPv6 IP-ban storage and admission matching remain applicable and pending; current adapter rejects IPv6 without truncating or replacing an IPv4 ban."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_callback:OnPlayerConnect",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/OnPlayerConnect.json",
+        "sha256": "f169d67e2b37556cff056e7b67ed6a2bec04bc77fb2d9345d991efb0838aea43"
+      },
+      "pending_semantics": [
+        "Native core IPv6 human admission and corresponding public callback endpoint remain applicable and pending."
+      ]
+    },
+    {
+      "capability_id": "server:sdk_callback:OnPlayerWantReservedSlot",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-network/OnPlayerWantReservedSlot.json",
+        "sha256": "987a5b1e5f000b19c33e56ea3465022dbdab96cbec750558898045d5c529b11b"
+      },
+      "pending_semantics": [
+        "Native core IPv6 human admission and corresponding public callback endpoint remain applicable and pending."
+      ]
+    }
+  ],
+  "complete_evidence_entries": 10,
+  "partial_pending_entries": 9,
+  "note": "Complete evidence is limited to reviewed address operations and adapted pinned DNS. Partial IPv4 transport/ban/admission evidence remains outside the validator's complete-regression field; the applicable whole capability stays pending. Any changed current binary or implementation invalidates current proof and requires the native gate again."
+}

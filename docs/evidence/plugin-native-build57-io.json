@@ -1,0 +1,300 @@
+{
+  "release_gate": "pending",
+  "kind": "scoped native semantic evidence draft; no blanket export promotion",
+  "protocol": 10002,
+  "sdk_version": 1,
+  "server_pin": "ddd65fc",
+  "evidence": {
+    "result": "results/plugin-io-native-20261003-041520-532000/result.json",
+    "result_sha256": "a4123ee90fb2196a2fdead168c19863bcbfe3ebbbae9d3953745b00328666c78",
+    "native_log_sha256": "ebf21a02d2bffdb5d5828853414ac7c229caf831ae2419c5addf9c506b3d027a",
+    "binary_source_sha256": {
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_server.exe": "ac7b94c1b53c8cd033dc4e2e6c9ecb1777d305f0b31e073f5485b35f0d519d25",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\plugins\\khz_regression.dll": "61aeb1396e200762097f338c4cd7440c4b143f1885443e54a94473865c748846",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\main\\zz_cod4x1khz_bots.iwd": "1bcaa19e1f8258a296a19468c03d921d727cdda71923fc4c03e049f2ee67accd",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugins.cpp": "74f7534a5e5db4623114e81090667f3c49e9f5e1906874c1e7e0715eaaa33856",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_fs.cpp": "cf3adc02815dede81ef9fea7739121cbf6e183b8d0406ca08b511fa722fb5cc3",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_fs_adapter.cpp": "054c46de6ec20cf4941fed68de7126c8c29170d1e9ef5fb75e469284e50884d4",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_unzip.c": "ea411976dbff902ba6ce5b5576112fb9149f8bca894dc072e72850dc16487aeb",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_files.inl": "ca0ed4e54cff2b10e1d2ae9587975e8aa2f88b8e01c64590331b1cdd5c1dc656",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_tcp.cpp": "685e0c43c180cba15358c280d152861d223a8bc27bff036e728e7660cd4f0bde",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugin_tcp.inl": "0efd8a72ce916f5dad9efa69cf34c7a5181ec20db10bf79b910f3b1f25b269b2",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\include\\public_file_api.h": "c79f8751b0f9454ce961c2c15247c09c16395b11558cbf863b710cf2ce8406a3",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\include\\public_tcp_api.h": "3472fdb99d9d14ffd9a6f9ff83a6e56a554a69797c1514ff48097f859457d2a3",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\regression_plugin.c": "74b90ca1c5cce6a896abb4b3f172ce063d05cd316df441bf55dec9bc49a35907",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_file_probe.inc": "a1cced36ad7f9ad237304a583521407a2301f22affb2d925633bc447b4b98834",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_tcp_probe.inc": "605961534b80b88a66e2018c13460188808db9251d91a997f5849a31b893cc34",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\universal\\com_files.cpp": "c9c9538d7f1840a62700feed9178395df62720be94d27786e19066d17e1d7ca7",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\qcommon\\files.cpp": "445a0423d8cb6b8b07f054e014f417f293002c2d7de56f0fd47dea0b04fd9fc0",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\scripts\\plugin_io_native_probe.py": "2cde7f62983f02d445a4938446254e0940a5cf89dbd91c358408bb545f457575"
+    },
+    "seconds": 24.367643099976704,
+    "private_scope": "Native dedicated-only rebuilt SDK exports; no human pure handshake, active unload or general public parity claim"
+  },
+  "assertions": {
+    "filesystem": "28 cases/0 failures; owner completion/free and main+tick blocking rejection",
+    "tcp": "24 cases/0 failures; IPv4 hostname/IPv6/four slots/partial binary/MT isolation",
+    "lifecycle": "completed-work unload; loaded/streams/buffers/TCPconnected/pending/retiring all0",
+    "timing": "All blocking file/DNS/connect work ran in pinned jobs; no perf acceptance claim"
+  },
+  "exports": [
+    {
+      "name": "Plugin_FS_FOpenFileRead",
+      "assertion": "Real native copied-IWD lookup; plain/encrypted streams and positive exact lengths",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_Read",
+      "assertion": "Private loose/ZIP handles return exact stored/classic-encrypted/binary bytes",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_FCloseFile",
+      "assertion": "Owned live streams close successfully; final unload streams=0",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_ReadFile",
+      "assertion": "Real deflated ZIP and binary/whole reads, immutable bytes retained through owner completion",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_FreeFile",
+      "assertion": "Worker and owner FreeFile calls; retained bytes valid in completion, final buffers/bytes=0",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_FOpenFileWrite",
+      "assertion": "Native job writes binary A-NUL-B under home/game, read back exactly",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_FOpenFileAppend",
+      "assertion": "Reopens home/game and appends C, exact A-NUL-B-C readback",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_Write",
+      "assertion": "Private job actual byte-count writes for binary/text/root files",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_WriteFile",
+      "assertion": "Normal whole write then exact readback under home/game",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileWrite",
+      "assertion": "Home root text write, then SV home-preferred read",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileAppend",
+      "assertion": "Appends + at home root; two exact lines and EOF",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_FOpenFileRead",
+      "assertion": "Exact home/root and base fallback files/lengths",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_ReadLine",
+      "assertion": "Exact first newline line, final unterminated line, then zero EOF",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_HomeWriteFile",
+      "assertion": "Exact home-only whole write and copied-file readback",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_BaseWriteFile",
+      "assertion": "Exact explicit project base write and SV fallback readback",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_WriteFile",
+      "assertion": "Pinned home alias writes and exact SV readback",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_FS_SV_HomeCopyFile",
+      "assertion": "Actual home copy persists exact 4-byte payload",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_unzSetPassword",
+      "assertion": "Actual owner-validated private cookie opens classic-encrypted IWD stream; exact decrypted payload",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpConnect",
+      "assertion": "Actual pinned-job localhost connection success, invalid/occupied slots rejected",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpConnectMT",
+      "assertion": "Exact pinned owner/4 slots and IPv6; foreign claimed module rejected",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpGetData",
+      "assertion": "Actual nonblocking zero/no-data, bounded binary echo, remote close -1",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpGetDataMT",
+      "assertion": "Exact large binary echo across all4 private sockets and IPv6; foreign module -1",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpSendData",
+      "assertion": "Actual partial byte counts and exact echo; orderly-close six-byte message",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpSendDataMT",
+      "assertion": "Exact 98317-byte payload across4 sockets and IPv6 with64KiB call bounds; foreign module -1",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpCloseConnection",
+      "assertion": "Actual close followed by same-generation reconnect and exact echo",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    },
+    {
+      "name": "Plugin_TcpCloseConnectionMT",
+      "assertion": "Foreign owner close leaves live socket intact; actual same-owner closes drain",
+      "scope": "Direct real native fixture semantics only",
+      "remaining": [
+        "active-work unload/reload native fixture",
+        "error/map/pure barrier under concurrent plugin I/O"
+      ]
+    }
+  ],
+  "adapted_helpers": [
+    {
+      "name": "Plugin_FS_GetZipHandle",
+      "assertion": "Real private opaque cookie used by classic encrypted stream, not upstream ABI"
+    }
+  ],
+  "standalone": [
+    {
+      "result": "results/plugin-fs-20261003-040617-219100/result.json",
+      "cases": 69,
+      "failures": 0
+    },
+    {
+      "result": "results/plugin-tcp-20261003-090819-180882/result.json",
+      "cases": 55,
+      "failures": 0
+    }
+  ],
+  "remaining_release_gates": [
+    "Full capability-specific cases; native human pure package reference handshake",
+    "Active pinned job cancel/unload/reload lifecycle and stale-completion suppression",
+    "Generic NET/address/UDP source-port+IPv6 bridge",
+    "Public callback producer coverage and unavailable external providers"
+  ]
+}

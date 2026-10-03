@@ -1,0 +1,11 @@
+# Reuse the synthetic adapter contracts with production code
+
+The retarget was implemented and run after the Build 73 live batch and exclusive identity fixture ended. No production source was changed. `python staged/archive/run_contracts.py --production-adapter-only` passed 7 groups and 131,568 comparisons; exact evidence is `results/20261003-124212-841367/result.json`.
+
+The isolated production-adapter target compiles actual `engine/src/khz/khz_archive.cpp` together with `staged/archive/native_adapter_tests.cpp`, using the same native include directories and fake dependency bodies. A target-specific define selects `khz/khz_archive.h` and namespace `khz_archive`; the staged target still uses its original adapter. Production includes `native/archive_history.hpp`; no second staged adapter is linked into the production target.
+
+The production target additionally checks `KHZ_ArchiveDiagnosticsJSON` after each native reset: sample period50, zero native committed frame/byte counters, `attempt_active=false` and `index_valid=true`. This is adapter metadata evidence, not an actual native codec or gameplay test. The fixture supplies native types, the real adapter's required BSS symbols and synthetic main-owner/tick/current-client/decoder/error dependencies.
+
+The project-local MSVC Win32 Release configuration preserves assertions and produced a new timestamped record with stable source/binary hashes. The production adapter source SHA-256 was `cea8a9c910fb26006dcedfcd6498e1547f73273b3bf97d4f4f1362c091e69eac`; executable SHA-256 was `fb4069cc4c39cd2c172d08f1cba24d72cea8ded78b3686ac6b54309b70fc268e`. The record names `adapter_source=production` and explicitly excludes native codec, loaded map and full-world replay attestations. The original staged PASS artifact remains separate. The existing executable's human-readable final line still says "staged adapter"; its structured scope, exact compiler source and hashes identify the actual production target unambiguously.
+
+An actual loaded-map codec fixture is still required because this target's decoder, owner, current client state and error handling remain synthetic. Its purpose is regression coverage for the deployed adapter body and bounded metadata guards after future native changes.

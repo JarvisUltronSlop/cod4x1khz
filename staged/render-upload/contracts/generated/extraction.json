@@ -1,0 +1,5 @@
+{
+  "native_source_sha256": "82047d282431f093e8db6a2247aea8c89d7abda3f124bebd1ff181a405ed8b8c",
+  "extracted_body_sha256": "35b03662050622804b88b172e2995d0fe7422021a9d6cc19034e2c51cc6f3e11",
+  "scope": "Actual function bodies with fake D3D, dvar, allocator, and thread-role boundaries. No native GPU/ABI/performance claim."
+}

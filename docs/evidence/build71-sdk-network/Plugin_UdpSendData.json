@@ -1,0 +1,217 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_UdpSendData",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "For current IPv4 custom pair, validate bounded datagram arguments and module generation, send through the configured native server socket, preserve actual source port, publish its public sock and return true only for actual kernel acceptance. Direct send bypasses OnUdpNetSend. Pinned API IPv6 transport is still applicable and pending.",
+  "cases": [
+    {
+      "name": "direct kernel UDP from configured server source port and copied binary bytes",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 1,
+      "observed": {
+        "data": "4b485a5f5544505f4449524543545f5631",
+        "sender": [
+          "127.0.0.1",
+          28982
+        ]
+      }
+    },
+    {
+      "name": "public direct send actual success and bounded invalid arguments",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 2,
+      "observed": "KHZ_UDP_DIRECT cases=7 failures=0 socket=1540\n"
+    },
+    {
+      "name": "direct UDP delivered exactly once despite invalid follow-up calls",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 3,
+      "observed": {
+        "data": "",
+        "sender": null
+      }
+    },
+    {
+      "name": "pinned worker actual localhost DNS and UDP preserves native socket source",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 4,
+      "observed": {
+        "data": "4b485a5f5544505f574f524b45525f5631",
+        "sender": [
+          "127.0.0.1",
+          28982
+        ]
+      }
+    },
+    {
+      "name": "callbacks correct public32 argument layout/native owner and direct paths bypass redundant events",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 16,
+      "observed": "KHZ_UDP_REPORT cases=7 failures=0 rx_drop=1 rx_edit=1 rx_address=1 tx_drop=1 tx_edit=1 tx_address=1 direct_events=0 inject_events=0 callback_layout=3 callback_owner=3 worker_done=1 worker_good=1 main_dns=0 main_output=0\n"
+    },
+    {
+      "name": "native direct sends and both actual veto paths accounted independently",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 20,
+      "observed": {
+        "udp_sent": 2,
+        "udp_send_failed": 5,
+        "send_veto": 1,
+        "received": 16,
+        "receive_veto": 1,
+        "invalid": 0,
+        "injected": 4,
+        "injection_delivered": 3,
+        "injection_rejected": 1,
+        "dns_rejected_main": 3,
+        "interface_rejected": 0,
+        "dns": {
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 4,
+          "completed": 4,
+          "failed": 0,
+          "cancelled": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "name": "native module lifetime ends after worker and packet queue retirement",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 21,
+      "observed": {
+        "loaded": 0,
+        "retired_script_slots": 2,
+        "frame_dispatches": 13320,
+        "tick_callbacks": 11303,
+        "callback_overruns": 0,
+        "maximum_callback_us": 302,
+        "api_rejected": 4,
+        "job_rejected": 0,
+        "logs_dropped": 0,
+        "game_log_queued": 0,
+        "game_logs_dropped": 0,
+        "worker_failures": 0,
+        "threads": {
+          "active": 0,
+          "rejected": 0,
+          "owner_completions": 0
+        },
+        "filesystem": {
+          "epoch": 3,
+          "streams": 0,
+          "buffers": 0,
+          "buffer_bytes": 0,
+          "opened": 0,
+          "rejected": 0,
+          "read_bytes": 0,
+          "written_bytes": 0,
+          "reference_dropped": 0,
+          "cancelled": 2
+        },
+        "tcp": {
+          "connected": 0,
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 0,
+          "completed": 0,
+          "failed": 0,
+          "cancelled": 2,
+          "rejected": 0,
+          "sent_bytes": 0,
+          "received_bytes": 0
+        },
+        "network": {
+          "udp_sent": 2,
+          "udp_send_failed": 5,
+          "send_veto": 1,
+          "received": 17,
+          "receive_veto": 1,
+          "invalid": 0,
+          "injected": 4,
+          "injection_delivered": 3,
+          "injection_rejected": 1,
+          "dns_rejected_main": 3,
+          "interface_rejected": 0,
+          "dns": {
+            "pending": 0,
+            "retiring": 0,
+            "submitted": 4,
+            "completed": 4,
+            "failed": 0,
+            "cancelled": 2,
+            "rejected": 0
+          }
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/win32/win_net.cpp": "0ce8adb6d6d1b409fe2478e5fc32a1837180a58790b55856c38866b90a6dc592"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [
+    "Actual payloads are exact known ASCII byte strings, not an embedded-NUL/arbitrary-binary runtime fixture.",
+    "Broadcast/multicast, socket-close race and kernel would-block failures were not exercised by these native loopback runs."
+  ],
+  "pending_semantics": [
+    "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+  ],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

@@ -1,0 +1,63 @@
+{
+  "release_gate": "pending",
+  "kind": "scoped native print semantics evidence draft",
+  "protocol": 10002,
+  "server_pin": "ddd65fc",
+  "evidence": {
+    "result": "results/plugin-print-native-20261003-042133-558200/result.json",
+    "result_sha256": "727965e6d23e033f1bdaf987728a3f8e2204e2ac727761c8add4232f7aeb996a",
+    "native_log_sha256": "78af562312e93d91f8c6bb670bd44467b80e210d896a479942f27e2a4f605ebc",
+    "native_stderr_sha256": "defdb282d6547625879c2725667f98cda6fbc4a0b0861c3ca7cb2aa04f5aea5f",
+    "tested_hashes": {
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\cod4x1khz_server.exe": "38c09c8b0ae67a774cb85c3d8bbe271e64532b0a2e4e0ed5d93d311fc22dab40",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\runtime\\plugins\\khz_regression.dll": "0078fea7e1b64588c26b0a4e3f57f36001ca208ad31df4fc719db0d9d174aa61",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_plugins.cpp": "3d0a2bde79b1d21121c2a70bdabd3f6fbf4c23a315f4bf7a688a0f06c6fb10bf",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\regression_plugin.c": "1c4d99aeb56e99259e4f785261eaa3fdf2b378d386e3e142e765fb3caa48241a",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\sdk\\tests\\native_print_probe.inc": "2ce7d114d7e6b51fceb0ebcc3752af02126c0aca9c0f91a04fc4324cd363f9f8",
+      "C:\\Users\\jack\\Desktop\\cod4x1khz\\scripts\\plugin_print_native_probe.py": "2959bd8c338418964d2f7c39f44480e4ab0a8af0f3f176e73ea583b5ff43c887"
+    },
+    "seconds": 8.084157000062987
+  },
+  "exports": [
+    {
+      "name": "Plugin_Printf",
+      "assertions": [
+        "Exact synchronous main/control RCON reply once",
+        "Worker and authoritative1ms callback records excluded from control redirect",
+        "Real queued native log and raw stderr records after service",
+        "Pinned worker owner completion and final module unload"
+      ],
+      "scope": "Bounded current SDK text and channels; no general SDK parity claim"
+    },
+    {
+      "name": "Plugin_PrintWarning",
+      "assertions": [
+        "Exact synchronous main/control RCON reply once",
+        "Worker and authoritative1ms callback records excluded from control redirect",
+        "Real queued native log and raw stderr records after service",
+        "Pinned worker owner completion and final module unload"
+      ],
+      "scope": "Bounded current SDK text and channels; no general SDK parity claim"
+    },
+    {
+      "name": "Plugin_PrintError",
+      "assertions": [
+        "Exact synchronous main/control RCON reply once",
+        "Worker and authoritative1ms callback records excluded from control redirect",
+        "Real queued native log and raw stderr records after service",
+        "Pinned worker owner completion and final module unload"
+      ],
+      "scope": "Bounded current SDK text and channels; no general SDK parity claim"
+    }
+  ],
+  "prefixes": {
+    "Plugin_PrintWarning": "^3Warning: ",
+    "Plugin_PrintError": "^1Error: "
+  },
+  "native_cases": 16,
+  "remaining": [
+    "Saturated logging journal/drop fixture",
+    "Plugin fault/disable/active-work unload cases",
+    "Full public capability release gate"
+  ]
+}

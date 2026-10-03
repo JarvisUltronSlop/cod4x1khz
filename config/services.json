@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "project": "cod4x1khz",
+  "protocol": 10002,
+  "download_origin": "",
+  "masters": [],
+  "update_manifest_url": "",
+  "update_origin": "",
+  "trusted_update_key_cng_rsa2048_hex": "",
+  "private_http_updates": false,
+  "note": "Endpoints and trusted update key require explicit configuration. Download, browser and update module fixtures do not establish public CoD4x parity or native UI/transport integration."
+}

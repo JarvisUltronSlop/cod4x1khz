@@ -1,0 +1,64 @@
+*** Begin Patch
+*** Update File: engine/src/khz/khz_plugins.cpp
+@@
+ #include <stats_offsets.hpp>
++#include <steam_identity_format.hpp>
+ #include <plugin_io_policy.hpp>
+@@
+-KHZ_API void __cdecl Plugin_SteamIDToString(uint64_t id, char* buffer, int length) { if (length > 0) khz::identity::SteamIdToString(id, false, buffer, length); }
+-KHZ_API void __cdecl Plugin_SteamIDTo64String(uint64_t id, char* buffer, int length) { if (length > 0) khz::identity::SteamIdToString(id, true, buffer, length); }
++KHZ_API void __cdecl Plugin_SteamIDToString(uint64_t id, char* buffer, int length) {
++    if (!buffer || length <= 0) return;
++    bool decimal;
++    {
++        KHZ_DvarScope synchronization;
++        decimal = Dvar_GetBool("sv_usesteam64id");
++    }
++    khz::identity_format::Selected(id, decimal, buffer, length);
++}
++KHZ_API void __cdecl Plugin_SteamIDTo64String(uint64_t id, char* buffer, int length) {
++    khz::identity_format::Steam64(id, buffer, length);
++}
+*** Update File: engine/src/khz/khz_admin_server.cpp
+@@
+-    steam64 = Dvar_RegisterBool("sv_usesteam64id", false, DVAR_ARCHIVE, "Display provider identifiers in Steam64 decimal form");
++    steam64 = Dvar_RegisterBool("sv_usesteam64id", true, DVAR_ARCHIVE, "Display provider identifiers in Steam64 decimal form");
+*** Update File: sdk/tests/regression_plugin.c
+@@
+ #include "native_stats_probe.inc"
++#include "native_identity_format_probe.inc"
+@@
+     Plugin_AddCommand("khz_fixture_identity", identity_probe, 100);
++    Plugin_AddCommand("khz_fixture_identity_format", identity_format_probe, 100);
+*** Update File: sdk/tests/native_stats_probe.inc
+@@
+     char text[128], shortBuffer[3] = {'x', 'x', 'x'};
++    const int decimal = Plugin_Cvar_VariableBooleanValue("sv_usesteam64id");
+@@
+-    Plugin_SteamIDToString(steam, text, sizeof(text)); if (strcmp(text, "[U:1:12345]")) passed = 0;
++    Plugin_SteamIDToString(steam, text, sizeof(text)); if (strcmp(text, decimal ? "76561197960278073" : "[U:1:12345]")) passed = 0;
+     Plugin_SteamIDTo64String(steam, text, sizeof(text)); if (Plugin_StringToSteamID(text) != steam) passed = 0;
+-    Plugin_SteamIDToString(steam, shortBuffer, sizeof(shortBuffer)); if (shortBuffer[sizeof(shortBuffer) - 1]) passed = 0;
++    Plugin_SteamIDToString(steam, shortBuffer, sizeof(shortBuffer));
++    if (decimal ? (shortBuffer[0] || shortBuffer[1] != 'x' || shortBuffer[2] != 'x') : shortBuffer[sizeof(shortBuffer) - 1]) passed = 0;
+*** Update File: native/steam_identity_format.hpp
+@@
+-// STAGED ONLY: neither the native host nor its compiled SDK fixture includes
+-// this helper yet. It is a bounded formatter, not an authentication provider.
++// Bounded public identifier formatting; this is not an authentication provider.
+*** Update File: tests/steam_identity_format_tests.cpp
+@@
+-// STAGED ONLY: no target currently compiles this test. Requires native/ include
+-// path and ordinary C++17; no engine, Windows, provider or network dependency.
++// Requires native/ include path and ordinary C++17; no engine, Windows,
++// provider or network dependency.
+*** Update File: sdk/tests/native_identity_format_probe.inc
+@@
+-/* STAGED ONLY: do not include in the deployed regression DLL yet.
+- * Future hook: Plugin_AddCommand("khz_fixture_identity_format",
+- *                              identity_format_probe, 100);
+- * Calls both real host exports, preserves the configured boolean, and reports
++/* Calls both real host exports, preserves the configured boolean, and reports
+  * separate counters for complete per-export proof rather than aggregate names.
+  */
+*** End Patch

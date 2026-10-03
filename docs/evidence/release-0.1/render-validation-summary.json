@@ -1,0 +1,100 @@
+{
+  "build": 86,
+  "release_gate_passed": false,
+  "binary_package_mismatches": [],
+  "native_suites": 40,
+  "source_archive_sha256": "fbeea573a7c6e8d1d36da6c906430e0893e4465d122a0865c612ecf7694c1479",
+  "native_cases": {
+    "native-render-scene86-mp_killhouse-480p-20261003-201834-358883": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "cd83b287a2f4a46fdf257024e42dc213e3099d0ba5e4d71c8f6aeb0e966b6167",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "native-render-scene86-mp_crash-720p-20261003-202329-903577": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "7c89c3db7e9afe384179ec42f185fa08943856639a390ab97f1c6bcb5c2d6d32",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "native-render-scene86-mp_killhouse-480p-20261003-202853-889999": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "8d059ac040fab7b0343e1076b3cf8541a8ff5b81cadee8aaa567b479721695a4",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "native-render-scene86-mp_crash-720p-20261003-203216-573753": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "46380fdfca3175379e74be70b54ab79d83aaac2a5d9141660179d7191687421f",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "native-render-profile86-20261003-202119-627747": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "8b626192b70e40816ffb8daf64db5fae9c92b06bd3375ce297f611be5aaa878f",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "native-render-profile86-20261003-203600-810260": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "548031520ba59f8d6517007e2a58d1b27707be25db402ba3860eae2a404032e0",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    },
+    "build86-render-lifecycle": {
+      "passed": true,
+      "errors": [],
+      "result_sha256": "d0cf9b64590507b670be36591b2813e8eba44241e9e920433608c39c6877713b",
+      "cleanup": {
+        "created_client_returncode": 0,
+        "exact_owned_server_exited": true,
+        "client_forced_stop": null,
+        "server_forced_stop": null
+      }
+    }
+  },
+  "all_scoped_native_checks_pass": true,
+  "helper_addenda": [
+    "results/build86-render-scene-helper-revision.json",
+    "results/build86-render-scene-helper-timing-revision.json",
+    "results/build86-render-scene-helper-final-revision.json"
+  ],
+  "pending": [
+    "public capability release gate",
+    "four-human current-build timing cases",
+    "restored identical-input full-world replay under actual rendering",
+    "native fullscreen device-loss recovery",
+    "sustained representative 1000 FPS"
+  ],
+  "report": "docs/render-performance-20261003.md"
+}

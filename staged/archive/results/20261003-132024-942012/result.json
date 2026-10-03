@@ -1,0 +1,172 @@
+{
+  "completed": true,
+  "passed": true,
+  "scope": "actual native Win32 message layout and reference-index bodies with external diagnostics stubbed",
+  "native_loaded_map_attestation": false,
+  "native_archive_oracle_attestation": false,
+  "full_world_replay_attestation": false,
+  "production_applied": false,
+  "generate_only": false,
+  "commands": [
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\reference-contracts",
+        "-B",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\reference-contracts\\build",
+        "-G",
+        "Visual Studio 17 2022",
+        "-A",
+        "Win32",
+        "-DCMAKE_GENERATOR_INSTANCE=C:/BuildTools"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 1.6549521000124514,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-132024-942012\\configure.log",
+      "log_sha256": "c632da97093da94eca2a5bf0e0d65a5dfc63c9f3a8b0337289d5cede24f2915c"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\reference-contracts\\build",
+        "--config",
+        "Release",
+        "--target",
+        "archive_index_reference_legacy",
+        "archive_index_reference_packed",
+        "--parallel",
+        "1"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 1.8286679000593722,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-132024-942012\\build.log",
+      "log_sha256": "f18f0818f43d2507a114812b3c01006a5a5b99a38fd20f2bbbd1a4adb2c89e46"
+    },
+    {
+      "name": "archive_index_reference_legacy",
+      "argv": [
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\reference-contracts\\build\\Release\\archive_index_reference_legacy.exe"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03254209994338453,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-132024-942012\\archive_index_reference_legacy.log",
+      "log_sha256": "27537170a17c0b5587d3aa8c38e98beb6d8949609ff23303c1cd61240928accb"
+    },
+    {
+      "name": "archive_index_reference_packed",
+      "argv": [
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\reference-contracts\\build\\Release\\archive_index_reference_packed.exe"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.029681599931791425,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-132024-942012\\archive_index_reference_packed.log",
+      "log_sha256": "27537170a17c0b5587d3aa8c38e98beb6d8949609ff23303c1cd61240928accb"
+    }
+  ],
+  "source_sha256": {
+    "engine\\src\\qcommon\\msg_mp.h": "f448c7b9d247637a2b9bb319489f313b1ed13116ca326c3001ddac31bccea344",
+    "engine\\src\\qcommon\\msg_mp.cpp": "2de4328bf71ab843857cfd8c4bf16db2cc94dfb54d3518b3407a297b564e91bf",
+    "engine\\src\\qcommon\\msg_bits_mp.inc": "ac2218d658281e545670e06638eb007bcdb4724c12fb9d95a4ba14d91adbfa9e",
+    "engine\\src\\qcommon\\sv_msg_write_mp.cpp": "ef009e47f19422268799f3a0de584f054f1136f423b45740d4b3d971e4c3accc",
+    "native\\msg_bits.hpp": "2be70150625f6b39fceb4fc656ce83d897cc6d4ffb41ef532d2dac30d84de1e1",
+    "staged\\archive\\index_reference_fixture_prefix.inc": "e310407be7ef50f894b31aacef0f07a0dc340a0e00b9448bef857f8d359f007b",
+    "staged\\archive\\index_reference_tests.cpp": "287c83c7278c10473d08ed7e3f919f822742570b65e9370ad21c0475a1446404",
+    "staged\\archive\\run_index_reference_contracts.py": "f9b052f7af7310be7469f174c27d9e9299e7f9f34881e61e38888b1df12a745c",
+    "staged\\archive\\reference-contracts\\CMakeLists.txt": "33ba3433482395b1ce0805f24c618c9b5410d5d65290bc725b353407837627bd",
+    "staged\\archive\\prepare_reference_fix.py": "77088dcd350fd64f91e169792670f47293476bee1619bce6bbb2860a2992584e",
+    "engine\\src\\khz\\khz_archive_probe.inl": "ca67bf8b784261a1ad37cf09a7a62054eb6aa5e3fd382b75dbb8966805e96dce"
+  },
+  "extraction": [
+    {
+      "source": "engine/src/qcommon/msg_mp.h",
+      "definition": "msg_t",
+      "line": 39,
+      "body_sha256": "d16ae5fd323d1e0ca4caf08cb49304eb24916bea63285ca0d010b198502f375a"
+    },
+    {
+      "source": "engine/src/qcommon/msg_bits_mp.inc",
+      "definition": "complete native bit primitive include",
+      "line": 1,
+      "body_sha256": "ac2218d658281e545670e06638eb007bcdb4724c12fb9d95a4ba14d91adbfa9e"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_InitReadOnly",
+      "line": 68,
+      "body_sha256": "25b9156af57fca377df3b92cfa98d13f12be46880d843ded70b86899bc8fb23a"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_InitReadOnlySplit",
+      "line": 81,
+      "body_sha256": "7524eeb9ea3fef1bff73cc6fcdffa8c57a844e394b4de673efc9212173622546"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_BeginReading",
+      "line": 95,
+      "body_sha256": "0184f7b1290a36f1ea1a29aac9459faaf0bec23478eff6083524b76cbce138b5"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_WriteBit0",
+      "line": 116,
+      "body_sha256": "06d45c220438570acfeb7aaa23f1a86e99d328620ca454d860681ddace5713b3"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_WriteBit1",
+      "line": 132,
+      "body_sha256": "efbed8211cdd206649342985804a205d4f407d74db268eda093fb36f58bd4160"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_ReadBit",
+      "line": 151,
+      "body_sha256": "959c4783b1850507c4eb09dc68c8dc3bd246f25d6ee687dabef73c012c9162eb"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_ClearLastReferencedEntity",
+      "line": 862,
+      "body_sha256": "81276055fbf9c80ffe09d39af8273d4330d9e78ec6adbb048f7a6f44c34da15b"
+    },
+    {
+      "source": "engine/src/qcommon/msg_mp.cpp",
+      "definition": "MSG_ReadEntityIndex",
+      "line": 867,
+      "body_sha256": "95ad506bdf78471b1fe384032b19d3f475da0599b482727a5e9bb38be4cfdd16"
+    },
+    {
+      "source": "engine/src/qcommon/sv_msg_write_mp.cpp",
+      "definition": "MSG_WriteEntityIndex",
+      "line": 935,
+      "body_sha256": "2909bfb2e7f50bb7a74c35df35d205950a37e10bf6f456544f41e78f962610ed"
+    }
+  ],
+  "diagnostic_proposal": {
+    "standalone_reader_resets": 2,
+    "first_index_diagnostics": 2,
+    "original_comparisons_preserved": true,
+    "native_codec_changed": false,
+    "proposed_source_sha256": "66d6f467fd2927f96ab693193e43441f26efdac6f3095b51365e2c49ea6e9de3"
+  },
+  "generated_sha256": {
+    "staged\\archive\\reference-contracts\\generated\\index_reference_extracted.inc": "87c7a5c4ffa8cacfe43464566831ba4737d8827791d8592079d207ca187ad781"
+  },
+  "toolchain_instance": "C:/BuildTools",
+  "binary_sha256": {
+    "staged\\archive\\reference-contracts\\build\\Release\\archive_index_reference_legacy.exe": "8c72e51cb2a937345909422c6c2adfc51af50809113e397815862e9242d2ce55",
+    "staged\\archive\\reference-contracts\\build\\Release\\archive_index_reference_packed.exe": "5cc4efa4d13ef4efb85752c7e331cc83f5949643b33b578acb24795195b718ec"
+  },
+  "source_stable": true,
+  "contracts_executed": true
+}

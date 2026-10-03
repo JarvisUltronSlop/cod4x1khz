@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "staged_only": true,
+  "semantic_proof": false,
+  "official_provider_authentication": false,
+  "oracle": "Python hashlib PBKDF2-HMAC-SHA256, iterations100, output4, little-endian account",
+  "public_source": {
+    "path": "upstream/cod4x_server/src/sapi.c",
+    "sha256": "aca73b8c9e49605a2b59378e886d1958cc61d490d85d8b80c050d8792e993cb6"
+  },
+  "salt_bytes": 256,
+  "salt_sha256": "cc19afde7c57be0e5eff1379d431aa5b60265f7ead8188fb7089cc6a2f72c1f1",
+  "records": [
+    {
+      "guid": "00000000000000000000000000000000",
+      "derived_hex": "b8864b44",
+      "account": 1145800376,
+      "expected": 2310346614281832120
+    },
+    {
+      "guid": "ffffffffffffffffffffffffffffffff",
+      "derived_hex": "2b1b34c6",
+      "account": 3325303595,
+      "expected": 2310346616461335339
+    },
+    {
+      "guid": "000102030405060708090a0b0c0d0e0f",
+      "derived_hex": "4bfa133a",
+      "account": 974387787,
+      "expected": 2310346614110419531
+    },
+    {
+      "guid": "0f0e0d0c0b0a09080706050403020100",
+      "derived_hex": "ffd264f5",
+      "account": 4117025535,
+      "expected": 2310346617253057279
+    },
+    {
+      "guid": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "derived_hex": "cf3fa345",
+      "account": 1168326607,
+      "expected": 2310346614304358351
+    },
+    {
+      "guid": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+      "derived_hex": "3baf474b",
+      "account": 1262989115,
+      "expected": 2310346614399020859
+    },
+    {
+      "guid": "0123456789abcdef0123456789abcdef",
+      "derived_hex": "6d46ec3c",
+      "account": 1022117485,
+      "expected": 2310346614158149229
+    }
+  ]
+}

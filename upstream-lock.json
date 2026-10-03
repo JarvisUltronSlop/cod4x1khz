@@ -1,0 +1,7 @@
+{
+  "KisakCOD": {"url": "https://github.com/SwagSoftware/KisakCOD.git", "commit": "8aadf94cc82795d6829ca06052996a5ec79001c3"},
+  "CoD4x_Server": {"url": "https://github.com/callofduty4x/CoD4x_Server.git", "commit": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f"},
+  "CoD4x_Client": {"url": "https://github.com/callofduty4x/CoD4x_Client_pub.git", "commit": "17182c7bf04b859dea5c0db4acdb0b83c28d6dd2"},
+  "Bot_Warfare": {"url": "https://github.com/ineedbots/iw3_bot_warfare.git", "commit": "7b52b462e40fa68287b9e54602e52da83b17766c", "release": "v2.2.0"},
+  "DirectX": {"package": "Microsoft.DXSDK.D3DX", "version": "9.29.952.8", "sha256": "ead0906ae8a26c18a7525da7490127a2110f7c58f18293738283e30e97c6ea4b"}
+}

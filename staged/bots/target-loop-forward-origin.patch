@@ -1,0 +1,34 @@
+--- a/config/bots/maps/mp/bots/_bot_internal.gsc
++++ b/config/bots/maps/mp/bots/_bot_internal.gsc
+@@ -1043,7 +1043,9 @@
+ 	myEye = self getEyePos();
+ 	theTime = gettime();
+ 	myAngles = self getplayerangles();
++	myOrigin = self.origin;
++	myForward = anglestoforward( myAngles );
+ 	myFov = self.pers[ "bots" ][ "skill" ][ "fov" ];
+ 	bestTargets = [];
+ 	bestTime = 2147483647;
+ 	rememberTime = self.pers[ "bots" ][ "skill" ][ "remember_time" ];
+@@ -1080,6 +1082,6 @@
+ 			ent = self.bot.script_target;
+ 			key = ent getentitynumber() + "";
+-			daDist = distancesquared( self.origin, ent.origin );
++			daDist = distancesquared( myOrigin, ent.origin );
+ 			obj = self.bot.targets[ key ];
+ 			isObjDef = isdefined( obj );
+ 			entOrigin = ent.origin;
+@@ -1134,4 +1136,4 @@
+ 			key = player getentitynumber() + "";
+ 			obj = self.bot.targets[ key ];
+-			daDist = distancesquared( self.origin, player.origin );
++			daDist = distancesquared( myOrigin, player.origin );
+ 			isObjDef = isdefined( obj );
+@@ -1151,6 +1153,6 @@
+ 			// path below, and preserve the frame override after this predicate.
+ 			canTargetPlayer = false;
+-			if ( getConeDot( player.origin, self.origin, myAngles ) >= myFov ||
++			if ( vectordot( vectornormalize( player.origin - myOrigin ), myForward ) >= myFov ||
+ 					( isObjDef && obj.trace_time ) )
+ 			{
+ 				targetHead = player gettagorigin( "j_head" );

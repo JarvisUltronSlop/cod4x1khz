@@ -1,0 +1,10 @@
+KHZ_UPDATE_1
+project=cod4x1khz
+platform=windows-x86
+protocol=10002
+version=RELEASE_INTEGER
+client_mirrors=runtime/cod4x1khz.exe,runtime/cod4x1khz_bench.exe
+files=2
+file=cod4x1khz.exe	BYTE_LENGTH	LOWERCASE_SHA256	HTTPS_FILE_URL
+file=runtime/cod4x1khz_server.exe	BYTE_LENGTH	LOWERCASE_SHA256	HTTPS_FILE_URL
+signature=LOWERCASE_512_HEX_RSA2048_PKCS1_SHA256_SIGNATURE

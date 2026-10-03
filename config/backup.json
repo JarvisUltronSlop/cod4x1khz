@@ -1,0 +1,8 @@
+{
+  "repository": "JarvisUltronSlop/cod4x1khz",
+  "branch": "vulkan-testing",
+  "enabled": true,
+  "interval_minutes": 60,
+  "stop_marker": "docs/vulkan-ready.json",
+  "description": "Back up source and changed workspace files only. Do not implement or test Vulkan automatically. Keep repository and release archives private. Read docs/BACKUP.md for recovery."
+}

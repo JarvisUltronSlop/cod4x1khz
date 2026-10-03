@@ -1,0 +1,81 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 73,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:dvar:sv_usesteam64id",
+  "passed": true,
+  "coverage": "partial",
+  "publication_state": "candidate_requires_root_review",
+  "semantic_contract": "Register true by default, expose synchronized live mode selection, preserve archive policy, and eventually preserve explicitly configured startup/saved values. Only fresh default1 and live0/1 selection/restoration are actually proven by this Build73 run.",
+  "cases": [
+    {
+      "name": "Previously absent project home starts with true and survives live selection/restoration",
+      "passed": true,
+      "assertions": 3,
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_format_probe.inc",
+        "sha256": "e3569b86386a4076bbfe0065013161ea91bf7540be5d61e7cc2f34c6cac04e3f"
+      },
+      "fixture_assertion_group": null,
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_FORMAT_SELECTED cases=99 failures=0 initial=1 restored=1 provider_authentication=0",
+        "fields": {
+          "cases": 99,
+          "failures": 0,
+          "initial": 1,
+          "restored": 1,
+          "provider_authentication": 0
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_admin_server.cpp": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb"
+  },
+  "binary_sha256": {
+    "server": "536ea9aa5b0c2641e9825a5839eed7cf699bff3b8c1b537367aaaf05bf90e1b5"
+  },
+  "regression_dll_sha256": "a3a1b3891215cb2a6b4d41e01ce1695e19d406810bec036b8a6180f5828b4ffb",
+  "build_archive": {
+    "path": "results/build73-source-and-binary-hashes.json",
+    "sha256": "e95dfbf375cf8fcc172239e5aa807ca20a1c87d76c16bd6332923c781435a9d3"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+    "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+  },
+  "native_logs": [
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/server-stdio.log",
+      "sha256": "71a7e545bf44e2cefa20af1d3b79150d08e689cb604f00572215aca96412f314"
+    },
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/native-server.log",
+      "sha256": "86d7555c26f733e38df86bd1d8066890c48d2be29e1ea5e83d961f4fb155c500"
+    }
+  ],
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_contract_formatter_evidence.py",
+    "sha256": "1bc8e1b0dd7e4366fca0ddb51ab97c04bd78806a09138654b141693505c36c02"
+  },
+  "postarchive_tooling": "Independently hashed review-only writer; coherent archive unchanged.",
+  "startup_scope": "One fresh default1 home only; both live runtime modes exercised by the C DLL.",
+  "startup_configured_zero_proven": false,
+  "saved_config_persistence_proven": false,
+  "pending_semantics": [
+    "Separate startup explicitly configured0 was not rerun on this binary.",
+    "Actual saved archived configuration and independent restart/reload persistence remain untested."
+  ],
+  "official_authentication_proven": false,
+  "full_public_feature_parity": false,
+  "safety_adaptations": [
+    "Refuse decimal twenty-digit overflow at capacity20 instead of pinned unchecked sprintf overrun.",
+    "Null outputs are safe instead of dereferenced."
+  ]
+}

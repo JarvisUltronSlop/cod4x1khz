@@ -1,0 +1,288 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_NET_StringToAdr",
+  "passed": true,
+  "coverage": "reviewed_capability",
+  "semantic_contract": "Parse bounded numeric IPv4/IPv6/TCP/TCP6/UNSPEC with explicit network-order port (return1), default28960 (return2), IPv4-mapped IPv6 and numeric scope; malformed input returns0 with cleared public output. Hostnames return success only after real resolution in a pinned SDK worker, using a five-second bounded resolver with generation retirement. Main/tick hostname requests fail and clear output instead of blocking. IPv4 public sock is the configured native socket, all other public families use0; no DNS result implies a connected TCP socket.",
+  "cases": [
+    {
+      "name": "native_numeric_ipv4_unsigned_port",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_numeric_ipv6_public_bytes",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_forced_v6_mapped_literal_default_port",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_numeric_scope",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_dns_pending_never_reported_success",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "native_malformed_port_clears_output",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-064934-807400/result.json",
+        "sha256": "f8b54f626f36799f354ec9727a6dc57cb7295d66141849bc9e28fd85525520fc"
+      },
+      "compiled_fixture": {
+        "path": "sdk/tests/native_net_address_probe.inc",
+        "sha256": "cffed12995c44d18dd7de8cd4d3eb1a73f221079999974610619b7273fa1fd5d"
+      },
+      "attestation": "The rebuilt C DLL reported zero failures for all checks in this fixture; this named check is present in its archived compiled source."
+    },
+    {
+      "name": "pinned worker actual localhost DNS and UDP preserves native socket source",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 4,
+      "observed": {
+        "data": "4b485a5f5544505f574f524b45525f5631",
+        "sender": [
+          "127.0.0.1",
+          28982
+        ]
+      }
+    },
+    {
+      "name": "native pinned DNS families/default unsigned ports complete and main owner refuses blocking DNS",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 17,
+      "observed": "KHZ_UDP_REPORT cases=7 failures=0 rx_drop=1 rx_edit=1 rx_address=1 tx_drop=1 tx_edit=1 tx_address=1 direct_events=0 inject_events=0 callback_layout=3 callback_owner=3 worker_done=1 worker_good=1 main_dns=0 main_output=0\n"
+    },
+    {
+      "name": "native queued injection and DNS counters record actual work/rejection",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 19,
+      "observed": {
+        "udp_sent": 2,
+        "udp_send_failed": 5,
+        "send_veto": 1,
+        "received": 16,
+        "receive_veto": 1,
+        "invalid": 0,
+        "injected": 4,
+        "injection_delivered": 3,
+        "injection_rejected": 1,
+        "dns_rejected_main": 3,
+        "interface_rejected": 0,
+        "dns": {
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 4,
+          "completed": 4,
+          "failed": 0,
+          "cancelled": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "name": "native module lifetime ends after worker and packet queue retirement",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 21,
+      "observed": {
+        "loaded": 0,
+        "retired_script_slots": 2,
+        "frame_dispatches": 13320,
+        "tick_callbacks": 11303,
+        "callback_overruns": 0,
+        "maximum_callback_us": 302,
+        "api_rejected": 4,
+        "job_rejected": 0,
+        "logs_dropped": 0,
+        "game_log_queued": 0,
+        "game_logs_dropped": 0,
+        "worker_failures": 0,
+        "threads": {
+          "active": 0,
+          "rejected": 0,
+          "owner_completions": 0
+        },
+        "filesystem": {
+          "epoch": 3,
+          "streams": 0,
+          "buffers": 0,
+          "buffer_bytes": 0,
+          "opened": 0,
+          "rejected": 0,
+          "read_bytes": 0,
+          "written_bytes": 0,
+          "reference_dropped": 0,
+          "cancelled": 2
+        },
+        "tcp": {
+          "connected": 0,
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 0,
+          "completed": 0,
+          "failed": 0,
+          "cancelled": 2,
+          "rejected": 0,
+          "sent_bytes": 0,
+          "received_bytes": 0
+        },
+        "network": {
+          "udp_sent": 2,
+          "udp_send_failed": 5,
+          "send_veto": 1,
+          "received": 17,
+          "receive_veto": 1,
+          "invalid": 0,
+          "injected": 4,
+          "injection_delivered": 3,
+          "injection_rejected": 1,
+          "dns_rejected_main": 3,
+          "interface_rejected": 0,
+          "dns": {
+            "pending": 0,
+            "retiring": 0,
+            "submitted": 4,
+            "completed": 4,
+            "failed": 0,
+            "cancelled": 2,
+            "rejected": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "All numeric IPv4/IP6/TCP/TCP6/UNSPEC, scopes, unsigned/zero/default ports and malformed copied endpoint fixtures",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/build71-console.log",
+        "sha256": "29ea5714bbf6a96422b30b975e52068793b6ff78fcab8585917521072191fb61"
+      },
+      "test": "khz_plugin_net_address",
+      "fixture_source": {
+        "path": "engine/tests/khz_plugin_net_address_tests.cpp",
+        "sha256": "5abbe18d9d614dcf7d4b14c012c6246d35560ff797c26a9ca71fd1970704d897"
+      },
+      "attestation": "Build71 CTest reported this real native suite passed. The named behavioral group is reviewed in its archived test source; this is supplemental to loaded-DLL checks."
+    },
+    {
+      "name": "Actual localhost DNS IPv4/IP6/TCP/TCP6/UNSPEC, immediate slot reuse, cancellation/reload, bounded admission and five-second deadline fixtures",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/build71-console.log",
+        "sha256": "29ea5714bbf6a96422b30b975e52068793b6ff78fcab8585917521072191fb61"
+      },
+      "test": "khz_plugin_dns",
+      "fixture_source": {
+        "path": "engine/tests/khz_plugin_dns_tests.cpp",
+        "sha256": "b0a33b9474a5be32fcab38552e5a7b19e303286f34db86d01b1c2cb974716bf1"
+      },
+      "attestation": "Build71 CTest reported this real native suite passed. The named behavioral group is reviewed in its archived test source; this is supplemental to loaded-DLL checks."
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/khz/khz_plugin_net_address.cpp": "341c5481e3d45e4c7596708a30d4a2d5b876daee8f345089d98e1cff4db3aba3",
+    "engine/src/khz/khz_plugin_dns.cpp": "37351a056f74c7236298de89e07d1f7b844154ef17e1a2f70876e12c8ef16c50"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [
+    "Rebuilt source-compatible SDK requires job/thread context for blocking DNS; native owner calls return failure.",
+    "Loaded DLL resolves localhost as IP4/IP6/TCP; TCP6 and UNSPEC actual resolver paths have independent native backend evidence. No internet DNS/service availability or IPv6 game transport is claimed."
+  ],
+  "pending_semantics": [],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

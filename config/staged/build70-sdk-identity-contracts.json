@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "pending_actual_native_run",
+  "build": 70,
+  "archive": "results/build70-source-and-binary-hashes.json",
+  "scope": "Loaded rebuilt SDK formatter contracts; numeric conversion is not official provider authentication",
+  "harness": "scripts/plugin_identity_format_native_probe.py",
+  "command_after_fixture_capacity_repair": "khz_fixture_identity format",
+  "next_coherent_build": 71,
+  "candidate_entries": {
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "semantic_contract": "Read synchronized sv_usesteam64id, select decimal or pinned Steam3 spelling, preserve the configured value, bound all output writes; absent dvar selects Steam3.",
+      "implementation": ["engine/src/khz/khz_plugins.cpp", "native/steam_identity_format.hpp", "engine/src/khz/khz_controls.cpp"],
+      "required_native_markers": ["KHZ_IDENTITY_FORMAT_SELECTED cases=99 failures=0", "KHZ_IDENTITY_FORMAT_STEAM3 cases=128 failures=0"],
+      "required_phases": ["fresh-default initial=1 restored=1", "configured-zero initial=0 restored=1"],
+      "complete_candidate_only_after": ["Actual harness passes and exact owned processes exit", "Current archive binds server/DLL/header/fixture bytes", "Archived khz_steam_identity_format test passes", "Null-output calls survive", "Root reviews adapted capacity-overflow semantics"],
+      "release_coverage_complete": false
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "semantic_contract": "Always emit whole uint64 decimal regardless of configured mode; positive capacity below20 clears only byte0; nonpositive/null requests write nothing; capacity20 rejects a twenty-digit value safely, and capacity21 emits it completely.",
+      "implementation": ["engine/src/khz/khz_plugins.cpp", "native/steam_identity_format.hpp"],
+      "required_native_markers": ["KHZ_IDENTITY_FORMAT_EXPLICIT64 cases=96 failures=0"],
+      "required_phases": ["fresh-default", "configured-zero"],
+      "safety_adaptations": ["Pinned sprintf overflows capacity20 for twenty-digit values; adapted API instead clears only byte0", "Null outputs are safe"],
+      "complete_candidate_only_after": ["Actual harness passes and exact owned processes exit", "Current archive binds server/DLL/header/fixture bytes", "Archived khz_steam_identity_format test passes"],
+      "release_coverage_complete": false
+    },
+    "server:dvar:sv_usesteam64id": {
+      "implementation": ["engine/src/khz/khz_admin_server.cpp"],
+      "covered_by_prepared_cases": ["True fresh default", "Startup-configured0 is preserved", "Native fixture restores original boolean"],
+      "remaining": ["Actual archived configuration persistence across a separate launch"],
+      "release_coverage_complete": false
+    }
+  },
+  "unpromoted": ["Plugin_StringToSteamID", "Plugin_GUID2PlayerID", "Plugin_SteamIDIsIndividual", "Plugin_SteamIDIsIndividualAndSteamAccount", "Official Steam/CoD4x authentication", "Broad public feature parity"],
+  "rules": ["This draft contains no semantic attestation or invented hash", "Do not insert into config/public-capability-evidence.json before actual reviewed native artifacts exist", "Do not modify frozen production or compiled fixture source"]
+}

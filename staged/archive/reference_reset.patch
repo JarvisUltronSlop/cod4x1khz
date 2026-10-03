@@ -1,0 +1,32 @@
+--- a/engine/src/khz/khz_archive_probe.inl
++++ b/engine/src/khz/khz_archive_probe.inl
+@@ -428,9 +428,15 @@
+         else MSG_WriteBit0(&wire);
+         if (wire.overflowed) { ok = fail("native_oracle_client_message_overflowed"); break; }
+         msg_t read; MSG_InitReadOnly(&read, image->wire, wire.cursize); MSG_BeginReading(&read);
++        MSG_ClearLastReferencedEntity(&read);
+         std::memset(&decoded->clients[0], 0, sizeof(cachedClient_s));
+         if (MSG_ReadBit(&read) != 1) { ok = fail("native_oracle_client_presence_missing"); break; }
+         const auto number = MSG_ReadEntityIndex(&read, 6);
++        if (number != index) {
++            char detail[160]; std::snprintf(detail, sizeof(detail),
++                "native_oracle_client_index row=%d expected=%d actual=%d", i, index, number);
++            ok = fail(detail); break;
++        }
+         MSG_ReadDeltaClient(&read, svs.time, nullptr, &decoded->clients[0].cs, number);
+         decoded->clients[0].playerStateExists = MSG_ReadBit(&read);
+         if (decoded->clients[0].playerStateExists)
+@@ -457,7 +463,13 @@
+         MSG_WriteDeltaArchivedEntity(&info, &wire, svs.time, &sv.svEntities[index].baseline, &current, 1);
+         if (wire.overflowed) { ok = fail("native_oracle_entity_message_overflowed"); break; }
+         msg_t read; MSG_InitReadOnly(&read, image->wire, wire.cursize); MSG_BeginReading(&read);
++        MSG_ClearLastReferencedEntity(&read);
+         const auto number = MSG_ReadEntityIndex(&read, 10);
++        if (number != index) {
++            char detail[160]; std::snprintf(detail, sizeof(detail),
++                "native_oracle_entity_index row=%d expected=%d actual=%d", i, index, number);
++            ok = fail(detail); break;
++        }
+         MSG_ReadDeltaArchivedEntity(&read, svs.time, &sv.svEntities[index].baseline, &decoded->entities[0], number);
+         ok = !read.overflowed && sameValue(expected.s.number, decoded->entities[0].s.number) &&
+             fields(&expected, &decoded->entities[0], archivedEntityFields, 69, sizeof(expected));

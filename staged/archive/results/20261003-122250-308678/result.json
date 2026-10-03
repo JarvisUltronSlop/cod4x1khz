@@ -1,0 +1,63 @@
+{
+  "completed": true,
+  "passed": false,
+  "scope": "staged standalone policy/adapter contracts",
+  "native_loaded_map_attestation": false,
+  "native_codec_attestation": false,
+  "full_world_replay_attestation": false,
+  "production_applied": false,
+  "evidence": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-122250-308678",
+  "commands": [
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+        "-B",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "-G",
+        "Visual Studio 17 2022",
+        "-A",
+        "Win32",
+        "-DCMAKE_GENERATOR_INSTANCE=C:/BuildTools"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.09366469993256032,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-122250-308678\\configure.log",
+      "log_sha256": "62cdd0bede988b75481a922737094021bad4c074d113bf9a95dd5a9015df35bd"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "--config",
+        "Release",
+        "--target",
+        "archive_policy_contracts",
+        "archive_adapter_contracts",
+        "--parallel",
+        "1"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 1,
+      "elapsed_seconds": 1.2457244999241084,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-122250-308678\\build.log",
+      "log_sha256": "55a2557771dc52a61f9eff16be9701c165eb8f835d9b0d5f5a80486482a4c632"
+    }
+  ],
+  "source_sha256": {
+    "staged\\archive\\archive_policy.hpp": "af68e0f038b7b32c576684c11bfed61a21b57718b63b5f00863663ca1405aa8b",
+    "staged\\archive\\native_adapter.h": "9e69d65739d62009527ef7348d2676497fb547b8fec88c31f0e362a9eb7109a1",
+    "staged\\archive\\archive_policy_tests.cpp": "760bafce022508e14fa80e0d0abcb7e3d65d4378c060a240104f51f09228ab35",
+    "staged\\archive\\native_adapter.cpp": "035c93aedfadb3dd429d58eaf026e17e634447f86aafa18f5d9e2a2347c91cab",
+    "staged\\archive\\native_adapter_tests.cpp": "cfc2124d014bd51b340c7d99c0f84f560382664cd7506f5260b477f5020f3e34",
+    "staged\\archive\\CMakeLists.txt": "4ac20abcdc6eb55f19ed6b4fc3f8f9279381db79e95afb82fff4d4c841fd9010",
+    "staged\\archive\\run_contracts.py": "1127fe32cd6467d066767cce29ac174b344e39d85071c508a992e9c88080bdd5"
+  },
+  "toolchain_instance": "C:/BuildTools",
+  "error": "build failed; inspect C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-122250-308678\\build.log"
+}

@@ -1,0 +1,113 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 73,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_export:Plugin_SteamIDTo64String",
+  "passed": true,
+  "coverage": "reviewed_capability",
+  "publication_state": "candidate_requires_root_review",
+  "semantic_contract": "Always emit complete uint64 decimal regardless of current sv_usesteam64id. Null/nonpositive outputs write nothing. Positive capacity below20 clears only byte0; twenty-digit values require capacity21, so capacity20 refuses without touching the remaining bytes. Success terminates inside capacity and preserves surrounding caller storage.",
+  "cases": [
+    {
+      "name": "Six literal uint64 IDs by eight capacities under both modes; explicit decimal ignores dvar and preserves guards",
+      "passed": true,
+      "assertions": 96,
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_format_probe.inc",
+        "sha256": "e3569b86386a4076bbfe0065013161ea91bf7540be5d61e7cc2f34c6cac04e3f"
+      },
+      "fixture_assertion_group": "explicit64_ignores_mode_minimum_and_overflow_bounds",
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_FORMAT_EXPLICIT64 cases=96 failures=0 provider_authentication=0",
+        "fields": {
+          "cases": 96,
+          "failures": 0,
+          "provider_authentication": 0
+        }
+      }
+    },
+    {
+      "name": "Both modes complete after null explicit output requests at positive, zero, negative capacities",
+      "passed": true,
+      "assertions": 6,
+      "compiled_fixture": {
+        "path": "sdk/tests/native_identity_format_probe.inc",
+        "sha256": "e3569b86386a4076bbfe0065013161ea91bf7540be5d61e7cc2f34c6cac04e3f"
+      },
+      "fixture_assertion_group": null,
+      "evidence": {
+        "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+        "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+      },
+      "observed": {
+        "text": "KHZ_IDENTITY_FORMAT_EXPLICIT64 cases=96 failures=0 provider_authentication=0",
+        "fields": {
+          "cases": 96,
+          "failures": 0,
+          "provider_authentication": 0
+        }
+      }
+    },
+    {
+      "name": "Archived native helper suite independently passes golden/type/universe/null/minimum/overflow/sentinel checks",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/build73-console.log",
+        "sha256": "ddb4800448b0d5644a5452af89f8ed3798b45a2d52e1c3b6ff2e53e0422e725c"
+      },
+      "fixture_source": {
+        "path": "tests/steam_identity_format_tests.cpp",
+        "sha256": "f72d5205d48a3031ae1cb16b1ffbfbc1f946deeec0e08247529cfbe96b772a60"
+      },
+      "test": "khz_steam_identity_format"
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugins.cpp": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384",
+    "native/steam_identity_format.hpp": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+  },
+  "binary_sha256": {
+    "server": "536ea9aa5b0c2641e9825a5839eed7cf699bff3b8c1b537367aaaf05bf90e1b5"
+  },
+  "regression_dll_sha256": "a3a1b3891215cb2a6b4d41e01ce1695e19d406810bec036b8a6180f5828b4ffb",
+  "build_archive": {
+    "path": "results/build73-source-and-binary-hashes.json",
+    "sha256": "e95dfbf375cf8fcc172239e5aa807ca20a1c87d76c16bd6332923c781435a9d3"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-contract-native-20261003-074025-734500/result.json",
+    "sha256": "03e3bb2b746bbecf81ab745476e1eb0f70d95cc760ceac4afe34516b2bda406e"
+  },
+  "native_logs": [
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/server-stdio.log",
+      "sha256": "71a7e545bf44e2cefa20af1d3b79150d08e689cb604f00572215aca96412f314"
+    },
+    {
+      "path": "results/plugin-identity-contract-native-20261003-074025-734500/native-server.log",
+      "sha256": "86d7555c26f733e38df86bd1d8066890c48d2be29e1ea5e83d961f4fb155c500"
+    }
+  ],
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_contract_formatter_evidence.py",
+    "sha256": "1bc8e1b0dd7e4366fca0ddb51ab97c04bd78806a09138654b141693505c36c02"
+  },
+  "postarchive_tooling": "Independently hashed review-only writer; coherent archive unchanged.",
+  "startup_scope": "One fresh default1 home only; both live runtime modes exercised by the C DLL.",
+  "startup_configured_zero_proven": false,
+  "saved_config_persistence_proven": false,
+  "pending_semantics": [],
+  "official_authentication_proven": false,
+  "full_public_feature_parity": false,
+  "safety_adaptations": [
+    "Refuse decimal twenty-digit overflow at capacity20 instead of pinned unchecked sprintf overrun.",
+    "Null outputs are safe instead of dereferenced."
+  ]
+}

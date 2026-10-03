@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "prepared_only": false,
+  "scope": "Extracted real function bodies with synthetic dependency fixtures; no loaded BSP/VM/native ABI/full guidance/world replay",
+  "native_sources": {
+    "engine/src/game/g_items.cpp": "2634622037bf2766aad6303c5b295f160f044fc47ba5cd1f2025e384a06152f4",
+    "engine/src/game_mp/g_scr_helicopter.cpp": "84a384db48a1de298ea8e7af3028c8b2b041a7d938a0e2222b6cc6ad4b86a333",
+    "engine/src/game/g_missile.cpp": "6d2c745fefe0127bf2e3f78623732157813703feb96028ae550a34398729a153",
+    "engine/src/game/g_helicopter.cpp": "85b6e8de47a9da1beaf509c89550ceb5b2e9509516b30b43980501464fa62a0a",
+    "engine/src/game/g_scr_vehicle.cpp": "2e26a675b234d544e5f9bb4cc9795e69f736c0f40aa321f3e310471b3b4b383c",
+    "engine/src/bgame/bg_misc.cpp": "314f945bac0aaf541267beb87d006ddf2b5300d75086c0d0b82f1f5111181441",
+    "engine/src/game_mp/g_utils_mp.cpp": "4b24bd0b78ea614b3d16a3353d95254edef4795dfa49ee2822f680758898c45a"
+  },
+  "proposal_sha256": "a7c56ed46a803c42d5c6d7a0f0d854422bbf58dd7685c2be41fe8eee5c0a4b49",
+  "driver_sha256": "73b777d6ae9f3bcfc83a068d7e25bac69368f48c1a3fb67eb77be4513695f5f3",
+  "extracted_sha256": "868192bef417bf3505dd646d7c0b1ba0f208144e3a34aa6cc6e20e48e4597125",
+  "commands": [
+    {
+      "arguments": [
+        "cmake",
+        "-S",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\timestep\\results\\20261003-125022-040380",
+        "-B",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\timestep\\results\\20261003-125022-040380\\build",
+        "-G",
+        "Visual Studio 17 2022",
+        "-A",
+        "Win32"
+      ],
+      "exit_code": 0,
+      "log": "staged\\timestep\\results\\20261003-125022-040380\\0.log",
+      "log_sha256": "39c51155d7b6ee091f20e55c7ea7ec98582b8041979c366ef5ce035e8fdb8e8e"
+    },
+    {
+      "arguments": [
+        "cmake",
+        "--build",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\timestep\\results\\20261003-125022-040380\\build",
+        "--config",
+        "Release",
+        "--parallel",
+        "2"
+      ],
+      "exit_code": 0,
+      "log": "staged\\timestep\\results\\20261003-125022-040380\\1.log",
+      "log_sha256": "1d5dfda9d63a54e2f6f2aedce953a465c3a8b58776b68b6cbec436fc3e7fc0d4"
+    },
+    {
+      "arguments": [
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\timestep\\results\\20261003-125022-040380\\build\\Release\\contracts.exe"
+      ],
+      "exit_code": 0,
+      "log": "staged\\timestep\\results\\20261003-125022-040380\\2.log",
+      "log_sha256": "e9a071fbb75c17629c38f5196638c3352bf588c280f6e4d259a8c5c2b446747d"
+    }
+  ],
+  "assertions": {
+    "passed": true,
+    "assertions": 319,
+    "native_function_source": true,
+    "negative_controls": 3,
+    "loaded_map": false,
+    "native_abi": false,
+    "whole_world": false
+  },
+  "binary_sha256": "7e98cd7200897396188e793a39fb542930c54e71be59fa740cceaf9e9bbf6090"
+}

@@ -1,0 +1,76 @@
+{
+  "completed": true,
+  "passed": true,
+  "scope": "source-owned loaded-map codec probe fragments; isolated original-TU object compilation only",
+  "native_loaded_map_attestation": false,
+  "native_codec_attestation": false,
+  "full_world_replay_attestation": false,
+  "production_applied": false,
+  "evidence": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124409-141648",
+  "commands": [
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+        "-B",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "-G",
+        "Visual Studio 17 2022",
+        "-A",
+        "Win32",
+        "-DCMAKE_GENERATOR_INSTANCE=C:/BuildTools"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.11154209985397756,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124409-141648\\configure.log",
+      "log_sha256": "eb9fd053a177b8cd3827d7822b05c744dd7a95739756f0f5abb5d73be27590a3"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "--config",
+        "Release",
+        "--target",
+        "archive_native_probe_typecheck",
+        "--parallel",
+        "1"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 1.3044881999958307,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124409-141648\\build.log",
+      "log_sha256": "025afabb41684535eef9e4eb1e12a4c850c7692b79ab72b312d7f9602312684d"
+    }
+  ],
+  "source_sha256": {
+    "staged\\archive\\archive_policy.hpp": "af68e0f038b7b32c576684c11bfed61a21b57718b63b5f00863663ca1405aa8b",
+    "staged\\archive\\native_adapter.h": "9e69d65739d62009527ef7348d2676497fb547b8fec88c31f0e362a9eb7109a1",
+    "staged\\archive\\native_probe.h": "5756e861862044da91f711d15caf11aecd83036b7691c2dcaa10e58f58d27af6",
+    "staged\\archive\\archive_policy_tests.cpp": "760bafce022508e14fa80e0d0abcb7e3d65d4378c060a240104f51f09228ab35",
+    "staged\\archive\\native_adapter.cpp": "035c93aedfadb3dd429d58eaf026e17e634447f86aafa18f5d9e2a2347c91cab",
+    "staged\\archive\\native_adapter_tests.cpp": "edf69fe1c33bbfff03fbb43212b4036b90cf9e210e5657a8fb6ecec76a3e154b",
+    "staged\\archive\\native_probe_profile_typecheck.cpp": "5a644c7ba92f88810f4a9e534af81d6151fd0b959eb200ccc71ec6f0b4bcc093",
+    "staged\\archive\\native_probe_typecheck.cpp": "30168c2e1a3b0114a774dad260be9b8a5c73bc2a50ba6e7d3719e37a0c631447",
+    "staged\\archive\\CMakeLists.txt": "6c2d3ce298b699d0452f04c98f67688c373845a5500a76acba24828286176d4c",
+    "staged\\archive\\run_contracts.py": "6fcc3af90ea9a5dd892eaaa6592beb4836b7f0ff01b6263bfcdfc6a3eff2f7a6",
+    "engine\\src\\khz\\khz_archive.cpp": "cea8a9c910fb26006dcedfcd6498e1547f73273b3bf97d4f4f1362c091e69eac",
+    "engine\\src\\khz\\khz_archive.h": "dcbd1d5410ec79b353edda1dbd9645a2019f6d45f0e42767af34735ece9bbde3",
+    "native\\archive_history.hpp": "ba6bb7af73dab50ec7058e2a8686ddfb3b0a1fc6ce85c562b3e9d5ee3c86d2ab",
+    "engine\\src\\server_mp\\sv_snapshot_profile_mp.cpp": "f4a3c068c804b93a72ac0fa56ad9bddc1d6c41a66ef5ca6c99ea7773c67d4517",
+    "staged\\archive\\native_probe.inl": "3398bfc8598723915c450db38dfb03b44c0906566b3af06451650e10da852801",
+    "staged\\archive\\native_probe_profile.inl": "7863977e1b23c9b690e951b04902a96482b7dd4cbaa372c079c10e0334bdc2fc"
+  },
+  "typecheck_only": true,
+  "native_probe_applied": false,
+  "toolchain_instance": "C:/BuildTools",
+  "source_stable": true,
+  "targets": [
+    "archive_native_probe_typecheck"
+  ]
+}

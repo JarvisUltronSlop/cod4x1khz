@@ -1,0 +1,63 @@
+{
+  "staged_only": true,
+  "native_execution": false,
+  "maximum_total_seconds": 30,
+  "scope": "Actual dedicated native archived configuration save/reload; no automatic client-profile persistence claim",
+  "source_helpers": [
+    "scripts/plugin_fixture_archive.py",
+    "scripts/plugin_identity_contract_native_probe.py::project_path"
+  ],
+  "mandatory_enrollment": [
+    "Exact coherent server/DLL/archive/compiled-source/package hashes before first launch",
+    "Reject lexical parent traversal and every reparse ancestor before resolving Runtime or Home",
+    "Runtime.resolve stays beneath Project and each fresh Home is a direct ordinary benchmark child",
+    "Twenty existing top-level fixture commands remain registered; no extra registration",
+    "Reserve one owned socket before each fresh-home launch and reuse second port only after its exact process exited",
+    "No game builds/deployments or parallel fixture/performance games",
+    "Native save is the only creator of saved configuration; bounded read-only file inspection"
+  ],
+  "phases": [
+    {
+      "name": "fresh-default",
+      "home": "previously absent ordinary HomeA",
+      "steam64_startup_override": null,
+      "commands": ["khz_fixture_identity format", "unloadPlugin khz_regression", "listPlugins", "quit"],
+      "required_initial": 1,
+      "required_restored": 1,
+      "required_normal_exit": true
+    },
+    {
+      "name": "fresh-configured-zero-save",
+      "home": "previously absent ordinary HomeB",
+      "steam64_startup_override": "0",
+      "commands": ["khz_fixture_identity format", "writeconfig khz_identity_saved.cfg", "unloadPlugin khz_regression", "listPlugins", "quit"],
+      "required_initial": 0,
+      "required_restored": 0,
+      "required_normal_exit": true,
+      "saved_file": "HomeB/players/khz_identity_saved.cfg",
+      "required_exact_single_record": "seta sv_usesteam64id \"0\""
+    },
+    {
+      "name": "same-home-native-exec-restart",
+      "home": "same exact ordinary HomeB",
+      "steam64_startup_override": null,
+      "native_startup_command": "+exec khz_identity_saved.cfg before plugin load/map",
+      "commands": ["khz_fixture_identity format", "unloadPlugin khz_regression", "listPlugins", "quit"],
+      "required_initial": 0,
+      "required_restored": 0,
+      "required_normal_exit": true,
+      "saved_file_sha256_unchanged": true,
+      "saved_file_bytes_unchanged": true
+    }
+  ],
+  "honest_failures": [
+    "Missing/duplicate/malformed output marker",
+    "Insufficient total command/normal-cleanup budget",
+    "Wrong startup dvar mode or value changed during synchronization",
+    "Saved file absent, nonordinary, over bounded size, duplicate dvar line or nonzero value",
+    "Restart supplied set override or executed another file",
+    "Changed file bytes/hash, source/binary/archive mismatch",
+    "Owned process forced or exact normal exit/unload not proven"
+  ],
+  "promotion": "Root review only after actual archived native result; do not infer complete client-profile contract"
+}

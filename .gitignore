@@ -1,0 +1,21 @@
+/.deps/
+/build/
+/bin/
+/runtime/
+/*.exe
+/*.dll
+/results/
+/*.log
+__pycache__/
+/.backup/
+/engine/.git/
+/engine/bin/
+/upstream/*/.git/
+*.pyc
+# Upstream build products stay in the private release backup, outside Git.
+*.obj
+*.pdb
+*.ilk
+*.tlog
+*.suo
+*.user

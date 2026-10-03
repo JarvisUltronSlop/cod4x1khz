@@ -1,0 +1,132 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_callback:OnUdpNetEvent",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "For current physical IPv4 server datagrams, pass explicit public32 endpoint fields and mutable owned bytes to enabled plugins on native owner service before parsing. Honor veto, propagate byte/address edits and bypass the callback for plugin-injected packets. Native IPv6 event producers remain pending.",
+  "cases": [
+    {
+      "name": "receive veto prevents real native query delivery",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 5,
+      "observed": {
+        "data": "",
+        "sender": null
+      }
+    },
+    {
+      "name": "receive byte mutation reaches native packet parser",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 6,
+      "observed": "\u00ff\u00ff\u00ff\u00ffinfoResponse\n\\challenge\\KHZ_UDP_RX_PASS\\protocol\\10002\\hostname\\cod4x1khz local test\\mapname\\mp_killhouse\\sv_maxclients\\16\\gametype\\dm\\pure\\1\\kc\\1\\hw\\2\\mod\\1\\voice\\0\\pb\\1"
+    },
+    {
+      "name": "receive public32 endpoint mutation affects native reply routing",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 7,
+      "observed": "\u00ff\u00ff\u00ff\u00ffinfoResponse\n\\challenge\\KHZ_UDP_RX_ADDRESS\\protocol\\10002\\hostname\\cod4x1khz local test\\mapname\\mp_killhouse\\sv_maxclients\\16\\gametype\\dm\\pure\\1\\kc\\1\\hw\\2\\mod\\1\\voice\\0\\pb\\1"
+    },
+    {
+      "name": "mutated receive endpoint produces no reply to original endpoint",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 8,
+      "observed": {
+        "data": "",
+        "sender": null
+      }
+    },
+    {
+      "name": "callbacks correct public32 argument layout/native owner and direct paths bypass redundant events",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 16,
+      "observed": "KHZ_UDP_REPORT cases=7 failures=0 rx_drop=1 rx_edit=1 rx_address=1 tx_drop=1 tx_edit=1 tx_address=1 direct_events=0 inject_events=0 callback_layout=3 callback_owner=3 worker_done=1 worker_good=1 main_dns=0 main_output=0\n"
+    },
+    {
+      "name": "native queued injection and DNS counters record actual work/rejection",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 19,
+      "observed": {
+        "udp_sent": 2,
+        "udp_send_failed": 5,
+        "send_veto": 1,
+        "received": 16,
+        "receive_veto": 1,
+        "invalid": 0,
+        "injected": 4,
+        "injection_delivered": 3,
+        "injection_rejected": 1,
+        "dns_rejected_main": 3,
+        "interface_rejected": 0,
+        "dns": {
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 4,
+          "completed": 4,
+          "failed": 0,
+          "cancelled": 1,
+          "rejected": 0
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/qcommon/common.cpp": "223512be04e51a86f12ab87e069c26fdeb68a989506ffe471814419eb862d421"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [
+    "Loaded-DLL fixture verifies three IPv4 receive variants and owner/layout counters. Receive callback recursion/depth rejection and malformed edited endpoints are not exercised here."
+  ],
+  "pending_semantics": [
+    "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+  ],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

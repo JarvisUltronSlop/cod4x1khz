@@ -1,0 +1,58 @@
+{
+  "base_build": 74,
+  "cases": 8081,
+  "category_counts": {
+    "0": 1432,
+    "1": 2380,
+    "2": 1,
+    "3": 20,
+    "4": 4241
+  },
+  "guard": "COD4X1KHZ && KISAK_MP && COD4X1KHZ_IDENTITY_PROBE (off by default)",
+  "guard_page_cases": 5,
+  "guard_page_cleanup": 1,
+  "guid_dispatch": "khz_identity_guid_provider",
+  "new_public_sdk_exports": 0,
+  "parser_dispatch": "khz_fixture_identity parse",
+  "pending_harness_update": "New native identity harness must use expected_subcommand=format|classify|guid|parse; do not alter archived74helpers.",
+  "production_changed": false,
+  "proposed_sha256": {
+    "engine/src/khz/khz_identity.cpp": "294b66ccfde4cb2fd9ae4c7ec2db78a5cb5e01cd57a3ba7ef6b825ce7003e50c",
+    "engine/src/khz/khz_identity.h": "ea10da6bd88cd6b78bcd1c6553f3242f2d3f67372ce5b78b974a2b3563957151",
+    "engine/src/khz/khz_plugins.cpp": "16671d49244765f7978e327384e86b04dbb1ceda3357bade3ce6ace221f860a7",
+    "sdk/tests/native_identity_parser_probe.inc": "018f46871da8ae3f8dcf4a2c7e5828cbb62df98093e443feabaf0870b3f9cfd8",
+    "sdk/tests/regression_plugin.c": "4ac4708f7753c21913790c88364bf8e8a5a278512036e714f8ec36aa48d20078"
+  },
+  "required_original_sha256": {
+    "engine/src/khz/khz_identity.cpp": "bcf2d1e0b185f790008c67ec5638005b1aac1936c11eabbab156d2d58b0f0bc4",
+    "engine/src/khz/khz_identity.h": "658dabe1719bec354e7a24ad2f59d6acbd7f332ecdda1d334b65bb6c8cd42463",
+    "engine/src/khz/khz_plugins.cpp": "8f729acff8ecd817e39bddc51b96b3a717a295188bc675f48aaf8e8163ffdfec",
+    "sdk/tests/regression_plugin.c": "cf224e80e4b5c3405d1263810f856c70b1b91ef3a79bd9e7a229583f1ba996d0"
+  },
+  "root_owned_hook": "guarded KHZ_InitIdentityProbe() at end of KHZ_InitFixedStep; handle failed initialization",
+  "staged_only": true,
+  "terminated_prefix": 1,
+  "top_level_plugin_command_names": [
+    "khz_fixture_report",
+    "khz_fixture_policy",
+    "khz_fixture_stats",
+    "khz_fixture_identity",
+    "khz_fixture_threads_start",
+    "khz_fixture_threads_report",
+    "khz_fixture_aliases",
+    "khz_fixture_http_forms",
+    "khz_fixture_http_start",
+    "khz_fixture_http_report",
+    "khz_fixture_files_start",
+    "khz_fixture_files_report",
+    "khz_fixture_tcp_start",
+    "khz_fixture_tcp_report",
+    "khz_fixture_print",
+    "khz_fixture_print_report",
+    "khz_fixture_net",
+    "khz_fixture_net_admission",
+    "khz_fixture_net_ipban",
+    "khz_fixture_udp"
+  ],
+  "top_level_plugin_commands": 20
+}

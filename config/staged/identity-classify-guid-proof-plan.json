@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "preparation_only": true,
+  "semantic_proof": false,
+  "public_evidence_configuration_modified": false,
+  "target_build": 73,
+  "native_result": null,
+  "official_service_authentication": false,
+  "harness": "scripts/plugin_identity_contract_native_probe.py",
+  "oracle_review": "results/identity-contract-review-20261003-072018-9729663/result.json",
+  "coherent_archive": "results/build73-source-and-binary-hashes.json",
+  "maximum_process_seconds_including_cleanup": 30,
+  "process_scope": "One dedicated, zero-bot localhost server with a previously absent project benchmark home; normal owned quit required.",
+  "entries": [
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDIsIndividual",
+      "coverage_intent": "Complete candidate only after actual export execution and source/artifact review",
+      "implementation": [
+        {"path": "engine/src/khz/khz_plugins.cpp", "symbol": "Plugin_SteamIDIsIndividual"},
+        {"path": "engine/src/khz/khz_identity.cpp", "symbol": "SteamIdIndividual"}
+      ],
+      "compiled_fixture": "sdk/tests/native_identity_contract_probe.inc",
+      "native_marker": "KHZ_IDENTITY_INDIVIDUAL",
+      "expected_cases": 32838,
+      "expected_failures": 0,
+      "case_groups": {"field_matrix": 32768, "single_bit_flips": 64, "literal_goldens": 6},
+      "predicate": "Universe1 or32..39, type1, instance1; account bits ignored. Numeric classification alone does not authenticate an account."
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDIsIndividualAndSteamAccount",
+      "coverage_intent": "Complete candidate only after actual export execution and source/artifact review",
+      "implementation": [
+        {"path": "engine/src/khz/khz_plugins.cpp", "symbol": "Plugin_SteamIDIsIndividualAndSteamAccount"},
+        {"path": "engine/src/khz/khz_identity.cpp", "symbol": "SteamIdIndividual"}
+      ],
+      "compiled_fixture": "sdk/tests/native_identity_contract_probe.inc",
+      "native_marker": "KHZ_IDENTITY_STEAM_ACCOUNT",
+      "expected_cases": 32838,
+      "expected_failures": 0,
+      "case_groups": {"field_matrix": 32768, "single_bit_flips": 64, "literal_goldens": 6},
+      "predicate": "Universe1, type1, instance1; account bits ignored. Numeric classification alone does not authenticate an account."
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_GUID2PlayerID",
+      "coverage_intent": "Partial until untested failure semantics receive explicit review or actual fixture coverage",
+      "implementation": [
+        {"path": "engine/src/khz/khz_plugins.cpp", "symbol": "Plugin_GUID2PlayerID"},
+        {"path": "engine/src/khz/khz_identity.cpp", "symbol": "GuidToPlayerId"},
+        {"path": "engine/src/khz/khz_identity.cpp", "symbol": "DecodeHex"}
+      ],
+      "compiled_fixture": "sdk/tests/native_identity_contract_probe.inc",
+      "compiled_goldens": "sdk/tests/identity_guid_goldens.inc",
+      "native_marker": "KHZ_IDENTITY_GUID",
+      "expected_cases": 247,
+      "expected_failures": 0,
+      "case_groups": {"independent_goldens_and_case": 21, "invalid_hex_positions": 160, "wrong_lengths": 64, "null": 1, "terminated_prefix": 1},
+      "predicate": "Valid32hex input maps via pinned256-byte salt/PBKDF2-HMAC-SHA256/100 to little-endian four-byte account, private universe32/type1/instance1. Malformed input returns zero.",
+      "pending_semantics": ["Local cryptographic provider error was not injected; failure-return contract remains subject to review."],
+      "documented_adaptations": ["Reject malformed hex instead of pinned partial strtol conversion.", "Return zero on local provider failure instead of a private identifier with zero account."]
+    }
+  ],
+  "interop_only": ["Fresh sv_usesteam64id default1, selected-format restoration, existing formatter and no-argument commands, invalid subcommand refusal, module unload."],
+  "not_promoted": ["Plugin_StringToSteamID", "sv_usesteam64id saved-config persistence", "Official authentication", "Whole SDK parity"]
+}

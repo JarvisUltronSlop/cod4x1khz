@@ -1,0 +1,12 @@
+{
+  "prepared": true,
+  "compiled": false,
+  "production_applied": false,
+  "scope": "Actual native Physics entry/constructor/destructor/abort bodies with controlled owner/coordinator dependencies; no engine error or loaded-world proof",
+  "source_sha256": {
+    "engine/src/khz/khz_server_physics_guards.h": "7404b7498a49530d8569f8d6c0b9d649fa63df8f540ddbc8578bf71fb127bc97",
+    "engine/src/khz/khz_server_physics_fence.inl": "2f5267fb549bc31fd07399ff0ba9a3e361068939e39a573e1acab1d3d1ad8280",
+    "engine/src/qcommon/common.cpp": "8200abd06f0394eee0cbeeece86c9a7ea1362d6b26438af1022455a7c49b1890"
+  },
+  "snippets_sha256": "4f074aa4a2dd834bb11e7e139f3d2a13b54905ea3a9983ee780d542de8bd4826"
+}

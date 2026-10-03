@@ -1,0 +1,85 @@
+{
+  "completed": true,
+  "passed": true,
+  "scope": "production archive adapter body; native layouts with synthetic owner/decoder/current-state/error dependencies",
+  "native_loaded_map_attestation": false,
+  "native_codec_attestation": false,
+  "full_world_replay_attestation": false,
+  "production_applied": false,
+  "evidence": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124212-841367",
+  "commands": [
+    {
+      "name": "configure",
+      "argv": [
+        "cmake",
+        "-S",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+        "-B",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "-G",
+        "Visual Studio 17 2022",
+        "-A",
+        "Win32",
+        "-DCMAKE_GENERATOR_INSTANCE=C:/BuildTools"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.08567160018719733,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124212-841367\\configure.log",
+      "log_sha256": "62cdd0bede988b75481a922737094021bad4c074d113bf9a95dd5a9015df35bd"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cmake",
+        "--build",
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build",
+        "--config",
+        "Release",
+        "--target",
+        "archive_production_adapter_contracts",
+        "--parallel",
+        "1"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 2.0431641000322998,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124212-841367\\build.log",
+      "log_sha256": "56e38a10d7b7b8e229d4a48fc5f240f1725924df37c5c662da71bcad74239cf2"
+    },
+    {
+      "name": "archive_production_adapter_contracts",
+      "argv": [
+        "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\build\\Release\\archive_production_adapter_contracts.exe"
+      ],
+      "cwd": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive",
+      "exit_code": 0,
+      "elapsed_seconds": 0.25125780003145337,
+      "log": "C:\\Users\\jack\\Desktop\\cod4x1khz\\staged\\archive\\results\\20261003-124212-841367\\archive_production_adapter_contracts.log",
+      "log_sha256": "de6b7b094ef94f85e85d0a144e8d8a5cea69a8ac4a522de58862e1c5c91f08e3"
+    }
+  ],
+  "source_sha256": {
+    "staged\\archive\\archive_policy.hpp": "af68e0f038b7b32c576684c11bfed61a21b57718b63b5f00863663ca1405aa8b",
+    "staged\\archive\\native_adapter.h": "9e69d65739d62009527ef7348d2676497fb547b8fec88c31f0e362a9eb7109a1",
+    "staged\\archive\\native_probe.h": "5756e861862044da91f711d15caf11aecd83036b7691c2dcaa10e58f58d27af6",
+    "staged\\archive\\archive_policy_tests.cpp": "760bafce022508e14fa80e0d0abcb7e3d65d4378c060a240104f51f09228ab35",
+    "staged\\archive\\native_adapter.cpp": "035c93aedfadb3dd429d58eaf026e17e634447f86aafa18f5d9e2a2347c91cab",
+    "staged\\archive\\native_adapter_tests.cpp": "edf69fe1c33bbfff03fbb43212b4036b90cf9e210e5657a8fb6ecec76a3e154b",
+    "staged\\archive\\CMakeLists.txt": "3e8f6ec22f62a0104b6e486359cff9836605ec5fbcbb4be04ec56be1a9d1ddf5",
+    "staged\\archive\\run_contracts.py": "3745a41a1c4022fcbe6b22a5ce21ccb2c4e42df5d1e550270f9fdbd63a4cf38e",
+    "engine\\src\\khz\\khz_archive.cpp": "cea8a9c910fb26006dcedfcd6498e1547f73273b3bf97d4f4f1362c091e69eac",
+    "engine\\src\\khz\\khz_archive.h": "dcbd1d5410ec79b353edda1dbd9645a2019f6d45f0e42767af34735ece9bbde3",
+    "native\\archive_history.hpp": "ba6bb7af73dab50ec7058e2a8686ddfb3b0a1fc6ce85c562b3e9d5ee3c86d2ab"
+  },
+  "adapter_source": "production",
+  "production_source": "C:\\Users\\jack\\Desktop\\cod4x1khz\\engine\\src\\khz\\khz_archive.cpp",
+  "toolchain_instance": "C:/BuildTools",
+  "binary_sha256": {
+    "staged\\archive\\build\\Release\\archive_production_adapter_contracts.exe": "fb4069cc4c39cd2c172d08f1cba24d72cea8ded78b3686ac6b54309b70fc268e"
+  },
+  "source_stable": true,
+  "targets": [
+    "archive_production_adapter_contracts"
+  ]
+}

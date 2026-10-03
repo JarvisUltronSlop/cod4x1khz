@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "build": 73,
+  "target": "config/public-capability-evidence.json",
+  "published": false,
+  "capabilities": {
+    "server:sdk_export:Plugin_SteamIDToString": {
+      "semantic_contract": "Read the synchronized current sv_usesteam64id value: true emits whole uint64 decimal, false emits pinned Steam3 spelling with type/universe validation. Null/nonpositive outputs are safe. Decimal capacity below20 or insufficient capacity clears only byte0; twenty-digit values require21. Steam3 follows bounded truncation with a terminator. This is an export runtime contract; startup-config preservation and disk persistence are not proven here.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 733,
+          "symbol": "Plugin_SteamIDToString",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 57,
+          "symbol": "Selected",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 31,
+          "symbol": "Steam3",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 12,
+          "symbol": "Steam64",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.h",
+          "line": 8,
+          "symbol": "KHZ_DvarScope",
+          "sha256": "94531e27937f133d4cf31d9a445f6a98b4b56b8a7cb9925b0406e7b712e9aed2"
+        },
+        {
+          "path": "engine/src/khz/khz_controls.cpp",
+          "line": 19,
+          "symbol": "KHZ_DvarEnter",
+          "sha256": "7ee18bc8722d8ac83fc3556d1688dcb37b16dc3747d9ecfcaff75385ef8711bd"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/Plugin_SteamIDToString.json",
+          "sha256": "8c3228d86d7e2728b17eb33dcf5b6547449b148f9e97105a47bd51b57ed40f7b"
+        }
+      ]
+    },
+    "server:sdk_export:Plugin_SteamIDTo64String": {
+      "semantic_contract": "Always emit complete uint64 decimal regardless of current sv_usesteam64id. Null/nonpositive outputs write nothing. Positive capacity below20 clears only byte0; twenty-digit values require capacity21, so capacity20 refuses without touching the remaining bytes. Success terminates inside capacity and preserves surrounding caller storage.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_plugins.cpp",
+          "line": 742,
+          "symbol": "Plugin_SteamIDTo64String",
+          "sha256": "90dc906f304c7ee97b17481b7bb380f35387a66ebd99c05dda9a21cb839ff384"
+        },
+        {
+          "path": "native/steam_identity_format.hpp",
+          "line": 12,
+          "symbol": "Steam64",
+          "sha256": "6624366d9c7ceb358f337b74fe8541a6d3f29bd23b29ab6336b1042e527ef98f"
+        }
+      ],
+      "regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/Plugin_SteamIDTo64String.json",
+          "sha256": "f4a1eabf98e669e16725bd3d027dea49fce13b50c31d49984b6e651430446bdf"
+        }
+      ]
+    },
+    "server:dvar:sv_usesteam64id": {
+      "semantic_contract": "Register true by default, expose synchronized live mode selection, preserve archive policy, and eventually preserve explicitly configured startup/saved values. Only fresh default1 and live0/1 selection/restoration are actually proven by this Build73 run.",
+      "implementation": [
+        {
+          "path": "engine/src/khz/khz_admin_server.cpp",
+          "line": 401,
+          "symbol": "KHZ_AdminInit",
+          "sha256": "ad1a64198e0e75bae16ac821df97c943952b0663242f99002efb629151d174fb"
+        }
+      ],
+      "partial_regression": [
+        {
+          "path": "docs/evidence/build73-sdk-identity-format/sv_usesteam64id.json",
+          "sha256": "5f2afb7c73200210d4f90b1aec29cfb6e1e5805592787a5cce2b9fdb9b11f9dc"
+        }
+      ],
+      "pending_semantics": [
+        "Separate startup explicitly configured0 was not rerun on this binary.",
+        "Actual saved archived configuration and independent restart/reload persistence remain untested."
+      ]
+    }
+  }
+}

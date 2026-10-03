@@ -1,0 +1,132 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 71,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_callback:OnUdpNetSend",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "For current normal native IPv4 server sends, pass public32 destination and mutable bytes through the main-owner callback, honor veto and apply payload/destination edits to the real datagram. Direct SDK send bypasses this event. Native IPv6 event producers remain pending.",
+  "cases": [
+    {
+      "name": "send veto suppresses actual RCON datagram",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 9,
+      "observed": ""
+    },
+    {
+      "name": "send payload mutation reaches actual recipient",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 10,
+      "observed": "KHZ_UDP_TX_EDIT B\n"
+    },
+    {
+      "name": "send public32 endpoint mutation retargets real server datagram",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 11,
+      "observed": {
+        "reply": "",
+        "data": "\u00ff\u00ff\u00ff\u00ffprint\nKHZ_UDP_TX_ADDRESS\n"
+      }
+    },
+    {
+      "name": "mutated send endpoint receives a single native datagram",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 12,
+      "observed": {
+        "data": "",
+        "sender": null
+      }
+    },
+    {
+      "name": "callbacks correct public32 argument layout/native owner and direct paths bypass redundant events",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 16,
+      "observed": "KHZ_UDP_REPORT cases=7 failures=0 rx_drop=1 rx_edit=1 rx_address=1 tx_drop=1 tx_edit=1 tx_address=1 direct_events=0 inject_events=0 callback_layout=3 callback_owner=3 worker_done=1 worker_good=1 main_dns=0 main_output=0\n"
+    },
+    {
+      "name": "native direct sends and both actual veto paths accounted independently",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-udp-native-20261003-065001-226100/result.json",
+        "sha256": "1132e0e4ae53ca68a48c8008968800e4e66569726026bfefda079a92190a95f2"
+      },
+      "result_case_index": 20,
+      "observed": {
+        "udp_sent": 2,
+        "udp_send_failed": 5,
+        "send_veto": 1,
+        "received": 16,
+        "receive_veto": 1,
+        "invalid": 0,
+        "injected": 4,
+        "injection_delivered": 3,
+        "injection_rejected": 1,
+        "dns_rejected_main": 3,
+        "interface_rejected": 0,
+        "dns": {
+          "pending": 0,
+          "retiring": 0,
+          "submitted": 4,
+          "completed": 4,
+          "failed": 0,
+          "cancelled": 1,
+          "rejected": 0
+        }
+      }
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugin_net.inl": "4dbe1356849e16cc980391e692458d67646d7f520e809379c6280d29fbc492d6",
+    "engine/src/qcommon/net_chan_mp.cpp": "8ed4fa7dc787d321043890f01af874f213ff81fca05969d8663c292070693d36"
+  },
+  "binary_sha256": {
+    "server": "316c8a16505e9725a3c5016339498ad97cb3f053b7ffb54f519846dbe1efc437"
+  },
+  "regression_dll_sha256": "161fdbc0edee3e136e0a1fcb4a2873a8a9f2f842c11310b34e2bce8e19e85b2e",
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "compiled_fixture_source_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "limitations": [
+    "Actual callbacks cover RCON print datagrams; full arbitrary binary payloads, callback recursion and invalid edited destinations need additional fixtures."
+  ],
+  "pending_semantics": [
+    "Native core IPv6 UDP socket, addressing, delivery and lifecycle integration remain unimplemented and untested."
+  ],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

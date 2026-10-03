@@ -1,0 +1,70 @@
+{
+  "kind": "semantic_regression",
+  "schema": 1,
+  "build": 64,
+  "protocol": 10002,
+  "sdk_version": 2,
+  "capability_id": "server:sdk_callback:OnPlayerConnect",
+  "passed": true,
+  "coverage": "partial",
+  "semantic_contract": "Current admitted native IPv4 human receives a source-compatible callback containing an explicit public32 endpoint copy, current configured socket and original human endpoint. Native20 proof/connection ownership remains unchanged. IPv6 admission callbacks remain pending.",
+  "cases": [
+    {
+      "name": "actual native IPv4 connect callback translated to public32",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-051551-805200/result.json",
+        "sha256": "e1f6e38af383eff00b6567a5a034996f4f0c95d9d60a1a3c2bbdf13de0bb6ac4"
+      },
+      "result_case_index": 3,
+      "observed": "KHZ_PLUGIN_NET_ADMISSION connects=1 connect_layout=1 reserved=1 reserved_layout=1 grants=1 connect=127.0.0.1:28983 reserved_address=127.0.0.1:28983"
+    },
+    {
+      "name": "Actual admitted private-slot human reached CA_ACTIVE9",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-051551-805200/result.json",
+        "sha256": "e1f6e38af383eff00b6567a5a034996f4f0c95d9d60a1a3c2bbdf13de0bb6ac4"
+      },
+      "result_case_index": 2
+    },
+    {
+      "name": "Module unloaded after real callback scopes",
+      "passed": true,
+      "assertions": 1,
+      "evidence": {
+        "path": "results/plugin-net-native-20261003-051551-805200/result.json",
+        "sha256": "e1f6e38af383eff00b6567a5a034996f4f0c95d9d60a1a3c2bbdf13de0bb6ac4"
+      },
+      "result_case_index": 5
+    }
+  ],
+  "source_sha256": {
+    "engine/src/khz/khz_plugins.cpp": "767ccca528f2c4780bf0303fe04ada3fc0990aa141b9bf8da5f76f5a844ef40f",
+    "engine/src/server_mp/sv_client_mp.cpp": "0a3d290e1dfb728981c963d182d82282bbac49e76582079daf55b76cadb3d192"
+  },
+  "binary_sha256": {
+    "server": "623960b8f3375fe5ba000e7aa002a66cb7dc222a70a0776637353ff22d17da1e"
+  },
+  "regression_dll_sha256": "ef8d214867f6b1bec5760ff200e3eec42feb6bf3fad6608b8efdca4a9dada045",
+  "build_archive": {
+    "path": "results/build64-source-and-binary-hashes.json",
+    "sha256": "940cce4cb947e802ba003b3aac08f1e343c044540113b5596c60dc5049ecd09b"
+  },
+  "compiled_fixture_source_supplement": {
+    "path": "results/build64-compiled-fixture-source-supplement.json",
+    "sha256": "c9a792d8eea2d4046f4e96555e5ec2fb6e412d8288f216eba06550a3576b61a2"
+  },
+  "limitations": [
+    "No authentication-provider compatibility, connect denial/userinfo mutation or reserved-denial fixture is claimed by this particular run."
+  ],
+  "pending_semantics": [
+    "Native core IPv6 human admission and corresponding public callback endpoint remain applicable and pending."
+  ],
+  "official_authentication_proven": false,
+  "ipv6_game_transport_proven": false,
+  "full_public_feature_parity": false,
+  "review": "Reviewed source implementation and actual native behavior; no declaration, registration, source-name match, stub or performance result is treated as semantic evidence."
+}

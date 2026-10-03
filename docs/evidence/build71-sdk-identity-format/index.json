@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "build": 71,
+  "build_archive": {
+    "path": "results/build71-source-and-binary-hashes.json",
+    "sha256": "fcc6857d577029175fc81033fe00165dc9f2d80bfa8bb6d83da05360964044ea"
+  },
+  "native_result": {
+    "path": "results/plugin-identity-format-native-20261003-064911-596900/result.json",
+    "sha256": "a2edc3579b0900dfcf8dd02cf42e6c023ced4bc5695b8e04b98d77551f045ec1"
+  },
+  "proof_writer": {
+    "path": "scripts/record_plugin_identity_format_evidence.py",
+    "sha256": "80cf4c15dbdc0607bcd63e35d996c9120767d1affdb719e853e4f86afd97dac4"
+  },
+  "entries": [
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDToString",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-identity-format/Plugin_SteamIDToString.json",
+        "sha256": "5ef02ce9041a4bbb8b2edf9c1a6c7c208391fd59eefecc80db8b8bfd2f6c4bfb"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:sdk_export:Plugin_SteamIDTo64String",
+      "coverage": "reviewed_capability",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-identity-format/Plugin_SteamIDTo64String.json",
+        "sha256": "2298a4d4c356371da0b8280953f0ad76a63c9a92bea49b39f49e89c4526f844b"
+      },
+      "pending_semantics": []
+    },
+    {
+      "capability_id": "server:dvar:sv_usesteam64id",
+      "coverage": "partial",
+      "artifact": {
+        "path": "docs/evidence/build71-sdk-identity-format/sv_usesteam64id.json",
+        "sha256": "d6762353feed7141096dacd51f2137403a7c6ebafa30555ee93ffd4278be85ac"
+      },
+      "pending_semantics": [
+        "Actual saved archived configuration and a separate restart/reload preserving its value have not been exercised"
+      ]
+    }
+  ],
+  "complete_evidence_entries": 2,
+  "partial_pending_entries": 1,
+  "full_public_feature_parity": false
+}

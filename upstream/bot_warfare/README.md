@@ -1,0 +1,167 @@
+![GitHub Logo](/bw-assets/bw-logo.png)
+
+# IW3 Bot Warfare
+Bot Warfare is a GSC mod for the [CoD4x project](https://github.com/callofduty4x/CoD4x_Server).
+
+It aims to add playable AI to the multiplayer games of CoD4.
+
+You can find the ModDB release post [here](https://www.moddb.com/mods/bot-warfare/downloads/iw3-bot-warfare-latest).
+
+## <span style="color:red">Important to public dedicated servers</span>
+The `bots_main_firstIsHost` DVAR is enabled by default!
+
+This is so inexperienced users of the mod can access with menu without any configuration.
+
+Make sure to disable this DVAR by adding `set bots_main_firstIsHost 0` in your server config!
+
+## Contents
+- [Features](#Features)
+- [Installation](#Installation)
+- [Documentation](#Documentation)
+- [Changelog](#Changelog)
+- [Credits](#Credits)
+
+## Features
+- A Waypoint Editor for creating and modifying bot's waypoints of traversing the map. Have a look at [Using the Waypoint editor](/bw-assets/wpedit.md).
+
+- A clean and nice menu, you can edit every bot DVAR within in-game.
+
+- Everything can be customized, ideal for both personal use and dedicated servers. Have a look at [Documentation](#Documentation) to see whats possible!
+
+- This mod does not edit ANY stock .gsc files, meaning EVERY other mod is compatible with this mod. Mod doesn't add anything unnecessary, what you see is what you get.
+
+- Adds AI clients to multiplayer games to simulate playing real players. (essentially Combat Training for CoD4)
+	- Bots move around the maps with native engine input. (all normal maps)
+	- Bots press all the buttons with native engine input (ads, sprint, jump, etc)
+	- Bots play all gamemodes/objectives, they capture flags, plant, defuse bombs, etc. (all normal modes)
+	- Bots use all killstreaks.
+	- Bots target helicopters.
+	- Bots target equipment.
+	- Bots can camp randomly.
+	- Bots can follow others on own will.
+	- Bots have smooth and realistic aim.
+	- Bots respond smartly to their surroundings, they will go to you if you shoot, uav, etc.
+	- Bots use all perks and weapons.
+	- Bots difficulty level can be customized and are accurate. (hard is hard, easy is easy, etc.)
+	- Bots each all have different classes, traits, and difficulty and remember it all.
+	- Bots switch from between primaries and secondaries.
+	- Bots can grenade, place claymores, they even use grenades and tubes in preset map locations.
+	- Bots use grenade launchers.
+	- Bots can melee people.
+	- Bots can run!
+	- Bots can climb ladders!
+	- Bots jump shot and drop shot.
+	- Bots detect smoke grenades, stun grenades, flashed and airstrike slows.
+	- Bots will remember their class, skill and traits, even on multiround based gametypes.
+	- Bots can throwback grenades.
+	- ... And pretty much everything you expect a Combat Training bot to have
+
+## Installation
+You can easily setup a local LAN dedicated server for you to join and play on. Have a look at [Setting up a CoD4x server](https://github.com/callofduty4x/CoD4x_Server/wiki/Server-setup).
+
+0. Make sure that [CoD4x server + client](https://cod4x.ovh/) is installed, updated and working properly.
+	- Download the [latest release](https://github.com/ineedbots/iw3_bot_warfare/releases) of Bot Warfare.
+1. Locate your CoD4x server install folder.
+2. Move the files/folders found in `Add to root of CoD4x server` from the Bot Warfare release archive you downloaded to the root of your CoD4x server folder.
+	- The folder/file structure should follow as `.CoD4x server folder\mods\mp_bots\z_svr_bots.iwd`.
+3. The mod is now installed. Now before you start your server, you will need to set the `fs_game` DVAR to `mods/mp_bots` as a commandline argument (`+set fs_game "mods/mp_bots"`).
+4. Now start your CoD4x client and connect to your server (`connect 127.0.0.1` in the console most likely) and play!
+
+## Documentation
+
+### Menu Usage
+- You can open the menu by pressing the primary grenade and secondary grenade buttons together.
+
+- You can navigate the options by the pressing the ADS and fire keys, and you can select options by pressing your melee key.
+
+- Pressing the menu button again closes menus.
+
+### DVARs
+| Dvar                             | Description                                                                                 | Default Value |
+|----------------------------------|---------------------------------------------------------------------------------------------|--------------:|
+| bots_main                        | Enable this mod.                                                                            | 1             |
+| bots_main_firstIsHost            | The first player to connect will be given host.                                             | 1             |
+| bots_main_GUIDs                  | A comma separated list of GUIDs of players who will be given host.                          |               |
+| bots_main_waitForHostTime        | How many seconds to wait for the host player to connect before adding bots to the match.    | 10            |
+| bots_main_menu                   | Enable the in-game menu for hosts.                                                          | 1             |
+| bots_main_debug                  | Enable the in-game waypoint editor.                                                         | 0             |
+| bots_main_kickBotsAtEnd          | Kick the bots at the end of a match.                                                        | 0             |
+| bots_main_chat                   | The rate bots will chat at, set to 0 to disable.                                            | 1.0           |
+| bots_manage_add                  | Amount of bots to add to the game, once bots are added, resets back to `0`.                 | 0             |
+| bots_manage_fill                 | Amount of players/bots (look at `bots_manage_fill_mode`) to maintain in the match.          | 0             |
+| bots_manage_fill_mode            | `bots_manage_fill` players/bots counting method.<ul><li>`0` - counts both players and bots.</li><li>`1` - only counts bots.</li></ul> | 0 |
+| bots_manage_fill_kick            | If the amount of players/bots in the match exceeds `bots_manage_fill`, kick bots until no longer exceeds. | 0     |
+| bots_manage_fill_spec            | If when counting players for `bots_manage_fill` should include spectators.                  | 1             |
+| bots_team                        | One of `autoassign`, `allies`, `axis`, `spectator`, or `custom`. What team the bots should be on. | autoassign |
+| bots_team_amount                 | When `bots_team` is set to `custom`. The amount of bots to be placed on the axis team. The remainder will be placed on the allies team. | 0 |
+| bots_team_force                  | If the server should force bots' teams according to the `bots_team` value. When `bots_team` is `autoassign`, unbalanced teams will be balanced. This dvar is ignored when `bots_team` is `custom`. | 0     |
+| bots_team_mode                   | When `bots_team_force` is `true` and `bots_team` is `autoassign`, players/bots counting method. <ul><li>`0` - counts both players and bots.</li><li>`1` - only counts bots</li></ul> | 0 |
+| bots_skill                       | Bots' difficulty.<ul><li>`0` - Random difficulty for each bot.</li><li>`1` - Easiest difficulty for all bots.</li><li>`2` to `6` - Between easy and hard difficulty for all bots.</li><li>`7` - The hardest difficulty for all bots.</li><li>`8` - custom (look at the `bots_skill_<team>_<difficulty>` dvars)</li></ul> | 0 |
+| bots_skill_axis_hard             | When `bots_skill` is set to `8`, the amount of hard difficulty bots to set on the axis team. | 0            |
+| bots_skill_axis_med              | When `bots_skill` is set to `8`, the amount of medium difficulty bots to set on the axis team. The remaining bots on the team will be set to easy difficulty. | 0 |
+| bots_skill_allies_hard           | When `bots_skill` is set to `8`, the amount of hard difficulty bots to set on the allies team. | 0          |
+| bots_skill_allies_med            | When `bots_skill` is set to `8`, the amount of medium difficulty bots to set on the allies team. The remaining bots on the team will be set to easy difficulty. | 0 |
+| bots_skill_min                   | The minimum difficulty level for the bots.                                                     | 1          |
+| bots_skill_max                   | The maximum difficulty level for the bots.                                                     | 7          |
+| bots_loadout_reasonable          | If the bots should filter bad performing create-a-class selections.                            | 0          |
+| bots_loadout_allow_op            | If the bots should be able to use overpowered and annoying create-a-class selections.          | 1          |
+| bots_loadout_rank                | What rank to set the bots.<ul><li>`-1` - Average of all players in the match.</li><li>`0` - All random.</li><li>`1` or higher - Sets the bots' rank to this.</li></ul> | -1 |
+| bots_play_move                   | If the bots can move.                                                                          | 1          |
+| bots_play_knife                  | If the bots can knife.                                                                         | 1          |
+| bots_play_fire                   | If the bots can fire.                                                                          | 1          |
+| bots_play_nade                   | If the bots can grenade.                                                                       | 1          |
+| bots_play_obj                    | If the bots can play the objective.                                                            | 1          |
+| bots_play_camp                   | If the bots can camp.                                                                          | 1          |
+| bots_play_jumpdrop               | If the bots can jump/drop shot.                                                                | 1          |
+| bots_play_target_other           | If the bots can target other entities other than players.                                      | 1          |
+| bots_play_killstreak             | If the bots can call in killstreaks.                                                           | 1          |
+| bots_play_ads                    | If the bots can aim down sights.                                                               | 1          |
+| bots_play_aim                    | If the bots can aim.                                                                           | 1          |
+
+
+## Changelog
+- v2.2.0
+	- Fixed some chat related script runtime errors
+	- Waypoints only load from csv now
+	- Fix bots possibly being stuck in sab
+	- Major cleanup
+
+- v2.1.0
+	- Bot chatter system, bots_main_chat
+	- Greatly reduce script variable usage
+	- Improved bots mantling and stuck
+	- Fix some runtime errors
+	- Bots sprint more
+	- Improved bots sight on enemies
+	- Bots do random actions while waiting at an objective
+	- Improved bots from getting stuck
+	- Better bot difficulty management, bots_skill_min and bots_skill_max
+
+- v2.0.1
+	- Reduced bots crouching
+	- Increased bots sprinting
+	- Improved bots mantling, crouching and knifing glass when needed
+	- Fixed possible script runtime errors
+	- Improved domination
+	- Bots use explosives more if they have it
+	- Bots aim slower when ads'ing
+	- Fixed bots holding breath
+	- Fixed bots rubberbanding movement when their goal changes
+	- Added bots quickscoping with snipers
+	- Added bots reload canceling and fast swaps
+	- Bots use C4
+	- Improved revenge
+	- Bots can swap weapons on spawn more likely
+
+- v2.0.0
+	- Initial reboot release
+
+## Credits
+- CoD4x Team - https://github.com/callofduty4x/CoD4x_Server
+- INeedGames - http://www.moddb.com/mods/bot-warfare
+- PeZBot team - http://www.moddb.com/mods/pezbot
+- Ability
+- Salvation
+
+Feel free to use code, host on other sites, host on servers, mod it and merge mods with it, just give credit where credit is due!
+	-INeedGames/INeedBot(s) @ ineedbots@outlook.com

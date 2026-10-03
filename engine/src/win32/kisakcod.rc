@@ -1,0 +1,5 @@
+#ifdef COD4X1KHZ
+1 ICON "../../../config/icons/cod4x1khz.ico"
+#else
+1 ICON "kcod4.ico"
+#endif

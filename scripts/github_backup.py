@@ -100,13 +100,30 @@ def source_paths(files):
 
 def stage_source(files):
     selected = source_paths(files)
-    # Explicit file paths preserve editable nested sources instead of Git links.
-    payload = b''.join(name.encode('utf-8') + b'\0' for name in selected)
-    run(['git', '--literal-pathspecs', 'add', '--force', '--pathspec-from-file=-', '--pathspec-file-nul'], input=payload)
-    run(['git', 'add', '-u'])
-    stage = run(['git', 'ls-files', '--stage'])
-    if any(line.startswith('160000 ') for line in stage.splitlines()):
+    # git add silently skips paths inside existing nested repositories. Populate
+    # the parent index with real blobs, then verify every selected file is there.
+    payload = ''.join(json.dumps(name, ensure_ascii=False) + '\n' for name in selected).encode('utf-8')
+    hashes = run(['git', 'hash-object', '-w', '--no-filters', '--stdin-paths'], input=payload).splitlines()
+    if len(hashes) != len(selected):
+        raise RuntimeError('Source blob count does not match the selected files')
+    index = b''.join(f'100644 {digest}\t{name}\0'.encode('utf-8') for name, digest in zip(selected, hashes))
+    run(['git', 'update-index', '--add', '-z', '--index-info'], input=index)
+    tracked = run(['git', 'ls-files', '-z']).split('\0')
+    removed = [name for name in tracked if name and not (ROOT / name).exists()]
+    if removed:
+        run(['git', 'update-index', '--force-remove', '-z', '--stdin'],
+            input=b''.join(name.encode('utf-8') + b'\0' for name in removed))
+    stage = run(['git', 'ls-files', '--stage', '-z']).split('\0')
+    staged = {}
+    for entry in stage:
+        if entry:
+            metadata, name = entry.split('\t', 1)
+            staged[name] = metadata.split()
+    if any(value[0] == '160000' for value in staged.values()):
         raise RuntimeError('Source must be tracked as files, not embedded repository links')
+    for name, digest in zip(selected, hashes):
+        if name not in staged or staged[name][1] != digest:
+            raise RuntimeError(f'Source was not staged exactly: {name}')
     return bool(run(['git', 'diff', '--cached', '--name-only']))
 
 
@@ -138,7 +155,9 @@ class GitHub:
         return json.loads(self.call('api', endpoint))
 
     def release(self, tag):
-        return self.api(f'repos/{REPO}/releases/tags/{tag}')
+        # GitHub's by-tag endpoint omits drafts, even for the authenticated owner.
+        result = json.loads(self.call('release', 'view', tag, '--repo', REPO, '--json', 'apiUrl'))
+        return self.api(result['apiUrl'])
 
     def upload(self, tag, path):
         expected_size, expected_hash = path.stat().st_size, hash_file(path)
@@ -265,7 +284,7 @@ def main():
     try:
         release = github.release(tag)
     except RuntimeError as error:
-        if '404' not in str(error):
+        if '404' not in str(error) and 'release not found' not in str(error).lower():
             raise
         notes = ROOT / 'docs/RELEASE-0.1.md' if args.initial_release else session / 'release-notes.md'
         if not args.initial_release:

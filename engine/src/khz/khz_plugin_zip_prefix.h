@@ -1,0 +1,30 @@
+#pragma once
+// Adaptation of pinned CoD4x minizip 1.01e: prefix exported symbols so its
+// private worker streams cannot share the game's older mutable unzip API.
+// The original source and copyright/license notices remain in upstream/.
+#define unz_copyright KHZ_Private_unz_copyright
+#define unzStringFileNameCompare KHZ_Private_unzStringFileNameCompare
+#define unzOpen KHZ_Private_unzOpen
+#define unzOpen2 KHZ_Private_unzOpen2
+#define unzClose KHZ_Private_unzClose
+#define unzGetGlobalInfo KHZ_Private_unzGetGlobalInfo
+#define unzGetGlobalComment KHZ_Private_unzGetGlobalComment
+#define unzGoToFirstFile KHZ_Private_unzGoToFirstFile
+#define unzGoToNextFile KHZ_Private_unzGoToNextFile
+#define unzLocateFile KHZ_Private_unzLocateFile
+#define unzGetFilePos KHZ_Private_unzGetFilePos
+#define unzGoToFilePos KHZ_Private_unzGoToFilePos
+#define unzGetCurrentFileInfo KHZ_Private_unzGetCurrentFileInfo
+#define unzOpenCurrentFile KHZ_Private_unzOpenCurrentFile
+#define unzOpenCurrentFilePassword KHZ_Private_unzOpenCurrentFilePassword
+#define unzOpenCurrentFile2 KHZ_Private_unzOpenCurrentFile2
+#define unzOpenCurrentFile3 KHZ_Private_unzOpenCurrentFile3
+#define unzCloseCurrentFile KHZ_Private_unzCloseCurrentFile
+#define unzReadCurrentFile KHZ_Private_unzReadCurrentFile
+#define unztell KHZ_Private_unztell
+#define unzeof KHZ_Private_unzeof
+#define unzGetLocalExtrafield KHZ_Private_unzGetLocalExtrafield
+#define unzGetOffset KHZ_Private_unzGetOffset
+#define unzSetOffset KHZ_Private_unzSetOffset
+#define unzSetPassword KHZ_Private_unzSetPassword
+#define fill_fopen_filefunc KHZ_Private_fill_fopen_filefunc

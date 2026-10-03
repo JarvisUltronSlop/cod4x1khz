@@ -1,0 +1,19 @@
+{
+    "astyle.astylerc": "${workspaceRoot}/.astylerc",
+    "astyle.additional_languages": [
+        "gsc",
+				"gsx"
+    ],
+    "[gsc]": {
+			"editor.defaultFormatter": "chiehyu.vscode-astyle",
+		},
+		"editor.quickSuggestions": {
+			"other": true,
+			"comments": true,
+			"strings": true
+		},
+		"vscode-codscript.use_builtin_completionItems": false,
+		"files.associations": {
+			"*.gsx": "gsc"
+		}
+}

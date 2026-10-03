@@ -27,6 +27,11 @@ Set-Location cod4x1khz
 ./cod4x1khz.exe
 ```
 
+The current branches create the ignored `results/` evidence directory automatically.
+If building the frozen **v0.1 tag**, run `New-Item -ItemType Directory -Force results`
+before `build.ps1`; the fresh-clone check found this assumption after the original
+snapshot was captured. The corrected clean-clone native suite passes all forty tests.
+
 Change `-GameDirectory` to your Steam installation. `prepare.ps1` reads that
 installation and copies its data into `runtime/`; it does not edit the original.
 It obtains the pinned `Microsoft.DXSDK.D3DX` **9.29.952.8** package, verifies its

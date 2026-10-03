@@ -21,6 +21,7 @@ pipeline caching, synchronization, swapchain/restart handling and visual regress
 checks. No such experiment is authorized by the backup automation.
 
 Source and workspace backups use `backup.ps1`; do not force-push or move `v0.1`.
+Back up the final accepted Vulkan build before setting the readiness marker.
 After Vulkan is actually accepted and readiness is explicitly confirmed, create
 `docs/vulkan-ready.json` with `{ "ready": true }` to stop the ongoing backup loop,
 or disable it through the app's scheduled-task controls.

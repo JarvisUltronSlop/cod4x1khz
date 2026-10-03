@@ -1,5 +1,7 @@
 param([ValidateSet('Release','Debug')][string]$Configuration = 'Release', [switch]$CoreOnly, [switch]$Instrument)
 $ErrorActionPreference = 'Stop'
+# Native evidence tests write here; a fresh Git clone has no ignored results folder.
+New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot 'results') | Out-Null
 $buildRoot = Join-Path $PSScriptRoot "build/$Configuration"
 $buildOptions = @('-S', $PSScriptRoot, '-B', $buildRoot, '-G', 'Visual Studio 17 2022', '-A', 'Win32', "-DCMAKE_BUILD_TYPE=$Configuration")
 if ($CoreOnly) { $buildOptions += '-DCOD4X1KHZ_BUILD_ENGINE=OFF' }

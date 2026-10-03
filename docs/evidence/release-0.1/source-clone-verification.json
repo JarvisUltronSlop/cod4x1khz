@@ -1,0 +1,14 @@
+{
+  "source_commit": "8ad936dc3dc83987dee418ae04121b664bdedc32",
+  "complete_tracked_source_files": 5005,
+  "engine_and_three_reference_snapshots_present": true,
+  "source_revision_checks_passed": true,
+  "prepare_and_bot_package_passed": true,
+  "asset_preparation_scope": "Minimal synthetic main/zone/localization copy fixture; dependency download/checksum and DLL deployment executed. This is not a fresh full-game launch or retail-asset validation.",
+  "win32_release_core_build_passed": true,
+  "initial_native_tests": { "passed": 39, "failed": 1, "cause": "Ignored results directory did not exist; msg_bits evidence file assertion failed." },
+  "native_tests_after_creating_results": { "passed": 40, "failed": 0, "seconds": 12.29 },
+  "correction": "Current branches create results/ in build.ps1. Frozen v0.1 source requires the documented one-line directory creation.",
+  "game_binaries_rebuilt": false,
+  "vulkan_implemented": false
+}

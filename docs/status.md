@@ -1,5 +1,13 @@
 # Implementation status
 
+The private **v0.1** GitHub release preserves the original Build 86 workspace
+and measured evidence as a development checkpoint. It does not satisfy the
+full delivery gate. Repository setup added complete source snapshots, build and
+recovery instructions, a checked full-workspace backup and ongoing backup tooling.
+A later tooling-only fix creates `results/` for clean-clone native evidence tests;
+all forty suites pass after that directory exists. The game binaries and renderer
+remain unchanged. Vulkan implementation has not begun.
+
 The requested release has **not passed its delivery gate**. Build 86 is the
 current deployed client/server pair. All 40 native suites pass. Its camera-verified
 sixty-second walking tests with one protected human and fifteen Regular combat

@@ -5,6 +5,13 @@ Backlot view. Direct DX9 renders the stock scene correctly. Vulkan still has
 black/distorted models; its scene timings are diagnostic until visual parity
 and simulation timing acceptance pass.
 
+The recorded WDDM GPU engine utilization averaged **43.11%** (34.96--49.11%)
+in the final DX9 run and **18.25%** (10.38--25.59%) in the Vulkan prefix trial.
+These are samples of the game process's busiest GPU engine, not percentages of
+peak shader throughput. The Vulkan control averaged 17.60%. Exact source hashes,
+interval selection and sample counts are retained in
+`results/x64-render-gpu-utilization.json`.
+
 ## Measured bottleneck
 
 The eight-second native DX9 capture in

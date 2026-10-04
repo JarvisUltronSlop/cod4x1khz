@@ -50,7 +50,7 @@ struct Backend::Impl {
             const unsigned adapter = c.device < 0 ? D3DADAPTER_DEFAULT : unsigned(c.device);
             check(api->GetAdapterIdentifier(adapter, 0, &identifier), "DX9 adapter identity");
             D3DPRESENT_PARAMETERS pp{}; pp.BackBufferWidth = pp.BackBufferHeight = 64; pp.BackBufferFormat = D3DFMT_A8R8G8B8; pp.BackBufferCount = 1; pp.SwapEffect = D3DSWAPEFFECT_DISCARD; pp.hDeviceWindow = static_cast<HWND>(c.window); pp.Windowed = TRUE; pp.PresentationInterval = c.vsync ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
-            check(api->CreateDevice(adapter, D3DDEVTYPE_HAL, pp.hDeviceWindow, D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE, &pp, &device), "DX9 comparison device");
+            check(api->CreateDevice(adapter, D3DDEVTYPE_HAL, pp.hDeviceWindow, D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE | D3DCREATE_MULTITHREADED, &pp, &device), "DX9 comparison device");
         } catch (...) { drop(api); throw; }
     }
     void assertOwner() { if (owner != std::this_thread::get_id()) throw std::runtime_error("D3D9 owner violated"); }
@@ -150,7 +150,8 @@ void Backend::draw(const DrawPacket& d) {
     for(unsigned s=0;s<16;++s) if(d.textures[s]) {
         check(i.device->SetTexture(s,i.resources.get(d.textures[s]).base()),"DX9 texture bind"); const auto& a=d.samplers[s];
         auto sampler=[&](D3DSAMPLERSTATETYPE state,DWORD value){check(i.device->SetSamplerState(s,state,value),"DX9 sampler");};
-        sampler(D3DSAMP_ADDRESSU,addressMap[unsigned(a.u)]); sampler(D3DSAMP_ADDRESSV,addressMap[unsigned(a.v)]); sampler(D3DSAMP_ADDRESSW,addressMap[unsigned(a.w)]); sampler(D3DSAMP_MAGFILTER,a.linear&&a.magLinear?D3DTEXF_LINEAR:D3DTEXF_POINT); sampler(D3DSAMP_MINFILTER,a.linear&&a.minLinear?D3DTEXF_LINEAR:D3DTEXF_POINT); sampler(D3DSAMP_MIPFILTER,a.mipLinear?D3DTEXF_LINEAR:D3DTEXF_POINT); sampler(D3DSAMP_SRGBTEXTURE,i.resources.get(d.textures[s]).desc.srgb);
+        sampler(D3DSAMP_ADDRESSU,addressMap[unsigned(a.u)]); sampler(D3DSAMP_ADDRESSV,addressMap[unsigned(a.v)]); sampler(D3DSAMP_ADDRESSW,addressMap[unsigned(a.w)]); sampler(D3DSAMP_MAGFILTER,a.linear&&a.magLinear?D3DTEXF_LINEAR:D3DTEXF_POINT); sampler(D3DSAMP_MINFILTER,a.maxAnisotropy>1?D3DTEXF_ANISOTROPIC:(a.linear&&a.minLinear?D3DTEXF_LINEAR:D3DTEXF_POINT)); sampler(D3DSAMP_MIPFILTER,a.maxLod==0?D3DTEXF_NONE:(a.mipLinear?D3DTEXF_LINEAR:D3DTEXF_POINT)); sampler(D3DSAMP_SRGBTEXTURE,i.resources.get(d.textures[s]).desc.srgb);
+        sampler(D3DSAMP_MIPMAPLODBIAS,std::bit_cast<DWORD>(a.lodBias));sampler(D3DSAMP_MAXMIPLEVEL,DWORD(a.minLod));sampler(D3DSAMP_MAXANISOTROPY,DWORD(a.maxAnisotropy));sampler(D3DSAMP_BORDERCOLOR,0);
     }
     unsigned vertices=0;
     for(unsigned s=0;s<16;++s) if(d.vertexBuffers[s]) { auto& r=i.resources.get(d.vertexBuffers[s]); check(i.device->SetStreamSource(s,r.vb,d.vertexOffsets[s],d.strides[s]),"DX9 stream"); if(!s) vertices=(r.bytes-d.vertexOffsets[s])/d.strides[s]; }
@@ -167,7 +168,7 @@ void Backend::blit(ResourceId source,ResourceId destination,bool linear,const Cl
     check(i.device->StretchRect(i.resources.get(source).surface,sourceRect?&s:nullptr,i.resources.get(destination).surface,destinationRect?&d:nullptr,linear?D3DTEXF_LINEAR:D3DTEXF_POINT),"DX9 stock image blit");
 }
 std::vector<std::byte> Backend::readback(ResourceId id) {
-    auto& i=*impl; i.assertOwner(); auto& r=i.resources.get(id); if(r.desc.format!=ImageFormat::Bgra8&&r.desc.format!=ImageFormat::Rgba8) throw std::runtime_error("Comparison readback requires RGBA8");
+    auto& i=*impl; i.assertOwner(); auto& r=i.resources.get(id); if(r.desc.format!=ImageFormat::Bgra8&&r.desc.format!=ImageFormat::Rgba8&&r.desc.format!=ImageFormat::R32Float) throw std::runtime_error("Comparison readback requires RGBA8 or R32F");
     IDirect3DSurface9* surface=nullptr; check(i.device->CreateOffscreenPlainSurface(r.desc.width,r.desc.height,format(r.desc.format),D3DPOOL_SYSTEMMEM,&surface,nullptr),"DX9 readback image");
     try { check(i.device->GetRenderTargetData(r.surface,surface),"DX9 lossless readback"); D3DLOCKED_RECT rect; check(surface->LockRect(&rect,nullptr,D3DLOCK_READONLY),"DX9 readback lock"); std::vector<std::byte> result(std::size_t(r.desc.width)*r.desc.height*4); for(unsigned y=0;y<r.desc.height;++y) std::memcpy(result.data()+y*r.desc.width*4,static_cast<std::byte*>(rect.pBits)+y*rect.Pitch,r.desc.width*4); check(surface->UnlockRect(),"DX9 readback unlock"); drop(surface); return result; } catch(...) { drop(surface); throw; }
 }
@@ -179,4 +180,5 @@ void Backend::waitIdle() {
     }catch(...){drop(event);throw;}
 }
 std::string Backend::deviceReport() const { return std::string("{\"api\":\"d3d9\",\"device\":\"")+impl->identifier.Description+"\"}"; }
+void Backend::adoptOwnerAtBarrier(){auto& i=*impl;if(i.frame)throw std::runtime_error("DX9 diagnostic owner handoff inside a frame");if(i.owner!=std::this_thread::get_id()){const auto previous=i.owner;i.owner=std::this_thread::get_id();try{waitIdle();}catch(...){i.owner=previous;throw;}}}
 }

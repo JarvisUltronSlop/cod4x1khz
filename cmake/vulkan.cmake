@@ -10,6 +10,8 @@ target_include_directories(khz_vulkan_context PUBLIC
 target_compile_options(khz_vulkan_context PRIVATE /W3 /fp:precise)
 target_compile_definitions(khz_vulkan_context PUBLIC VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 add_executable(khz_vulkan_probe native/vulkan_probe.cpp)
+add_executable(khz_shader_disassemble native/shader_disassemble.cpp)
+target_link_libraries(khz_shader_disassemble PRIVATE d3dcompiler)
 target_link_libraries(khz_vulkan_probe PRIVATE khz_vulkan_context)
 set_target_properties(khz_vulkan_probe PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/runtime/tools")
 
@@ -53,7 +55,7 @@ add_library(khz_legacy_resources STATIC engine/src/gfx/legacy_resources.cpp)
 target_include_directories(khz_legacy_resources PUBLIC "${CMAKE_SOURCE_DIR}/native" "${CMAKE_SOURCE_DIR}/engine/src")
 add_library(khz_vulkan_legacy STATIC engine/src/gfx_vulkan/vk_legacy_device.cpp)
 target_include_directories(khz_vulkan_legacy PRIVATE "${CMAKE_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
-target_link_libraries(khz_vulkan_legacy PUBLIC khz_legacy_resources khz_vulkan_backend khz_graphics_gamma d3d9
+target_link_libraries(khz_vulkan_legacy PUBLIC khz_legacy_resources khz_vulkan_backend khz_d3d9_backend khz_graphics_gamma d3d9
   "${CMAKE_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/release/lib/x86/d3dx9.lib")
 target_include_directories(khz_d3d9_backend PUBLIC "${CMAKE_SOURCE_DIR}/native" "${CMAKE_SOURCE_DIR}/engine/src")
 target_link_libraries(khz_d3d9_backend PUBLIC d3d9)

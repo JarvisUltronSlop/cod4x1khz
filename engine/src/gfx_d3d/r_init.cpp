@@ -3216,6 +3216,8 @@ char __cdecl R_PreCreateWindow()
             gfx::Config config;config.device=r_vkDevice->current.integer;config.framesInFlight=r_vkFramesInFlight->current.integer;
             config.cacheDirectory=std::string(Dvar_GetString("fs_homepath"))+"/vulkan/cache";
             config.validation=Dvar_GetBool("r_vkValidation");
+            config.compareD3D9=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkCompare");
+            config.cacheBindings=Dvar_GetBool("r_vkStateCache");
             dx.d3d9=gfx::legacy::createVulkanInterface(config);
             Com_Printf(CON_CHANNEL_GFX,"Native Vulkan selected (experimental)\n");
         } else

@@ -1477,6 +1477,8 @@ const dvar_t *r_vkFramesInFlight;
      r_vkDevice=Dvar_RegisterInt("r_vkDevice",-1,(DvarLimits)0x7FFFFFFFFFFFFFFFLL,DVAR_ARCHIVE|DVAR_LATCH,"Native Vulkan GPU index; -1 selects the highest-ranked compatible GPU");
      r_vkFramesInFlight=Dvar_RegisterInt("r_vkFramesInFlight",2,(DvarLimits)0x200000001LL,DVAR_ARCHIVE|DVAR_LATCH,"Native Vulkan frames in flight (1 or 2)");
      Dvar_RegisterBool("r_vkValidation",false,DVAR_NOFLAG,"Enable project-local Vulkan GPU and synchronization validation for development");
+     Dvar_RegisterBool("r_vkCompare",false,DVAR_NOFLAG,"Benchmark-only stock draw/resource mirroring into a private DX9 visual reference");
+     Dvar_RegisterBool("r_vkStateCache",true,DVAR_NOFLAG,"Development A/B control for Vulkan binding and immutable constant reuse");
      Dvar_RegisterBool("r_vkShaderInventory",false,DVAR_NOFLAG,"Capture stock shader bytecode during zone loading in this profile's private home");
 #endif
      r_rendererInUse = Dvar_RegisterEnum("r_rendererInUse", s_rendererNames, 2, DVAR_ROM, "The renderer currently used");

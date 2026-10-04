@@ -21,7 +21,7 @@ struct Fixture {
     IDirect3DVertexDeclaration9* declaration=nullptr;IDirect3DVertexShader9* vertex=nullptr;IDirect3DPixelShader9* pixel=nullptr;
     IDirect3DTexture9 *image=nullptr,*target=nullptr;IDirect3DSurface9 *surface=nullptr,*readback=nullptr;IDirect3DQuery9* event=nullptr;
     explicit Fixture(HWND window,bool vulkan):native(vulkan){
-        if(vulkan){gfx::Config config;config.validation=true;factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
+        if(vulkan){gfx::Config config;config.validation=true;config.compareD3D9=true;factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
         if(!factory)throw std::runtime_error("Legacy factory unavailable");
         D3DPRESENT_PARAMETERS p{};p.BackBufferWidth=p.BackBufferHeight=64;p.BackBufferFormat=D3DFMT_A8R8G8B8;p.BackBufferCount=1;p.SwapEffect=D3DSWAPEFFECT_DISCARD;p.hDeviceWindow=window;p.Windowed=TRUE;p.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         check(factory->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_FPU_PRESERVE,&p,&device));
@@ -60,10 +60,27 @@ struct Fixture {
         check(device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
         check(device->BeginScene());check(device->Clear(0,nullptr,D3DCLEAR_TARGET,0xff102030,1,0));
         const float tint[]={1,1,1,1},changed[]={0,0,0,0};check(device->SetPixelShaderConstantF(0,tint,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+        if(transfer==-2){
+            // Distinct immutable register versions and repeated unchanged
+            // versions coexist in one queued submission.
+            const float alternate[]={.5f,.25f,.75f,1};RECT box{0,0,32,32};
+            check(device->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE));check(device->SetScissorRect(&box));
+            check(device->SetPixelShaderConstantF(0,alternate,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+            check(device->SetPixelShaderConstantF(0,alternate,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+        }
         // Mutating source constants after a draw must not affect its packet.
         check(device->SetPixelShaderConstantF(0,changed,1));check(device->EndScene());check(event->Issue(D3DISSUE_END));
         const auto deadline=GetTickCount64()+5000;DWORD value=0;HRESULT status;
         while((status=event->GetData(&value,4,D3DGETDATA_FLUSH))==S_FALSE){if(GetTickCount64()>=deadline)throw std::runtime_error("Legacy event timed out");SwitchToThread();}check(status);assert(value==1);
+        if(transfer==-2){
+            // The same CPU register values need a new arena snapshot after
+            // retirement. Drop the final shader/texture owners before flush;
+            // retained packet leases must keep the recorded resources alive.
+            const float alternate[]={.5f,.25f,.75f,1};RECT box{32,32,64,64};
+            check(device->BeginScene());check(device->SetScissorRect(&box));check(device->SetPixelShaderConstantF(0,alternate,1));
+            check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+            check(device->SetPixelShader(nullptr));release(pixel);check(device->SetTexture(0,nullptr));release(image);check(device->EndScene());
+        }
         check(event->Issue(D3DISSUE_END));
         // Vulkan's command packet has not yet been submitted. Its previous
         // completed issue must not make this one appear complete.
@@ -73,4 +90,4 @@ struct Fixture {
     ~Fixture(){release(event);release(surface);release(readback);release(target);release(image);release(declaration);release(vertex);release(pixel);release(vertices);release(indices);release(device);release(factory);}
 };
 }
-int main(){try{Window window;for(int transfer:{-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);reference=f.run(transfer);}{Fixture f(window.handle,true);candidate=f.run(transfer);assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}std::cout<<"Legacy resource/constant/query and 2D/cube/volume transfer parity passed\n";return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(){try{Window window;for(int transfer:{-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);reference=f.run(transfer);}{Fixture f(window.handle,true);candidate=f.run(transfer);assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}std::cout<<"Legacy resource/constant/query and 2D/cube/volume transfer parity passed\n";return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

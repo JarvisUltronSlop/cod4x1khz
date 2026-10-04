@@ -31,6 +31,7 @@ public:
     std::vector<std::byte> readback(ResourceId) override;
     void waitIdle() override;
     std::string deviceReport() const override;
+    void adoptOwnerAtBarrier();
 private:
     struct Impl; std::unique_ptr<Impl> impl;
 };

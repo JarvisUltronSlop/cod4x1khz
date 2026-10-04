@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 namespace {
 std::vector<std::uint32_t> compile(const char* source,const char* profile) {
@@ -65,6 +66,8 @@ std::uint64_t queryCases(gfx::Backend& b,Fixture& f) {
     b.warm(f.packet);b.beginFrame();b.clear(f.target,{}, {.1f,.2f,.3f,1},1);b.beginQuery(samples);b.draw(f.packet);b.draw(f.packet);b.endQuery(samples);b.endQuery(stamp);b.endQuery(event);
     if(b.api()==gfx::Api::Vulkan) assert(!b.queryResult(event,value));
     b.endFrame({});b.waitIdle();assert(b.queryResult(event,value)&&value==1);assert(b.queryResult(stamp,value)&&value>0);assert(b.queryResult(samples,value)&&value>0);const auto count=value;
+    if(b.api()==gfx::Api::Vulkan){auto& vk=static_cast<gfx::vk::Backend&>(b);bool ready=false;std::uint64_t hostValue=0;
+        std::thread host([&]{ready=vk.pollQuerySerialized(event,hostValue);});host.join();assert(ready&&hostValue==1);}
     b.beginFrame();b.beginQuery(samples);b.endQuery(samples);b.endFrame({});b.waitIdle();assert(b.queryResult(samples,value)&&value==0);
     for(auto id:{samples,event,stamp}) b.release(id);return count;
 }
@@ -164,7 +167,67 @@ std::vector<std::vector<std::byte>> materialCases(gfx::Backend& backend,Fixture&
         gfx::ImageDesc desc;desc.width=desc.height=8;desc.format=format;const auto texture=backend.createImage(desc);const unsigned bytes=format==gfx::ImageFormat::Rg8?128:64;
         std::vector<std::byte> texels(bytes,std::byte(128));backend.beginFrame();backend.uploadImage(texture,0,0,texels);backend.endFrame({});f.packet.textures[0]=texture;f.draw(backend,false);captures.push_back(backend.readback(f.target));backend.release(texture);
     }
+    {
+        // Soft particles read a floating-point scene depth texture. Exercise
+        // all sampled channels, including D3D9's missing-channel defaults.
+        gfx::ImageDesc desc;desc.width=desc.height=8;desc.format=gfx::ImageFormat::R32Float;
+        const auto texture=backend.createImage(desc);std::array<float,64> texels;texels.fill(.25f);
+        backend.beginFrame();backend.uploadImage(texture,0,0,std::as_bytes(std::span(texels)));backend.endFrame({});
+        f.packet.textures[0]=texture;f.draw(backend,false);captures.push_back(backend.readback(f.target));backend.release(texture);
+    }
     f.packet.textures[0]=f.texture;
+    {
+        // Stock zfeather particle instructions: projected R32F depth, source
+        // absolute modifier, saturation and separate fog/opacity terms.
+        const auto vs=compile("struct I{float4 p:POSITION;float2 t:TEXCOORD0;};struct O{float4 p:POSITION;float4 c:COLOR0;float4 t:TEXCOORD0;float4 q:TEXCOORD1;};float4 parms:register(c12);O main(I i){O o;o.p=i.p;o.c=float4(.4,.3,.2,parms.y);o.t=float4(i.t,parms.x,.7);o.q=float4(i.t*2,0,2);return o;}","vs_3_0");
+        const auto ps=assemble("ps_3_0\ndcl_color v0\ndcl_texcoord v1\ndcl_texcoord1 v2\ndcl_2d s0\ndcl_2d s4\ntexldp r0,v2,s4\nmad r0.x,r0_abs.x,c5.x,-v1.z\nabs_sat r0.x,r0.x\ntexld_pp r1,v1,s0\nmul r0.y,r1.w,v0.w\nmad r1.xyz,v0,r1,-c0\nmul oC0.w,r0.x,r0.y\nmad oC0.xyz,v1.w,r1,c0\n");
+        const auto vertex=backend.createShader(vs,"zfeather controlled varyings"),pixel=backend.createShader(ps,"stock zfeather instructions");
+        gfx::ImageDesc desc;desc.width=desc.height=8;desc.format=gfx::ImageFormat::R32Float;const auto image=backend.createImage(desc);
+        std::array<float,64> values;for(unsigned y=0;y<8;++y)for(unsigned x=0;x<8;++x)values[y*8+x]=float(x)/4-.75f;
+        backend.beginFrame();backend.uploadImage(image,0,0,std::as_bytes(std::span(values)));backend.endFrame({});
+        f.packet.vertexShader=vertex;f.packet.pixelShader=pixel;f.packet.textures[4]=image;f.pc[20]=1.2f;f.pc[0]=.1f;f.pc[1]=.12f;f.pc[2]=.15f;f.vc[49]=.25f;
+        for(float feather:{.1f,.8f}){f.vc[48]=feather;f.draw(backend,false);captures.push_back(backend.readback(f.target));
+            f.packet.state.blend=true;f.packet.state.src=gfx::Blend::SrcAlpha;f.packet.state.dst=gfx::Blend::InvSrcAlpha;f.draw(backend,false);captures.push_back(backend.readback(f.target));f.packet.state.blend=false;}
+        {
+            const auto code=assemble("ps_3_0\ndef c0,-0.501960814,0,0,0\ndcl_color v0.w\ndcl_texcoord v1.xyz\ndcl_2d s0\ntexld_pp r0,v1,s0\nmad r0,v0.w,r0.w,c0.x\ntexkill r0\nmov oC0,v1.z\n");
+            const auto mask=backend.createShader(code,"stock floatz alpha-tested particle instructions");f.packet.pixelShader=mask;
+            // Controlled VS alpha=.25: every fragment must be killed, even
+            // though the externally supplied c0 is positive.
+            f.vc[48]=.8f;f.draw(backend,false);captures.push_back(backend.readback(f.target));
+            assert(unsigned(captures.back()[(32*64+32)*4+2])==26);
+            const auto depthId=backend.createImage(depth);f.packet.depthTarget=depthId;f.packet.state.depthTest=f.packet.state.depthWrite=true;f.packet.state.depthBias=-1.f/65536;f.packet.state.slopeDepthBias=-1;
+            for(float opacity:{.25f,.75f}){f.vc[49]=opacity;backend.warm(f.packet);backend.beginFrame();backend.clear(f.target,depthId,{.1f,.2f,.3f,1},1);backend.draw(f.packet);backend.endFrame({});captures.push_back(backend.readback(f.target));assert(unsigned(captures.back()[(32*64+32)*4+2])==(opacity<.5f?26u:204u));}
+            // Killed and surviving lanes share derivative quads. Slope bias
+            // must be evaluated before the stock shader's divergent discard.
+            gfx::ImageDesc checker;checker.width=checker.height=64;const auto texture=backend.createImage(checker);
+            std::array<std::uint32_t,64*64> pixels;for(unsigned y=0;y<64;++y)for(unsigned x=0;x<64;++x)pixels[y*64+x]=((x+y)&1)?0xffffffff:0x00ffffff;
+            const float sloped[][6]={{-.8f,.8f,.49f,1,0,0},{.8f,.8f,.51f,1,1,0},{.8f,-.8f,.51f,1,1,1},{-.8f,-.8f,.49f,1,0,1}};
+            const auto buffer=backend.createBuffer(std::as_bytes(std::span(sloped)),false);f.packet.vertexBuffers[0]=buffer;f.packet.textures[0]=texture;f.packet.samplers[0].linear=false;f.vc[49]=1;
+            backend.beginFrame();backend.uploadImage(texture,0,0,std::as_bytes(std::span(pixels)));backend.endFrame({});
+            for(float slope:{-1.f,1.f}){f.packet.state.slopeDepthBias=slope;backend.warm(f.packet);backend.beginFrame();backend.clear(f.target,depthId,{.1f,.2f,.3f,1},.5f);backend.draw(f.packet);backend.endFrame({});captures.push_back(backend.readback(f.target));}
+            f.packet.vertexBuffers[0]=f.vertices;f.packet.textures[0]=f.texture;f.packet.samplers[0].linear=true;backend.release(buffer);backend.release(texture);
+            f.vc[49]=.25f;f.packet.depthTarget={};f.packet.state.depthTest=f.packet.state.depthWrite=false;f.packet.state.depthBias=f.packet.state.slopeDepthBias=0;backend.release(depthId);
+            f.packet.pixelShader=pixel;backend.release(mask);
+        }
+        {
+            // Authored stock particle vertex path, including packed UBYTE4
+            // texture coordinates, integer conversion and scalar exp writes.
+            const auto code=assemble("vs_3_0\ndef c8,0.0009765625,3.05175781e-005,0.25,0.0078125\ndef c9,0.03125,1,0,1.44269502\ndef c10,32,-2,-15,1\ndcl_position v0\ndcl_color v1\ndcl_texcoord v2\ndcl_position o0\ndcl_color o1\ndcl_texcoord o2\ndcl_texcoord1 o3\nmul r0,c8.xxyy,v2.zxzx\nmad r0,v2.wywy,c8.zzww,r0\nfrc r1,r0\nadd r0.zw,r0,-r1\nmad r0.xy,r1,-c9.x,r1.zwzw\nmad r0,r0,c10.xxyy,c10.zzww\nmad r0.zw,r0,r1.xyxy,r0\nexp r1.x,r0.x\nexp r1.y,r0.y\nmul o2.xy,r0.zwzw,r1\nmad r0,v0.xyzx,c9.yyyz,c9.zzzy\ndp4 r1.x,r0,c4\ndp4 r1.y,r0,c5\ndp4 r1.z,r0,c6\ndp4 r1.w,r0,c7\ndp3 r0.x,r1,r1\nrsq r0.x,r0.x\nrcp r0.x,r0.x\nmad r0.x,r0.x,c21.z,c21.w\nmul r0.x,r0.x,c9.w\nexp_sat o2.w,r0.x\ndp4 r0.x,r1,c0\ndp4 r0.y,r1,c1\ndp4 r0.z,r1,c2\ndp4 r0.w,r1,c3\nmul r1,r0.w,c18\nmad o3,r0,c17,r1\nmov o0,r0\nmul r0.x,r0.w,c12.x\nmov_sat r0.y,r0.x\nmov o2.z,r0.x\nmul o1.w,r0.y,v1.w\nmov o1.xyz,v1\n");
+            const auto authored=backend.createShader(code,"stock packed zfeather vertex instructions");
+            struct Packed {float p[4];std::uint32_t color,uv;};
+            const Packed geometry[]={{{-.8f,.8f,.5f,1},0x40806644,0},{{.8f,.8f,.5f,1},0x40806644,0x3c000000},{{.8f,-.8f,.5f,1},0x40806644,0x3c003c00},{{-.8f,-.8f,.5f,1},0x40806644,0x00003c00}};
+            const std::array<gfx::VertexElement,3> elements{{{0,0,0,gfx::VertexFormat::Float4,gfx::Semantic::Position},{0,16,0,gfx::VertexFormat::Color,gfx::Semantic::Color},{0,20,0,gfx::VertexFormat::Ubyte4,gfx::Semantic::Texcoord}}};
+            const auto buffer=backend.createBuffer(std::as_bytes(std::span(geometry)),false);
+            f.packet.vertexShader=authored;f.packet.vertexBuffers[0]=buffer;f.packet.strides[0]=sizeof(Packed);f.packet.elements=elements;
+            const auto saved=f.vc;f.vc.fill(0);for(unsigned matrix:{0u,4u})for(unsigned n=0;n<4;++n)f.vc[(matrix+n)*4+n]=1;
+            f.vc[68]=.5f;f.vc[69]=-.5f;f.vc[70]=f.vc[71]=1;f.vc[72]=f.vc[73]=.5f;f.vc[84+2]=-.3f;
+            for(float feather:{.1f,.8f}){f.vc[48]=feather;f.draw(backend,false);captures.push_back(backend.readback(f.target));}
+            f.vc=saved;f.packet.vertexShader=vertex;f.packet.vertexBuffers[0]=f.vertices;f.packet.strides[0]=24;f.packet.elements=f.elements;
+            backend.release(authored);backend.release(buffer);
+        }
+        f.packet.vertexShader=f.vertex;f.packet.pixelShader=f.pixel;f.packet.textures[4]={};f.pc[0]=f.pc[1]=f.pc[2]=f.pc[20]=f.vc[48]=f.vc[49]=0;
+        for(const auto id:{vertex,pixel,image})backend.release(id);
+    }
     // 4x MSAA is rendered and explicitly resolved before readback/presentation.
     gfx::ImageDesc msaa;msaa.width=msaa.height=64;msaa.renderTarget=true;msaa.sampled=false;msaa.samples=4;
     const auto multisample=backend.createImage(msaa);f.packet.colorTarget=multisample;backend.warm(f.packet);backend.beginFrame();backend.clear(multisample,{}, {.1f,.2f,.3f,1},1);backend.draw(f.packet);backend.resolve(multisample,f.target);backend.endFrame({});captures.push_back(backend.readback(f.target));

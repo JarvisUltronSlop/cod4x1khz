@@ -82,7 +82,7 @@ std::vector<std::uint32_t> fragmentState(std::span<const std::uint32_t> source,
         }
     }
     std::vector<std::uint32_t> out(source.begin(),source.begin()+5);
-    bool addedAnnotations=false,addedGlobals=false,addedModes=false,inMain=false;unsigned returns=0;
+    bool addedAnnotations=false,addedGlobals=false,addedModes=false,inMain=false,mainLabel=false,pendingBias=false,addedBias=false;unsigned returns=0;
     for(std::size_t at=5;at<source.size();) {
         const auto count=source[at]>>16;const auto op=Op(source[at]&65535);
         if(op==OpMemoryModel)out.insert(out.end(),imports.begin(),imports.end());
@@ -91,8 +91,13 @@ std::vector<std::uint32_t> fragmentState(std::span<const std::uint32_t> source,
         }
         if(!addedAnnotations&&op>=OpTypeVoid&&op<=OpTypeForwardPointer){out.insert(out.end(),annotations.begin(),annotations.end());addedAnnotations=true;}
         if(op==OpFunction){if(!addedGlobals){out.insert(out.end(),globals.begin(),globals.end());addedGlobals=true;}inMain=source[at+2]==main;}
-        if(inMain&&op==OpReturn) {
-            if(depthBias) {
+        // OpKill can terminate neighboring lanes. Derivatives after a
+        // divergent stock alpha discard are undefined; evaluate rasterizer
+        // bias in the entry block while the entire quad is still active.
+        // Keep all Function variables ahead of executable instructions.
+        if(inMain&&op==OpLabel&&!mainLabel){mainLabel=true;pendingBias=depthBias;}
+        else if(pendingBias&&op!=OpVariable&&op!=OpLine&&op!=OpNoLine) {
+                pendingBias=false;addedBias=true;
                 const auto coord=id(),z=id(),biasPointer=id(),bias=id();
                 emit(out,OpLoad,{vector4,coord,fragCoord});emit(out,OpCompositeExtract,{floatType,z,coord,2});
                 emit(out,OpAccessChain,{pointerFloat,biasPointer,push,one});emit(out,OpLoad,{floatType,bias,biasPointer});
@@ -107,7 +112,8 @@ std::vector<std::uint32_t> fragmentState(std::span<const std::uint32_t> source,
                 }
                 const auto sum=id(),clamped=id();emit(out,OpFAdd,{floatType,sum,z,offset});
                 emit(out,OpExtInst,{floatType,clamped,glsl,GLSLstd450FClamp,sum,zeroFloat,oneFloat});emit(out,OpStore,{depth,clamped});
-            }
+        }
+        if(inMain&&op==OpReturn) {
             if(alpha) {
                 const auto loaded=id(),a=id(),refPointer=id(),ref=id(),predicate=constantBool?constantBool:id(),kill=id(),merge=id();
                 emit(out,OpLoad,{colorType,loaded,color});emit(out,OpCompositeExtract,{floatType,a,loaded,3});
@@ -125,7 +131,7 @@ std::vector<std::uint32_t> fragmentState(std::span<const std::uint32_t> source,
         } else out.insert(out.end(),source.begin()+at,source.begin()+at+count);
         if(op==OpFunctionEnd)inMain=false;at+=count;
     }
-    if(!returns||!addedAnnotations||!addedGlobals)throw std::runtime_error("Unsupported pixel entry point for stock fragment lowering");
+    if(!returns||!addedAnnotations||!addedGlobals||(depthBias&&!addedBias))throw std::runtime_error("Unsupported pixel entry point for stock fragment lowering");
     out[3]=bound;validateSpirv(out,"stock alpha/depth-bias lowering");return out;
 }
 std::vector<std::uint32_t> alphaTest(std::span<const std::uint32_t> source,unsigned comparison) {

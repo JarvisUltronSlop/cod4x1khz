@@ -1,6 +1,9 @@
 #include <universal/q_shared.h>
 #ifdef COD4X1KHZ
 #include <khz/khz_shader_inventory.h>
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+#include <gfx/legacy_factory.h>
+#endif
 #endif
 #include <universal/surfaceflags.h>
 #include "r_material.h"
@@ -299,6 +302,9 @@ void __cdecl Load_CreateMaterialPixelShader(GfxPixelShaderLoadDef *loadDef, Mate
     {
         ProfLoad_Begin("Create pixel shader");
         dx.device->CreatePixelShader((DWORD*)loadDef->program, (IDirect3DPixelShader9 **)&mtlShader->prog);
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+        gfx::legacy::nameResource(mtlShader->prog.ps,mtlShader->name);
+#endif
         ProfLoad_End();
     }
     else
@@ -317,6 +323,9 @@ void __cdecl Load_CreateMaterialVertexShader(GfxVertexShaderLoadDef *loadDef, Ma
     {
         ProfLoad_Begin("Create vertex shader");
         dx.device->CreateVertexShader((DWORD*)loadDef->program, (IDirect3DVertexShader9 **)&mtlShader->prog);
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+        gfx::legacy::nameResource(mtlShader->prog.vs,mtlShader->name);
+#endif
         ProfLoad_End();
     }
     else

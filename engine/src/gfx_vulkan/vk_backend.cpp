@@ -98,8 +98,18 @@ struct Frame {
     VkDescriptorPool descriptors = VK_NULL_HANDLE; VkQueryPool queries = VK_NULL_HANDLE;
     VkSemaphore acquired = VK_NULL_HANDLE;
     Buffer arena; VkDeviceSize used = 0; std::uint64_t serial = 0; unsigned draws = 0;
-    struct Descriptors {VkPipelineLayout layout=VK_NULL_HANDLE;std::array<ResourceId,16> textures{};std::array<Sampler,16> samplers{};std::array<VkDescriptorSet,4> sets{};};
+    struct Descriptors {ResourceId vs,ps;std::array<ResourceId,16> textures{};std::array<Sampler,16> samplers{};std::array<VkDescriptorSet,4> sets{};};
     std::vector<Descriptors> cachedDescriptors;
+    struct Uniform {ResourceId shader;std::uint64_t serial=0;std::span<const float> floats;std::span<const int> integers,booleans;unsigned offset=0;};
+    std::vector<Uniform> uniforms;
+    struct Bindings {
+        VkPipeline pipeline=VK_NULL_HANDLE;VkPipelineLayout descriptors=VK_NULL_HANDLE,push=VK_NULL_HANDLE;
+        std::array<VkDescriptorSet,4> sets{};std::array<unsigned,2> offsets{};unsigned offsetCount=0;
+        std::array<VkBuffer,16> vertices{};std::array<VkDeviceSize,16> vertexOffsets{};
+        VkBuffer index=VK_NULL_HANDLE;VkDeviceSize indexOffset=0;VkIndexType indexType=VK_INDEX_TYPE_UINT16;
+        VkViewport viewport{};VkRect2D scissor{};std::array<float,3> constants{};
+        unsigned stencil=0;bool viewportValid=false,scissorValid=false,stencilValid=false;
+    } bindings;
 };
 }
 
@@ -130,6 +140,7 @@ struct Backend::Impl {
     FrameTiming timing;
     Clock::time_point recording;
     ResourceId activeOcclusion;
+    ResourceId renderingColor,renderingDepth;
 
     explicit Impl(const gfx::Config& c) : context({static_cast<HWND>(c.window), c.device, c.validation}), config(c) {
         if (c.framesInFlight < 1 || c.framesInFlight > 2) throw std::runtime_error("Frames in flight must be 1 or 2");
@@ -142,6 +153,7 @@ struct Backend::Impl {
             for (unsigned i = 0; i < c.framesInFlight; ++i) {
                 auto& f = frames[i]; VkCommandPoolCreateInfo pool{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO}; pool.queueFamilyIndex = context.selected.queueFamily;
                 f.cachedDescriptors.reserve(maxDraws);
+                f.uniforms.resize(maxResources);
                 check(context.api.CreateCommandPool(context.device, &pool, nullptr, &f.pool), "create frame command pool");
                 VkCommandBufferAllocateInfo alloc{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO}; alloc.commandPool = f.pool; alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; alloc.commandBufferCount = 1;
                 check(context.api.AllocateCommandBuffers(context.device, &alloc, &f.cmd), "allocate frame command buffer");
@@ -216,13 +228,18 @@ struct Backend::Impl {
         if (bytes > arenaBytes || offset > arenaBytes - bytes) throw std::runtime_error("Bounded frame upload arena exhausted: request="+std::to_string(bytes)+" used="+std::to_string(frame->used)+" capacity="+std::to_string(arenaBytes));
         frame->used = offset + bytes; return offset;
     }
+    void endRendering() {
+        if(renderingColor){context.api.CmdEndRendering(frame->cmd);renderingColor={};renderingDepth={};}
+    }
     void barrier(Image& i, VkImageLayout layout) {
         if (i.layout == layout) {
-            // Same-layout render/sample transitions can still require a memory
-            // dependency. Keep explicit dependencies until packet batching can
-            // prove that a particular read/read transition is redundant.
             if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) return;
+            // Draws in one attachment scope retain native raster, depth and
+            // blend ordering. A scope change still requires a memory barrier.
+            if(renderingColor && ((layout==VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && &resources.get(renderingColor).image==&i) ||
+                (layout==VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && renderingDepth && &resources.get(renderingDepth).image==&i)))return;
         }
+        endRendering();
         VkImageMemoryBarrier2 b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
         b.srcStageMask = i.layout == VK_IMAGE_LAYOUT_UNDEFINED ? VK_PIPELINE_STAGE_2_NONE : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
         b.srcAccessMask = i.layout == VK_IMAGE_LAYOUT_UNDEFINED ? 0 : VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
@@ -451,17 +468,20 @@ void Backend::beginQuery(ResourceId id) {
     auto& i=*impl;i.requireFrame();auto& q=i.use(id).query;
     if(q.type!=QueryType::Occlusion||!q.pool||i.activeOcclusion) throw std::runtime_error("Invalid or nested stock occlusion query");
     q.selected=unsigned(i.nextSerial%3);auto& slice=q.slices[q.selected];if(slice.serial!=i.nextSerial) i.wait(slice.serial);slice={i.nextSerial,0};q.issued=false;
-    i.context.api.CmdResetQueryPool(i.frame->cmd,q.pool,q.selected*64,64);i.activeOcclusion=id;
+    i.endRendering();i.context.api.CmdResetQueryPool(i.frame->cmd,q.pool,q.selected*64,64);i.activeOcclusion=id;
 }
 void Backend::endQuery(ResourceId id) {
     auto& i=*impl;i.requireFrame();auto& q=i.use(id).query;
     if(q.type==QueryType::Occlusion) {if(i.activeOcclusion!=id) throw std::runtime_error("Unmatched stock occlusion query end");i.activeOcclusion={};}
     else {q.selected=unsigned(i.nextSerial%3);auto& slice=q.slices[q.selected];if(q.type!=QueryType::Event&&slice.serial!=i.nextSerial) i.wait(slice.serial);slice={i.nextSerial,1};
-        if(q.type==QueryType::Timestamp) {i.context.api.CmdResetQueryPool(i.frame->cmd,q.pool,q.selected*64,1);i.context.api.CmdWriteTimestamp2(i.frame->cmd,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,q.pool,q.selected*64);}}
+        if(q.type==QueryType::Timestamp) {i.endRendering();i.context.api.CmdResetQueryPool(i.frame->cmd,q.pool,q.selected*64,1);i.context.api.CmdWriteTimestamp2(i.frame->cmd,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,q.pool,q.selected*64);}}
     q.issued=true;
 }
 bool Backend::queryResult(ResourceId id,std::uint64_t& value) {
-    auto& i=*impl;i.assertOwner();auto& q=i.resources.get(id).query;if(!q.issued) return false;
+    impl->assertOwner();return pollQuerySerialized(id,value);
+}
+bool Backend::pollQuerySerialized(ResourceId id,std::uint64_t& value) {
+    auto& i=*impl;const auto& q=i.resources.get(id).query;if(!q.issued) return false;
     const auto& slice=q.slices[q.selected];std::uint64_t completed=0;check(i.context.api.GetSemaphoreCounterValue(i.context.device,i.timeline,&completed),"query GPU completion");if(completed<slice.serial) return false;
     if(q.type==QueryType::Event) {value=1;return true;}
     std::array<std::uint64_t,64> samples{};
@@ -511,6 +531,13 @@ ResourceId Backend::createImage(const ImageDesc& desc) {
         if(desc.format==ImageFormat::Alpha8) view.components={VK_COMPONENT_SWIZZLE_ZERO,VK_COMPONENT_SWIZZLE_ZERO,VK_COMPONENT_SWIZZLE_ZERO,VK_COMPONENT_SWIZZLE_R};
         check(i.context.api.CreateImageView(i.context.device, &view, nullptr, &image.view), "create stock image view");
         if(desc.sampled&&desc.format==ImageFormat::DepthStencil){view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;check(i.context.api.CreateImageView(i.context.device,&view,nullptr,&image.sampledView),"create sampled stock depth view");}
+        if(desc.sampled&&desc.format==ImageFormat::R32Float){
+            // D3D9 R32F sampling returns (r,1,1,1), unlike Vulkan's
+            // (r,0,0,1). Keep the attachment view unswizzled; only the sampled
+            // view supplies the defaults used by stock soft-particle shaders.
+            view.components={VK_COMPONENT_SWIZZLE_R,VK_COMPONENT_SWIZZLE_ONE,VK_COMPONENT_SWIZZLE_ONE,VK_COMPONENT_SWIZZLE_ONE};
+            check(i.context.api.CreateImageView(i.context.device,&view,nullptr,&image.sampledView),"create stock R32F sampled view");
+        }
     } catch (...) { i.destroy(r); i.resources.erase(id); throw; } return id;
 }
 void Backend::uploadImage(ResourceId id, unsigned level, unsigned layer, std::span<const std::byte> data) {
@@ -545,13 +572,13 @@ void Backend::beginFrame() {
         i.timing.gpuSerial=f.serial;
     }
     i.collect(); check(i.context.api.ResetCommandPool(i.context.device, f.pool, 0), "recycle completed command pool"); check(i.context.api.ResetDescriptorPool(i.context.device, f.descriptors, 0), "recycle completed descriptors");
-    f.used = 0; f.draws = 0; f.cachedDescriptors.clear(); ++i.nextSerial; i.timing.serial = i.nextSerial; i.recording = Clock::now();
+    f.used = 0; f.draws = 0; f.cachedDescriptors.clear();f.bindings={}; ++i.nextSerial; i.timing.serial = i.nextSerial; i.recording = Clock::now();
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     check(i.context.api.BeginCommandBuffer(f.cmd, &begin), "begin native frame"); i.context.api.CmdResetQueryPool(f.cmd, f.queries, 0, 2); i.context.api.CmdWriteTimestamp2(f.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, f.queries, 0);
 }
 void Backend::clear(ResourceId color, ResourceId depth, const std::array<float, 4>& rgba, float depthValue,
     unsigned stencilValue,bool clearDepth,bool clearStencil,std::span<const ClearRect> rectangles) {
-    auto& i = *impl; i.requireFrame();
+    auto& i = *impl; i.requireFrame();i.endRendering();
     if (!clearDepth&&!clearStencil) depth={};
     if (rectangles.size()>256) throw std::runtime_error("Bounded stock clear rectangle count exceeded");
     if(!rectangles.empty()) {
@@ -582,20 +609,32 @@ void Backend::clear(ResourceId color, ResourceId depth, const std::array<float, 
 }
 void Backend::draw(const DrawPacket& d) {
     auto& i = *impl; i.requireFrame(); if (i.frame->draws >= maxDraws) throw std::runtime_error("Bounded frame draw budget exhausted");
+    if(i.renderingColor && (i.renderingColor!=d.colorTarget || i.renderingDepth!=d.depthTarget))i.endRendering();
     auto& color = i.image(d.colorTarget); auto* depth = d.depthTarget ? &i.image(d.depthTarget) : nullptr;
     auto& vs = i.shader(d.vertexShader); auto& ps = i.shader(d.pixelShader);
     auto& pipeline = i.pipeline(d, color, depth);
     pipeline.lastUse=i.nextSerial;
     Frame::Descriptors* descriptors=nullptr;
-    for(auto& cached:i.frame->cachedDescriptors) if(cached.layout==pipeline.layout&&cached.textures==d.textures&&cached.samplers==d.samplers){descriptors=&cached;break;}
+    unsigned samplerMask=0;for(const auto* shader:{&vs,&ps})for(int n=0;n<shader->parsed->sampler_count;++n)samplerMask|=1u<<shader->parsed->samplers[n].index;
+    for(auto& cached:i.frame->cachedDescriptors) {
+        if(cached.vs!=d.vertexShader||cached.ps!=d.pixelShader)continue;
+        bool match=true;for(unsigned slot=0;slot<16;++slot)if(samplerMask&(1u<<slot))if(cached.textures[slot]!=d.textures[slot]||cached.samplers[slot]!=d.samplers[slot]){match=false;break;}
+        if(match){descriptors=&cached;break;}
+    }
     const bool writeDescriptors=!descriptors;
     if(writeDescriptors) {
         if(i.frame->cachedDescriptors.size()==maxDraws) throw std::runtime_error("Bounded frame descriptor cache exhausted");
-        i.frame->cachedDescriptors.push_back({pipeline.layout,d.textures,d.samplers,{}});descriptors=&i.frame->cachedDescriptors.back();
+        // Layouts for one shader pair are structurally identical across
+        // material pipelines. Ignore unused stock bindings and reuse their
+        // compatible sets instead of allocating four sets per state variant.
+        i.frame->cachedDescriptors.push_back({d.vertexShader,d.pixelShader,d.textures,d.samplers,{}});descriptors=&i.frame->cachedDescriptors.back();
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};alloc.descriptorPool=i.frame->descriptors;alloc.descriptorSetCount=4;alloc.pSetLayouts=pipeline.sets.data();
         check(i.context.api.AllocateDescriptorSets(i.context.device,&alloc,descriptors->sets.data()),"allocate bounded draw descriptors");
     }
     const auto& sets=descriptors->sets;
+    std::array<VkWriteDescriptorSet,34> writes{};unsigned writeCount=0,imageCount=0;
+    std::array<VkDescriptorImageInfo,32> images{};
+    std::array<VkDescriptorBufferInfo,2> buffers{};
     std::array<unsigned, 2> offsets{}; unsigned offsetCount = 0;
     for (unsigned stage = 0; stage < 2; ++stage) {
         const auto& shader = stage ? ps : vs;
@@ -605,18 +644,27 @@ void Backend::draw(const DrawPacket& d) {
             i.barrier(tex, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             if(writeDescriptors) {
                 if(d.samplers[slot].compare&&tex.desc.format!=ImageFormat::DepthStencil)throw std::runtime_error("Shadow comparison requires a depth texture");
-                VkDescriptorImageInfo image{i.sampler(d.samplers[slot]), tex.sampledView?tex.sampledView:tex.view, tex.layout};
-                VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; write.dstSet = sets[stage * 2]; write.dstBinding = slot; write.descriptorCount = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo = &image; i.context.api.UpdateDescriptorSets(i.context.device, 1, &write, 0, nullptr);
+                auto& image=images[imageCount++];image={i.sampler(d.samplers[slot]), tex.sampledView?tex.sampledView:tex.view, tex.layout};
+                auto& write=writes[writeCount++];write.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;write.dstSet=sets[stage*2];write.dstBinding=slot;write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
             }
         }
         if (shader.uniformBytes) {
             if (shader.uniformBytes > i.context.selected.properties.limits.maxUniformBufferRange) throw std::runtime_error("Stock uniforms exceed GPU range");
-            const auto offset = i.allocate(shader.uniformBytes, (std::max)(VkDeviceSize(16), i.context.selected.properties.limits.minUniformBufferOffsetAlignment));
-            shader.packUniforms(static_cast<std::byte*>(i.frame->arena.mapped) + offset, stage ? d.pixelConstants : d.vertexConstants, stage ? d.pixelIntegers : d.vertexIntegers, stage ? d.pixelBooleans : d.vertexBooleans);
+            const auto id=stage?d.pixelShader:d.vertexShader;
+            const auto floats=stage?d.pixelConstants:d.vertexConstants;const auto integers=stage?d.pixelIntegers:d.vertexIntegers,booleans=stage?d.pixelBooleans:d.vertexBooleans;
+            auto& cached=i.frame->uniforms[(id.value&65535u)-1];
+            const bool immutable=i.config.cacheBindings&&d.immutableConstants;
+            unsigned offset=cached.offset;
+            if(!immutable||cached.serial!=i.nextSerial||cached.shader!=id||cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size()){
+                offset=unsigned(i.allocate(shader.uniformBytes,(std::max)(VkDeviceSize(16),i.context.selected.properties.limits.minUniformBufferOffsetAlignment)));
+                shader.packUniforms(static_cast<std::byte*>(i.frame->arena.mapped)+offset,floats,integers,booleans);
+                cached={id,immutable?i.nextSerial:0,floats,integers,booleans,offset};
+            }
             offsets[offsetCount++] = unsigned(offset);
-            if(writeDescriptors) {VkDescriptorBufferInfo buffer{i.frame->arena.buffer, 0, shader.uniformBytes}; VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET}; write.dstSet = sets[stage * 2 + 1]; write.descriptorCount = 1; write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; write.pBufferInfo = &buffer; i.context.api.UpdateDescriptorSets(i.context.device, 1, &write, 0, nullptr);}
+            if(writeDescriptors) {auto& buffer=buffers[stage];buffer={i.frame->arena.buffer,0,shader.uniformBytes};auto& write=writes[writeCount++];write.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;write.dstSet=sets[stage*2+1];write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;write.pBufferInfo=&buffer;}
         }
     }
+    if(writeCount)i.context.api.UpdateDescriptorSets(i.context.device,writeCount,writes.data(),0,nullptr);
     i.barrier(color, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO}; attachment.imageView = color.view; attachment.imageLayout = color.layout; attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     VkRenderingAttachmentInfo ds{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
@@ -646,26 +694,31 @@ void Backend::draw(const DrawPacket& d) {
     if((std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth>indexResource.buffer.bytes)throw std::runtime_error("Invalid stock draw index range");
     const auto [indexBuffer,indexOffset]=i.geometry(d.indexBuffer);
     if(!indexResource.dynamicBytes.empty()){indexResource.readBegin=(std::min)(indexResource.readBegin,std::uint64_t(d.firstIndex)*indexWidth);indexResource.readEnd=(std::max)(indexResource.readEnd,(std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth);}
-    i.context.api.CmdBeginRendering(i.frame->cmd, &rendering);
+    if(!i.renderingColor){i.context.api.CmdBeginRendering(i.frame->cmd, &rendering);i.renderingColor=d.colorTarget;i.renderingDepth=d.depthTarget;}
     if(occlusion) i.context.api.CmdBeginQuery(i.frame->cmd,occlusion->pool,queryIndex,i.context.selected.features.occlusionQueryPrecise?VK_QUERY_CONTROL_PRECISE_BIT:0);
-    i.context.api.CmdBindPipeline(i.frame->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
-    if(d.state.stencil) i.context.api.CmdSetStencilReference(i.frame->cmd,VK_STENCIL_FACE_FRONT_AND_BACK,d.state.stencilRef);
-    if(d.state.alphaTest||i.shaderBias(d.state,pipeline.depth)) {const float state[]={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};i.context.api.CmdPushConstants(i.frame->cmd,pipeline.layout,VK_SHADER_STAGE_FRAGMENT_BIT,0,12,state);}
+    auto& bound=i.frame->bindings;
+    if(!i.config.cacheBindings)bound={};
+    if(bound.pipeline!=pipeline.pipeline){i.context.api.CmdBindPipeline(i.frame->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);bound.pipeline=pipeline.pipeline;}
+    if(d.state.stencil&&(!bound.stencilValid||bound.stencil!=d.state.stencilRef)){i.context.api.CmdSetStencilReference(i.frame->cmd,VK_STENCIL_FACE_FRONT_AND_BACK,d.state.stencilRef);bound.stencil=d.state.stencilRef;bound.stencilValid=true;}
+    if(d.state.alphaTest||i.shaderBias(d.state,pipeline.depth)) {const std::array<float,3> state={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};if(bound.push!=pipeline.layout||bound.constants!=state){i.context.api.CmdPushConstants(i.frame->cmd,pipeline.layout,VK_SHADER_STAGE_FRAGMENT_BIT,0,12,state.data());bound.push=pipeline.layout;bound.constants=state;}}
     // Vulkan's negative viewport keeps stock D3D clip-space Y orientation. The
     // half-pixel offset remains a parity gate before enabling this in the game.
-    VkViewport viewport{d.x + .5f, d.y + d.height + .5f, d.width, -d.height, d.minDepth, d.maxDepth}; i.context.api.CmdSetViewport(i.frame->cmd, 0, 1, &viewport);
+    VkViewport viewport{d.x + .5f, d.y + d.height + .5f, d.width, -d.height, d.minDepth, d.maxDepth};
+    if(!bound.viewportValid||std::memcmp(&bound.viewport,&viewport,sizeof(viewport))){i.context.api.CmdSetViewport(i.frame->cmd,0,1,&viewport);bound.viewport=viewport;bound.viewportValid=true;}
     VkRect2D scissor{{0,0},{color.desc.width,color.desc.height}};
     if(d.scissor) {
         const auto left=std::clamp(d.scissorX,0,int(color.desc.width)),top=std::clamp(d.scissorY,0,int(color.desc.height));
         const auto right=std::clamp(std::int64_t(d.scissorX)+d.scissorWidth,std::int64_t(left),std::int64_t(color.desc.width)),bottom=std::clamp(std::int64_t(d.scissorY)+d.scissorHeight,std::int64_t(top),std::int64_t(color.desc.height));
         scissor={{left,top},{unsigned(right-left),unsigned(bottom-top)}};
     }
-    i.context.api.CmdSetScissor(i.frame->cmd,0,1,&scissor);
-    i.context.api.CmdBindDescriptorSets(i.frame->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.layout, 0, 4, sets.data(), offsetCount, offsets.data());
-    for(unsigned s=0;s<16;++s)if(vertexBuffers[s])i.context.api.CmdBindVertexBuffers(i.frame->cmd,s,1,&vertexBuffers[s],&vertexOffsets[s]);
-    i.context.api.CmdBindIndexBuffer(i.frame->cmd,indexBuffer,indexOffset,d.index32?VK_INDEX_TYPE_UINT32:VK_INDEX_TYPE_UINT16);i.context.api.CmdDrawIndexed(i.frame->cmd,d.indexCount,1,d.firstIndex,d.vertexBase,0);
+    if(!bound.scissorValid||std::memcmp(&bound.scissor,&scissor,sizeof(scissor))){i.context.api.CmdSetScissor(i.frame->cmd,0,1,&scissor);bound.scissor=scissor;bound.scissorValid=true;}
+    if(bound.descriptors!=pipeline.layout||bound.sets!=sets||bound.offsetCount!=offsetCount||bound.offsets!=offsets){i.context.api.CmdBindDescriptorSets(i.frame->cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline.layout,0,4,sets.data(),offsetCount,offsets.data());bound.descriptors=pipeline.layout;bound.sets=sets;bound.offsetCount=offsetCount;bound.offsets=offsets;}
+    for(unsigned s=0;s<16;++s)if(vertexBuffers[s]&&(bound.vertices[s]!=vertexBuffers[s]||bound.vertexOffsets[s]!=vertexOffsets[s])){i.context.api.CmdBindVertexBuffers(i.frame->cmd,s,1,&vertexBuffers[s],&vertexOffsets[s]);bound.vertices[s]=vertexBuffers[s];bound.vertexOffsets[s]=vertexOffsets[s];}
+    const auto indexType=d.index32?VK_INDEX_TYPE_UINT32:VK_INDEX_TYPE_UINT16;
+    if(bound.index!=indexBuffer||bound.indexOffset!=indexOffset||bound.indexType!=indexType){i.context.api.CmdBindIndexBuffer(i.frame->cmd,indexBuffer,indexOffset,indexType);bound.index=indexBuffer;bound.indexOffset=indexOffset;bound.indexType=indexType;}
+    i.context.api.CmdDrawIndexed(i.frame->cmd,d.indexCount,1,d.firstIndex,d.vertexBase,0);
     if(occlusion) i.context.api.CmdEndQuery(i.frame->cmd,occlusion->pool,queryIndex);
-    i.context.api.CmdEndRendering(i.frame->cmd); ++i.frame->draws;
+    ++i.frame->draws;
 }
 void Backend::warm(const DrawPacket& d) {
     auto& i=*impl;i.assertOwner();if(i.frame) throw std::runtime_error("Pipeline warmup must run outside gameplay frame recording");
@@ -695,6 +748,7 @@ void Backend::blit(ResourceId source,ResourceId destination,bool linear,const Cl
 FrameTiming Backend::endFrame(ResourceId source) {
     auto& i = *impl; i.requireFrame(); auto& f = *i.frame;
     if(i.activeOcclusion) throw std::runtime_error("Stock occlusion query spans a submission boundary");
+    i.endRendering();
     bool present = false; unsigned index = 0;
     const auto swapStart=Clock::now();const bool ready=source&&i.ensureSwapchain();i.timing.swapchainMs=elapsed(swapStart);
     if (ready) {
@@ -753,7 +807,7 @@ void Backend::cancelFrame() noexcept {
     auto& i=*impl;i.recordingFailed=true;
     if(i.frame&&i.owner==std::this_thread::get_id()){
         if(i.frame->serial!=i.nextSerial)i.context.api.ResetCommandPool(i.context.device,i.frame->pool,0);
-        i.frame=nullptr;i.activeOcclusion={};
+        i.frame=nullptr;i.activeOcclusion={};i.renderingColor={};i.renderingDepth={};
     }
 }
 }

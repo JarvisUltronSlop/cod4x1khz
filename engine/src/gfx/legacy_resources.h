@@ -24,7 +24,7 @@ template<class F> HRESULT checked(F&& action) noexcept {
     try { action();return S_OK;} catch(const std::exception& e) {return unsupported(e.what());} catch(...) {return unsupported("Unknown native graphics failure");}
 }
 struct Storage : std::enable_shared_from_this<Storage> {
-    std::shared_ptr<Host> host;ResourceId id;
+    std::shared_ptr<Host> host;ResourceId id;std::string debugName;
     explicit Storage(std::shared_ptr<Host> h,ResourceId r):host(std::move(h)),id(r){}
     virtual ~Storage(){if(id) host->release(id);}
 };

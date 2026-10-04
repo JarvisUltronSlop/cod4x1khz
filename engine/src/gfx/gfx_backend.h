@@ -63,6 +63,9 @@ struct DrawPacket {
     std::span<const VertexElement> elements;
     std::span<const float> vertexConstants, pixelConstants;
     std::span<const int> vertexIntegers, pixelIntegers, vertexBooleans, pixelBooleans;
+    // Opt-in only for versioned packet storage that cannot change until the
+    // current recording ends. Ordinary callers may mutate spans between draws.
+    bool immutableConstants=false;
     MaterialState state;
     unsigned indexCount = 0, firstIndex = 0; int vertexBase = 0;
     unsigned vertexFirst=0,vertexCount=0;
@@ -79,6 +82,8 @@ struct FrameTiming {
 struct Config {
     void* window = nullptr; int device = -1; unsigned framesInFlight = 2;
     bool validation = false, vsync = false;
+    bool compareD3D9 = false; // isolated immutable-packet visual diagnostic
+    bool cacheBindings = true; // development A/B control
     std::string cacheDirectory;
 };
 struct ClearRect { int left=0,top=0,right=0,bottom=0; };

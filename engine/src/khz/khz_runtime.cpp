@@ -1,5 +1,8 @@
 #ifdef COD4X1KHZ
 #include <khz/khz_render_profile.h>
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && !defined(KISAK_DEDICATED)
+#include <gfx/legacy_factory.h>
+#endif
 #endif
 
 #if defined(COD4X1KHZ) && defined(KISAK_MP) && defined(KISAK_DEDICATED)
@@ -249,6 +252,10 @@ const char* KHZ_StatsJSON() {
         KHZ_ServerMetricsJSON(), KHZ_BotStatsJSON(), KHZ_HostStatusJSON(), KHZ_UIStatusJSON(), KHZ_ClientOwnerStatusJSON(), KHZ_PluginStatsJSON(),
         KHZ_ContentServerStatsJSON(), KHZ_ServicesClientStatusJSON(), KHZ_UpdateClientStatusJSON(),
         KHZ_ScreenshotClientStatsJSON(), KHZ_ScreenshotServerStatsJSON());
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && !defined(KISAK_DEDICATED)
+    used=std::strlen(result);
+    if(used && used+1024<sizeof(result))std::snprintf(result+used-1,sizeof(result)-used+1,",\"native_graphics\":%s}",gfx::legacy::frameTelemetry());
+#endif
     return result;
 }
 const char* KHZ_LogName() {

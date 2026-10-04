@@ -8,4 +8,8 @@ namespace gfx::legacy {
 IDirect3D9* createVulkanInterface(const gfx::Config& config);
 const char* lastError();
 unsigned validationErrors(IDirect3DDevice9* device);
+// Atomic counters published by the submission owner; reading cannot wait for
+// recording, presentation, or a device lifetime barrier.
+const char* frameTelemetry();
+void nameResource(IUnknown* resource,const char* name);
 }

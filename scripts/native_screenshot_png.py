@@ -2,6 +2,18 @@
 import struct
 import zlib
 
+def convert_bgra(width, height, data):
+    if not 1 <= width <= 4096 or not 1 <= height <= 2160 or len(data) != width*height*4:
+        raise ValueError('Native BGRA dimensions/bytes exceed bound')
+    header = bytearray(18)
+    header[2] = 2
+    struct.pack_into('<HH', header, 12, width, height)
+    header[16], header[17] = 24, 0x20
+    bgr = bytearray(width*height*3)
+    for channel in range(3):
+        bgr[channel::3] = data[channel::4]
+    return convert(header+bgr)
+
 def convert(data):
     if len(data) < 18 or data[1] or data[2] != 2 or data[16] != 24 or data[17] & 0x10:
         raise ValueError('Expected native uncompressed 24-bit TGA')

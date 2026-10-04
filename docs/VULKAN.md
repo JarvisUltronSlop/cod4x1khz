@@ -31,7 +31,8 @@ changes do not establish that all gameplay or public CoD4x acceptance gates pass
   depth/stencil, separate and partial clears, texture swizzles, MSAA resolve,
   dynamic geometry lifetimes, queries, presentation gamma, copies, scaled
   blits, normalized depth bias and hardware shadow comparisons (including
-  projection and filtered edges). Latest **78 matched image pairs** have SSIM
+  projection and filtered edges), R32F channel defaults, packed particle
+  inputs and divergent alpha-discard/slope-bias interaction. Latest **102 matched image pairs** have SSIM
   **1.0**, zero differing color channels and zero
   validation/synchronization errors on the RX 9070 XT.
 - An actual stock-interface GPU regression exercises native resource locks,
@@ -52,6 +53,23 @@ changes do not establish that all gameplay or public CoD4x acceptance gates pass
   fragment-shader fallback. Positive/negative bias, slope, alpha testing and
   explicit pixel-depth overrides match DX9 fixtures; its performance still
   needs profiling.
+- Consecutive draws retain attachment scopes, pin each resource generation once
+  per batch, capture only changed register blocks, reuse compatible descriptors
+  and omit redundant Vulkan binding commands. Immutable constant reuse is
+  opt-in for versioned packet storage; ordinary span callers remain mutable.
+- Read-only GPU query polling uses the facade's lifetime/submission mutex and
+  does not transfer submission ownership or wait for unrelated work. Resource
+  mutations and submissions retain their acknowledged owner barriers.
+- The loaded-world particle defect was traced to slope derivatives evaluated
+  after divergent `texkill`. A GPU checker-mask regression failed before the
+  fix (178 maximum channel error) and passes afterward. Rasterizer bias is now
+  calculated in the entry block before discard. This follows the derivative
+  requirements in the [SPIR-V specification](https://registry.khronos.org/SPIR-V/specs/unified1/SPIRV.html).
+- Exact stock resource/draw mirroring into an offscreen DX9 reference produced
+  SSIM **0.99998268** on Killhouse at 480p and **0.99998420** on Crash at 720p.
+  Captures are under `results/vulkan-world-20261004-044755` and
+  `results/vulkan-world-20261004-045038`. Remaining differences were small edge
+  and rounding differences; this does not qualify other maps/effects/options.
 
 Archived settings are `r_graphicsApi auto|vulkan|d3d9`, `r_vkDevice -1` or an
 explicit device index, and `r_vkFramesInFlight 1|2` (default 2). `auto` selects DX9
@@ -59,6 +77,9 @@ until correctness and matched performance gates pass. `com_maxfps 0` remains
 uncapped, `com_maxfps 1000` caps rendering, and `r_vsync` retains its stock role.
 `r_vkValidation` is a development diagnostic. Unsupported operations report
 explicit errors; they are not accepted as implemented features.
+`r_vkCompare` is an isolated benchmark-only image comparison, with substantial
+overhead. `r_vkStateCache` is a development A/B control, not an archived stock
+setting. Disable validation and comparison for throughput measurements.
 
 ## Development builds and diagnostics
 
@@ -71,6 +92,9 @@ cmake -S . -B build/Release -G 'Visual Studio 17 2022' -A Win32 `
   -DCOD4X1KHZ_BUILD_ENGINE=ON -DCOD4X1KHZ_BUILD_VULKAN=ON
 cmake --build build/Release --config Release --target KisakCOD-mp khz_launch_probe --parallel 5
 python ./scripts/native_vulkan_startup_probe.py
+python ./scripts/native_vulkan_world_probe.py --no-validation --compare --capture --samples 2 --map mp_crash --resolution 720p
+python ./scripts/compare_native_world.py ./results/vulkan-world-<capture-id>
+python ./scripts/native_render_scene_probe.py --experimental --api vulkan --map mp_killhouse --resolution 480p --timing-seconds 60
 ```
 
 Explicit engine targets build `bin/Release/cod4x1khz.exe` without deploying it over
@@ -88,16 +112,39 @@ without missing geometry or effects; fixture parity cannot substitute for it.
 Earlier match-start failures exposed idle event-query behavior, dynamic upload
 capacity, dirty volume transfers, depth bias and shadow image-view/comparison
 requirements. Their diagnostic results remain private under `results/`.
-The latest loaded-world diagnostic, `results/vulkan-world-20261004-030221`,
+The earlier loaded-world diagnostic, `results/vulkan-world-20261004-030221`,
 reached an active Killhouse client and an authenticated owned server with one
 human and 15 bots. Three subsequent samples show a running independent
 prediction owner with no queue failures or growing debt. A later telemetry
 request timed out, so the complete diagnostic remains **failed**. Leave and
 Quit completed normally and restored the accepted client and preferences.
 Validation-enabled rendering was very slow in this short diagnostic; this is
-neither performance acceptance nor evidence of stock visual parity.
+neither performance acceptance nor evidence of stock visual parity. Subsequent
+owned diagnostics completed normally, with unchanged interactive preferences
+and restored runtime binaries. `results/vulkan-world-20261004-043327` reported
+zero Vulkan validation errors in an active stock match; the later slope-bias
+fix and caches also pass the GPU validation suite.
 
 No Vulkan Killhouse/Crash FPS or 60-second gameplay results have been accepted.
+Short, camera-checked uncapped Killhouse measurements rose from about 59 FPS
+before scope batching to 127 FPS after batching, about 199 FPS after packet
+capture changes, and 263--272 FPS after binding/constant reuse and query polling.
+These are diagnostic progress measurements, not alternating warmed acceptance.
+The latest short run (`results/vulkan-world-20261004-050223`) recorded about
+1.68 ms of Vulkan recording, 0.35 ms of GPU work, 0.42 ms of resource recycling
+and 0.09 ms of owner-handoff wait per displayed frame. CPU recording and frontend
+work remain bottlenecks; GPU occupancy cannot be improved by removing FPS caps
+alone. Frame p50/p95/p99 profiling and parallel recording remain open.
+
+The 60-second walking run
+`results/native-render-scene86-mp_killhouse-480p-20261004-050742-966300`
+held server ticks at 1000.005 Hz, prediction/commands at 999.972 Hz, snapshots
+at 1000.022 Hz and all 15 bot control rates at 1000.005 Hz. Server work p99 was
+985 us, with zero ending server/client debt. Its camera left the checked corridor
+around 30 seconds; the complete benchmark therefore **failed**. All intervals
+and CPU/GPU/memory observations are retained. Its 262 FPS average is not an
+accepted scene result. Do not loosen the camera gate or discard those intervals.
+
 Fresh camera-checked DX9 comparisons are under `results/native-render-scene86-*`:
 about 569 FPS uncapped on Killhouse at 480p, and 501 FPS on Crash at 720p. These
 are short baselines, not full timing acceptance. Alternating warmed runs, 1 kHz

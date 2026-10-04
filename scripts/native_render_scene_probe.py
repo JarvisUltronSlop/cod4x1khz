@@ -16,6 +16,7 @@ import statistics
 import subprocess
 import sys
 import time
+import shutil
 
 from native_checkpoint_capture_probe import ManagedHostFixture
 from native_fov_probe import interactive_preferences, wait_recovery
@@ -203,23 +204,37 @@ def main():
     p.add_argument('--map', choices=('mp_killhouse', 'mp_crash'), default='mp_killhouse')
     p.add_argument('--resolution', choices=('480p', '720p'), default='480p')
     p.add_argument('--client-port', type=int, default=28995)
+    p.add_argument('--experimental', action='store_true', help='Temporarily stage the project-local development client and restore the accepted runtime binary')
+    p.add_argument('--api', choices=('d3d9','vulkan'), default='d3d9')
+    p.add_argument('--state-cache', action=argparse.BooleanOptionalAction, default=True)
     p.add_argument('--timing-seconds', type=int, choices=(0, 60), default=0,
                    help='60 runs one strict 0.1%% uncapped walking timing gate; default runs the short cap stages')
     a = p.parse_args(); root = Path(__file__).resolve().parent.parent
+    if a.api=='vulkan' and not a.experimental:
+        p.error('The accepted DX9 binary cannot run the experimental Vulkan backend; use --experimental')
     archive = root / f'results/build{a.build}-source-and-binary-hashes.json'
     record = json.loads(archive.read_text(encoding='utf-8-sig'))
     names = ('cod4x1khz.exe', 'runtime/cod4x1khz_server.exe')
     if any(hashlib.sha256((root / n).read_bytes()).hexdigest() != record['binary_sha256'][n] for n in names):
         raise ValueError('Native binaries differ from selected exact build')
-    out = root / 'results' / (f'native-render-scene{a.build}-{a.map}-{a.resolution}-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f'))
-    out.mkdir(); f = ManagedHostFixture(root, out, a.client_port, budget=180, resolution=a.resolution)
+    prefix=f'native-render-development-{a.api}' if a.experimental else f'native-render-scene{a.build}'
+    out = root / 'results' / (f'{prefix}-{a.map}-{a.resolution}-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f'))
+    out.mkdir()
+    runtime=root/'runtime/cod4x1khz.exe'; source=root/'bin/Release/cod4x1khz.exe'; preserved=out/'preserved-runtime-client.exe'
+    tested_hash=hashlib.sha256(source.read_bytes()).hexdigest() if a.experimental else record['binary_sha256'][names[0]]
+    if a.experimental:shutil.copy2(runtime,preserved)
+    f = ManagedHostFixture(root, out, a.client_port, budget=180, resolution=a.resolution,
+        client_binary=runtime if a.experimental else None,
+        client_settings={'r_graphicsApi':a.api,'r_vkValidation':0,'r_vkCompare':0,'r_vkStateCache':int(a.state_cache)} if a.experimental else None)
+    if a.experimental:f.report['binary_sha256']['client']=tested_hash
     prefs = interactive_preferences(root); observer = None
     f.report.update(map=a.map, resolution=a.resolution, build_archive_sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
         scene_probe_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         render_cap_probe_sha256=hashlib.sha256((root / 'scripts/render_cap_probe.py').read_bytes()).hexdigest(),
         timing_seconds=a.timing_seconds, rate_tolerance_hz=1 if a.timing_seconds else 2,
-        scope=__doc__, stages=[], full_world_replay_verified=False)
+        scope=__doc__, stages=[], full_world_replay_verified=False, experimental=a.experimental, api=a.api,state_cache_enabled=a.state_cache)
     try:
+        if a.experimental:shutil.copy2(source,runtime)
         f.start()
         if a.map != 'mp_killhouse':
             before = f.sample(); f.call('khz_ui server map ' + a.map)
@@ -283,6 +298,10 @@ def main():
         if observer and observer.poll() is None:
             observer.terminate(); observer.wait(timeout=5)
         f.report['interactive_preferences_unchanged'] = prefs == interactive_preferences(root)
+        if a.experimental:
+            if hashlib.sha256(runtime.read_bytes()).hexdigest()==tested_hash:shutil.copy2(preserved,runtime)
+            f.report['runtime_restored']=runtime.read_bytes()==preserved.read_bytes()
+            f.report['passed'] &= f.report['runtime_restored']
         f.report['binary_provenance_pass'] = all(hashlib.sha256((root / n).read_bytes()).hexdigest() == record['binary_sha256'][n] for n in names)
         f.report['passed'] &= not f.report['errors'] and f.report['interactive_preferences_unchanged'] and f.report['binary_provenance_pass'] and f.report['cleanup']['created_client_returncode'] == 0 and f.report['cleanup']['exact_owned_server_exited']
         (out / 'result.json').write_text(json.dumps(f.report, indent=2) + '\n')

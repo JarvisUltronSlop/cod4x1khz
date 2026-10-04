@@ -17,6 +17,9 @@ public:
     void beginQuery(ResourceId) override;
     void endQuery(ResourceId) override;
     bool queryResult(ResourceId,std::uint64_t&) override;
+    // Read-only host polling under the facade's lifetime/submission mutex.
+    // This does not transfer submission ownership or wait for unrelated work.
+    bool pollQuerySerialized(ResourceId,std::uint64_t&);
     void release(ResourceId) override;
     void beginFrame() override;
     void clear(ResourceId color, ResourceId depth, const std::array<float, 4>& rgba, float depthValue,

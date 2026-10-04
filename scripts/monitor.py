@@ -17,6 +17,7 @@ def query(port, command, marker="KHZ_JSON", timeout=1.2):
     until = time.monotonic() + timeout
     marker_bytes = (marker + " ").encode("ascii")
     accumulated = bytearray()
+    datagrams = 0
     decoder = json.JSONDecoder()
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(timeout)
@@ -32,6 +33,7 @@ def query(port, command, marker="KHZ_JSON", timeout=1.2):
                 break
             if sender != ("127.0.0.1", port):
                 continue
+            datagrams += 1
             # SV_FlushRedirect splits its output into independent print packets.
             # Strip each packet's framing before joining the diagnostic stream.
             if data.startswith(b"\xff" * 4):
@@ -50,7 +52,8 @@ def query(port, command, marker="KHZ_JSON", timeout=1.2):
             except json.JSONDecodeError:
                 # Both the marker and JSON body may cross packet boundaries.
                 continue
-    raise TimeoutError(f"No complete {marker} reply from {port} within {timeout:g} seconds")
+    raise TimeoutError(f"No complete {marker} reply from {port} within {timeout:g} seconds "
+                       f"(datagrams={datagrams}, bytes={len(accumulated)}, marker_found={marker_bytes in accumulated})")
 
 
 def independent_owner_path(samples):

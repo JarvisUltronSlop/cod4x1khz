@@ -1,4 +1,7 @@
 #include <universal/q_shared.h>
+#ifdef COD4X1KHZ
+#include <khz/khz_shader_inventory.h>
+#endif
 #include <universal/surfaceflags.h>
 #include "r_material.h"
 #include "r_init.h"
@@ -288,6 +291,9 @@ uint8_t *__cdecl Material_Alloc(uint32_t size)
 
 void __cdecl Load_CreateMaterialPixelShader(GfxPixelShaderLoadDef *loadDef, MaterialPixelShader *mtlShader)
 {
+#ifdef COD4X1KHZ
+    KHZ_CaptureStockShader(mtlShader->name,static_cast<const uint32_t*>(loadDef->program),loadDef->programSize,loadDef->loadForRenderer,"pixel");
+#endif
     iassert( loadDef == &mtlShader->prog.loadDef );
     if (r_loadForRenderer->current.enabled && loadDef->loadForRenderer == r_rendererInUse->current.integer)
     {
@@ -303,6 +309,9 @@ void __cdecl Load_CreateMaterialPixelShader(GfxPixelShaderLoadDef *loadDef, Mate
 
 void __cdecl Load_CreateMaterialVertexShader(GfxVertexShaderLoadDef *loadDef, MaterialVertexShader *mtlShader)
 {
+#ifdef COD4X1KHZ
+    KHZ_CaptureStockShader(mtlShader->name,static_cast<const uint32_t*>(loadDef->program),loadDef->programSize,loadDef->loadForRenderer,"vertex");
+#endif
     iassert( loadDef == &mtlShader->prog.loadDef );
     if (r_loadForRenderer->current.enabled && loadDef->loadForRenderer == r_rendererInUse->current.integer)
     {

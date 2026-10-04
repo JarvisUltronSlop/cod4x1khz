@@ -1,5 +1,8 @@
 #include <universal/q_shared.h>
 #include "database.h"
+#if defined(COD4X1KHZ) && !defined(KISAK_DEDICATED)
+#include <khz/khz_shader_inventory.h>
+#endif
 
 #include <xanim/xanim.h>
 #include <xanim/xmodel.h>
@@ -2419,6 +2422,9 @@ void __cdecl Load_MaterialPass(bool atStreamStart)
             1,
             varMaterialPass->stableArgCount + varMaterialPass->perObjArgCount + varMaterialPass->perPrimArgCount);
     }
+#if defined(COD4X1KHZ) && !defined(KISAK_DEDICATED)
+    KHZ_CaptureStockPass(varMaterialPass);
+#endif
 }
 
 void __cdecl Load_MaterialPassArray(bool atStreamStart, int32_t count)

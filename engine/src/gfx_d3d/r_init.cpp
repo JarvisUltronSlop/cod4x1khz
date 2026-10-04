@@ -1,5 +1,8 @@
 #ifdef COD4X1KHZ
 #include <khz/khz_render_profile.h>
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+#include <gfx/legacy_factory.h>
+#endif
 #endif
 #include <universal/q_shared.h>
 #include "r_init.h"
@@ -2755,6 +2758,9 @@ void __cdecl  R_FatalLockError(HRESULT hr)
 
 const char *__cdecl R_ErrorDescription(HRESULT hr)
 {
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    if(hr==E_NOTIMPL&&*gfx::legacy::lastError())return gfx::legacy::lastError();
+#endif
     return DXGetErrorDescription9A(hr);
 }
 
@@ -3204,8 +3210,17 @@ char __cdecl R_PreCreateWindow()
     }
     else
     {
-        Com_Printf(CON_CHANNEL_GFX, "Getting Direct3D 9 interface...\n");
-        dx.d3d9 = Direct3DCreate9(0x20u);
+        Com_Printf(CON_CHANNEL_GFX, "Getting graphics interface...\n");
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+        if(r_graphicsApi->current.integer==1) {
+            gfx::Config config;config.device=r_vkDevice->current.integer;config.framesInFlight=r_vkFramesInFlight->current.integer;
+            config.cacheDirectory=std::string(Dvar_GetString("fs_homepath"))+"/vulkan/cache";
+            config.validation=Dvar_GetBool("r_vkValidation");
+            dx.d3d9=gfx::legacy::createVulkanInterface(config);
+            Com_Printf(CON_CHANNEL_GFX,"Native Vulkan selected (experimental)\n");
+        } else
+#endif
+            dx.d3d9 = Direct3DCreate9(0x20u);
         if (!dx.d3d9)
         {
             Com_Printf(CON_CHANNEL_GFX, "Direct3D 9 failed to initialize\n");

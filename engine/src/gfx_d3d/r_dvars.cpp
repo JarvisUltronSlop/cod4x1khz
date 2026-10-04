@@ -5,6 +5,11 @@
 #include <qcommon/qcommon.h>
 #include "r_material.h"
 #include "r_sky.h"
+#ifdef COD4X1KHZ
+const dvar_t *r_graphicsApi;
+const dvar_t *r_vkDevice;
+const dvar_t *r_vkFramesInFlight;
+#endif
 
  //const dvar_t **prof_probe;
  const dvar_t *prof_probe[5];
@@ -1466,6 +1471,14 @@
          2,
          DVAR_ARCHIVE | DVAR_LATCH,
          "Preferred renderer; unsupported renderers will never be used.");
+#ifdef COD4X1KHZ
+     static const char* graphicsApis[]={"auto","vulkan","d3d9",nullptr};
+     r_graphicsApi=Dvar_RegisterEnum("r_graphicsApi",graphicsApis,0,DVAR_ARCHIVE|DVAR_LATCH,"Graphics backend; auto retains DX9 until Vulkan acceptance gates pass");
+     r_vkDevice=Dvar_RegisterInt("r_vkDevice",-1,(DvarLimits)0x7FFFFFFFFFFFFFFFLL,DVAR_ARCHIVE|DVAR_LATCH,"Native Vulkan GPU index; -1 selects the highest-ranked compatible GPU");
+     r_vkFramesInFlight=Dvar_RegisterInt("r_vkFramesInFlight",2,(DvarLimits)0x200000001LL,DVAR_ARCHIVE|DVAR_LATCH,"Native Vulkan frames in flight (1 or 2)");
+     Dvar_RegisterBool("r_vkValidation",false,DVAR_NOFLAG,"Enable project-local Vulkan GPU and synchronization validation for development");
+     Dvar_RegisterBool("r_vkShaderInventory",false,DVAR_NOFLAG,"Capture stock shader bytecode during zone loading in this profile's private home");
+#endif
      r_rendererInUse = Dvar_RegisterEnum("r_rendererInUse", s_rendererNames, 2, DVAR_ROM, "The renderer currently used");
      r_aspectRatio = Dvar_RegisterEnum(
          "r_aspectRatio",

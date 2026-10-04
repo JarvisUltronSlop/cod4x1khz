@@ -4,8 +4,8 @@ $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot 'results') | Out-Null
 $buildRoot = Join-Path $PSScriptRoot "build/$Configuration"
 $buildOptions = @('-S', $PSScriptRoot, '-B', $buildRoot, '-G', 'Visual Studio 17 2022', '-A', 'Win32', "-DCMAKE_BUILD_TYPE=$Configuration")
-if ($CoreOnly) { $buildOptions += '-DCOD4X1KHZ_BUILD_ENGINE=OFF' }
-else { $buildOptions += '-DCOD4X1KHZ_BUILD_ENGINE=ON' }
+if ($CoreOnly) { $buildOptions += @('-DCOD4X1KHZ_BUILD_ENGINE=OFF','-DCOD4X1KHZ_BUILD_VULKAN=OFF') }
+else { $buildOptions += @('-DCOD4X1KHZ_BUILD_ENGINE=ON','-DCOD4X1KHZ_BUILD_VULKAN=ON') }
 if ($Instrument) { $buildOptions += '-DCOD4X1KHZ_INSTRUMENT=ON' }
 else { $buildOptions += '-DCOD4X1KHZ_INSTRUMENT=OFF' }
 if (!$CoreOnly) { & (Join-Path $PSScriptRoot 'scripts/package-bots.ps1') }
@@ -23,7 +23,7 @@ $targets += 'khz_host_checkpoint_policy_tests'
 $targets += 'khz_huffman_native_tests'
 $targets += @('khz_msg_bits_native_tests', 'khz_park_wait_tests', 'khz_steam_identity_format_tests')
 $targets += 'khz_archive_history_tests'
-if (!$CoreOnly) { $targets += 'khz_runtime' }
+if (!$CoreOnly) { $targets += @('khz_runtime','khz_vulkan_probe','khz_vulkan_shader_inventory','khz_vulkan_shader_link','khz_vulkan_shader_tests','khz_vulkan_backend') }
 & cmake --build $buildRoot --config $Configuration --target @targets --parallel 8
 if ($LASTEXITCODE) { throw 'Build failed' }
 & ctest --test-dir $buildRoot -C $Configuration --output-on-failure

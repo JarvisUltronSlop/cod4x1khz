@@ -41,3 +41,4 @@ foreach ($dependency in @('mss32.dll','D3DX9_43.dll','binkw32.dll','steam_api.dl
     Copy-Item -LiteralPath (Join-Path $runtimeRoot $dependency) -Destination $projectRoot -Force
 }
 Write-Output "Runtime prepared at $runtimeRoot"
+& (Join-Path $projectRoot 'scripts/prepare-vulkan.ps1')

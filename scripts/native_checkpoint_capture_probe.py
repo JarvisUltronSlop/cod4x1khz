@@ -332,13 +332,15 @@ def leave_frontend_complete(stats, state, ui, child_exited):
 
 class ManagedHostFixture:
     """Own one fresh benchmark client and retain the exact spawned server handle."""
-    def __init__(self, project, output, port, profile=False, budget=90, retain_all_records=False, resolution="480p", fullscreen=False):
+    def __init__(self, project, output, port, profile=False, budget=90, retain_all_records=False, resolution="480p", fullscreen=False,
+                 client_binary=None, client_settings=None):
         if resolution not in ("480p", "720p"):
             raise ValueError("Native fixture resolution must be 480p or 720p")
         self.project, self.output, self.port = project, output, port
         self.resolution = resolution
         self.fullscreen = bool(fullscreen)
-        self.binary, self.server_binary = project / "cod4x1khz.exe", project / "runtime/cod4x1khz_server.exe"
+        self.binary, self.server_binary = client_binary or project / "cod4x1khz.exe", project / "runtime/cod4x1khz_server.exe"
+        self.client_settings = dict(client_settings or {})
         self.home = (project / "runtime/benchmarks" / f"client-{port}").resolve()
         if self.home.parent != (project / "runtime/benchmarks").resolve() or self.home.is_symlink():
             raise ValueError("Fixture home must be a direct non-symlink benchmark child")
@@ -477,6 +479,8 @@ class ManagedHostFixture:
         arguments += ["+set", "com_maxfps", "0", "+set", "r_vsync", "0", "+setqport", str(self.port)]
         arguments += ["+set", "developer", "1" if self.profile else "0",
                       "+set", "khz_profile_scripts", "1" if self.profile else "0"]
+        for name, value in self.client_settings.items():
+            arguments += ["+set", name, str(value)]
         self.report["launch"] = {"arguments": arguments, "cwd": r"C:\Windows\Temp", "auto_connect": False}
         self.client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp")
         self.report["owned_client_pid"] = self.client.pid

@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.25)
+project(khz_validation LANGUAGES C CXX)
+get_filename_component(KHZ_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+set(KHZ_DEPS "${KHZ_ROOT}/.deps/vulkan")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
+set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
+set(SPIRV_WERROR OFF CACHE BOOL "" FORCE)
+set(ENABLE_SPIRV_TOOLS_INSTALL OFF CACHE BOOL "" FORCE)
+set(SPIRV-Headers_SOURCE_DIR "${KHZ_DEPS}/validation-spirv-headers")
+set(USE_ROBIN_HOOD_HASHING ON CACHE BOOL "" FORCE)
+set(RH_STANDALONE_PROJECT OFF CACHE BOOL "" FORCE)
+add_subdirectory("${KHZ_DEPS}/headers" headers)
+add_subdirectory("${KHZ_DEPS}/validation-spirv-headers" spirv-headers)
+add_subdirectory("${KHZ_DEPS}/validation-spirv-tools" spirv-tools)
+add_subdirectory("${KHZ_DEPS}/utility" utility)
+add_subdirectory("${KHZ_DEPS}/robin-hood" robin-hood)
+add_subdirectory("${KHZ_DEPS}/validation" validation)
+set_target_properties(vvl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${KHZ_DEPS}/layers"
+  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${KHZ_DEPS}/layers/Release"
+  LIBRARY_OUTPUT_DIRECTORY "${KHZ_DEPS}/layers"
+  LIBRARY_OUTPUT_DIRECTORY_RELEASE "${KHZ_DEPS}/layers/Release")
+add_custom_target(khz_vulkan_validation DEPENDS vvl)

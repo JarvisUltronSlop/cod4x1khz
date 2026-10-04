@@ -1,7 +1,96 @@
 {
-  "KisakCOD": {"url": "https://github.com/SwagSoftware/KisakCOD.git", "commit": "8aadf94cc82795d6829ca06052996a5ec79001c3"},
-  "CoD4x_Server": {"url": "https://github.com/callofduty4x/CoD4x_Server.git", "commit": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f"},
-  "CoD4x_Client": {"url": "https://github.com/callofduty4x/CoD4x_Client_pub.git", "commit": "17182c7bf04b859dea5c0db4acdb0b83c28d6dd2"},
-  "Bot_Warfare": {"url": "https://github.com/ineedbots/iw3_bot_warfare.git", "commit": "7b52b462e40fa68287b9e54602e52da83b17766c", "release": "v2.2.0"},
-  "DirectX": {"package": "Microsoft.DXSDK.D3DX", "version": "9.29.952.8", "sha256": "ead0906ae8a26c18a7525da7490127a2110f7c58f18293738283e30e97c6ea4b"}
+  "KisakCOD": {
+    "url": "https://github.com/SwagSoftware/KisakCOD.git",
+    "commit": "8aadf94cc82795d6829ca06052996a5ec79001c3"
+  },
+  "CoD4x_Server": {
+    "url": "https://github.com/callofduty4x/CoD4x_Server.git",
+    "commit": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f"
+  },
+  "CoD4x_Client": {
+    "url": "https://github.com/callofduty4x/CoD4x_Client_pub.git",
+    "commit": "17182c7bf04b859dea5c0db4acdb0b83c28d6dd2"
+  },
+  "Bot_Warfare": {
+    "url": "https://github.com/ineedbots/iw3_bot_warfare.git",
+    "commit": "7b52b462e40fa68287b9e54602e52da83b17766c",
+    "release": "v2.2.0"
+  },
+  "DirectX": {
+    "package": "Microsoft.DXSDK.D3DX",
+    "version": "9.29.952.8",
+    "sha256": "ead0906ae8a26c18a7525da7490127a2110f7c58f18293738283e30e97c6ea4b"
+  },
+  "Vulkan": {
+    "headers": {
+      "repository": "https://github.com/KhronosGroup/Vulkan-Headers",
+      "commit": "29f979ee5aa58b7b005f805ea8df7a855c39ff37",
+      "version": "v1.3.296",
+      "archive": "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/29f979ee5aa58b7b005f805ea8df7a855c39ff37",
+      "sha256": "dfc96c55d7e481c42b917706ff52205d47c0f0957c8c2a60766ee781f16d18bd"
+    },
+    "allocator": {
+      "repository": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
+      "commit": "c788c52156f3ef7bc7ab769cb03c110a53ac8fcb",
+      "version": "v3.2.1",
+      "archive": "https://codeload.github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tar.gz/c788c52156f3ef7bc7ab769cb03c110a53ac8fcb",
+      "sha256": "7dacd2f5010f6e9c6a860d2767518b524c433912fcd38f8ff5681e6f40596c7a"
+    },
+    "spirv-tools": {
+      "repository": "https://github.com/KhronosGroup/SPIRV-Tools",
+      "commit": "f289d047f49fb60488301ec62bafab85573668cc",
+      "version": "v2025.1",
+      "archive": "https://codeload.github.com/KhronosGroup/SPIRV-Tools/tar.gz/f289d047f49fb60488301ec62bafab85573668cc",
+      "sha256": "5fbd56baf226a04435656bae408287365102b69a24fa73bab8353c5f44b55615"
+    },
+    "spirv-headers": {
+      "repository": "https://github.com/KhronosGroup/SPIRV-Headers",
+      "commit": "09913f088a1197aba4aefd300a876b2ebbaa3391",
+      "version": "SPIRV-Tools v2025.1 DEPS",
+      "archive": "https://codeload.github.com/KhronosGroup/SPIRV-Headers/tar.gz/09913f088a1197aba4aefd300a876b2ebbaa3391",
+      "sha256": "6d4aad5a86d7d5af144747aee1d616f624897d64d842f282aca7777f84244318"
+    },
+    "mojoshader": {
+      "repository": "https://github.com/icculus/mojoshader",
+      "commit": "ad5dff84830c2863c841f4b1f4e3df78c705b383",
+      "version": "pinned main",
+      "archive": "https://codeload.github.com/icculus/mojoshader/tar.gz/ad5dff84830c2863c841f4b1f4e3df78c705b383",
+      "sha256": "728ff9098115059c4012895b7a85065688c857fdadf9fbc04484fec8c7be3081"
+    }
+  },
+  "VulkanValidation": {
+    "validation": {
+      "url": "https://github.com/KhronosGroup/Vulkan-ValidationLayers",
+      "tag": "vulkan-sdk-1.3.296.0",
+      "commit": "9935cdd6f9524b1da1e140393fa69a0a1b72125d",
+      "archive": "https://codeload.github.com/KhronosGroup/Vulkan-ValidationLayers/tar.gz/9935cdd6f9524b1da1e140393fa69a0a1b72125d",
+      "sha256": "d7661d42c37f3984656ba5bf2081851e658da420a9b965c34e0aaa8426935631"
+    },
+    "utility": {
+      "url": "https://github.com/KhronosGroup/Vulkan-Utility-Libraries",
+      "tag": "v1.3.296",
+      "commit": "a71907b8577c994b1c69adfa7315d55bbe79656e",
+      "archive": "https://codeload.github.com/KhronosGroup/Vulkan-Utility-Libraries/tar.gz/a71907b8577c994b1c69adfa7315d55bbe79656e",
+      "sha256": "163a716303d351fec924bd2957787cbc9a49eb863a1be8e58acc8ae17422094f"
+    },
+    "robin-hood": {
+      "url": "https://github.com/martinus/robin-hood-hashing",
+      "tag": "3.11.5",
+      "commit": "9145f963d80d6a02f0f96a47758050a89184a3ed",
+      "archive": "https://codeload.github.com/martinus/robin-hood-hashing/tar.gz/9145f963d80d6a02f0f96a47758050a89184a3ed",
+      "sha256": "2ec51a99f9446cb60843391e05c9bf8a1e040a7f5e67e5db9e78fc9e9dc87f9b"
+    },
+    "validation-spirv-headers": {
+      "url": "https://github.com/KhronosGroup/SPIRV-Headers",
+      "commit": "2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801",
+      "archive": "https://codeload.github.com/KhronosGroup/SPIRV-Headers/tar.gz/2a9b6f951c7d6b04b6c21fe1bf3f475b68b84801",
+      "sha256": "1698e1373bd6e59a263acef821c4d955c561b991feb6db8199833ef19ffe8a37"
+    },
+    "validation-spirv-tools": {
+      "url": "https://github.com/KhronosGroup/SPIRV-Tools",
+      "commit": "6dcc7e350a0b9871a825414d42329e44b0eb8109",
+      "archive": "https://codeload.github.com/KhronosGroup/SPIRV-Tools/tar.gz/6dcc7e350a0b9871a825414d42329e44b0eb8109",
+      "sha256": "e3665378ab0ae8efb327027ee103d10c3c9e05823dea8b28893c00886ffe1a23"
+    }
+  }
 }

@@ -12,6 +12,8 @@ Install Git, Python 3, CMake **3.25+**, and Visual Studio 2022 or its Build Tool
 with **Desktop development with C++**, MSVC v143 x86/x64 tools and a Windows SDK.
 Run from PowerShell with `git`, `cmake` and `python` available on PATH.
 The initial game targets are **Win32 Release**, not x64.
+The Vulkan development branch also remains Win32. Its experimental client is
+large-address-aware, which does not make it a 64-bit executable.
 
 ## Clone, prepare, build
 
@@ -54,6 +56,12 @@ to uncapped with VSync off. Console `/com_maxfps 1000` sets a **1,000 FPS ceilin
 `/com_maxfps 0` removes it. Any rendering cap leaves the 1 ms gameplay clock intact.
 The custom client/server protocol is **10002**; legacy or authenticated public
 servers are outside the verified scope.
+
+The `vulkan-testing` branch adds a native experimental Vulkan backend and pinned
+project-local sources during preparation. DX9 remains the automatic default.
+See [Vulkan development status and build commands](VULKAN.md) to test the
+experimental client without replacing the accepted root executable. Stock
+world-rendering and performance gates remain open.
 
 ```powershell
 ./build.ps1 -CoreOnly

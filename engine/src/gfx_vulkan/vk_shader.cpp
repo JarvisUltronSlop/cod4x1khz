@@ -1,0 +1,145 @@
+#include "vk_shader.h"
+#include <spirv-tools/libspirv.hpp>
+#include <algorithm>
+#include <cstring>
+#include <stdexcept>
+#include <spirv/unified1/spirv.hpp>
+#include <unordered_set>
+
+namespace gfx::vk {
+namespace {
+// DX9 VS1.1 includes DCL records for its vertex declaration. Reject an
+// undeclared input before the pinned emitter dereferences its missing record.
+// This also gives the actual semantic/register mapping rather than assuming
+// the earlier D3D8 fixed mapping applies to every DX9 legacy shader.
+unsigned legacyInput(std::span<const std::uint32_t> words, MOJOSHADER_usage usage, unsigned index) {
+    constexpr unsigned arguments[]={0,2,3,3,4,3,2,2,3,3,3,3,3,3,2,2,2,3,4,2,3,3,3,3,3};
+    unsigned declared=0, found=UINT32_MAX;
+    for(std::size_t at=1;at<words.size();) {
+        const auto op=words[at]&65535;
+        if(op==65535) return found;
+        unsigned count=0;
+        if(op==65534) count=(words[at]>>16)&32767;
+        else if(op<std::size(arguments)) count=arguments[op];
+        else if(op==31||op==78||op==79) count=2;
+        else if(op==81) count=5;
+        else throw std::runtime_error("Unsupported VS1.1 instruction");
+        if(count>=words.size()-at) throw std::runtime_error("Truncated VS1.1 instruction");
+        if(op==31) {
+            const auto semantic=words[at+1],reg=words[at+2]&2047;
+            if(reg>=16) throw std::runtime_error("Invalid VS1.1 input register");
+            declared|=1u<<reg;
+            if((semantic&15)==unsigned(usage)&&((semantic>>16)&15)==index) found=reg;
+        } else if(op!=81&&op!=65534) for(unsigned n=2;n<=count;++n) {
+            const auto token=words[at+n],type=((token>>28)&7)|((token>>8)&24),reg=token&2047;
+            if(type==1&&(reg>=16||!(declared&(1u<<reg)))) throw std::runtime_error("VS1.1 input lacks a DX9 vertex declaration");
+        }
+        at+=count+1;
+    }
+    throw std::runtime_error("VS1.1 shader lacks an end token");
+}
+}
+Shader::Shader(std::span<const std::uint32_t> source, std::string debugName) : bytecode(source.begin(), source.end()), name(std::move(debugName)) {
+    if (source.empty() || source.size() > 65536) throw std::runtime_error("Invalid stock shader bytecode length");
+    if(source[0]==0xfffe0101) legacyInput(source,MOJOSHADER_USAGE_UNKNOWN,0);
+    const auto* result = MOJOSHADER_parse(MOJOSHADER_PROFILE_SPIRV, "main",
+        reinterpret_cast<const unsigned char*>(source.data()), unsigned(source.size_bytes()), nullptr, 0, nullptr, 0, nullptr, nullptr, nullptr);
+    parsed.reset(result);
+    if (!result || result->error_count || result->output_len <= 0) {
+        std::string message = "Stock shader translation failed: " + name;
+        if (result) for (int i = 0; i < result->error_count; ++i) message += "\n" + std::string(result->errors[i].error);
+        throw std::runtime_error(message);
+    }
+    for (int i = 0; i < result->uniform_count; ++i) uniformBytes += std::size_t((std::max)(1, result->uniforms[i].array_count)) * 16;
+}
+unsigned Shader::inputRegister(MOJOSHADER_usage usage, unsigned index) const {
+    if(parsed->major_ver<2) {
+        const auto reg=legacyInput(bytecode,usage,index);
+        if(reg!=UINT32_MAX) return reg;
+        throw std::runtime_error("Unsupported legacy stock vertex semantic");
+    }
+    // DCL tokens carry the register number; declaration order can differ from
+    // both semantic order and shader register order. Shader Model 2/3 bytecode
+    // has explicit instruction lengths. MojoShader already validated it.
+    for(std::size_t at=1;at<bytecode.size();) {
+        const auto token=bytecode[at];const auto op=token&65535;
+        if(op==65535) break;
+        const auto count=op==65534?((token>>16)&32767):((token>>24)&15);
+        if(at+count>=bytecode.size()) break;
+        if(op==31 && count==2) {
+            const auto semantic=bytecode[at+1],reg=bytecode[at+2];
+            const auto type=((reg>>28)&7)|((reg>>8)&24);
+            if(type==1&&(semantic&15)==unsigned(usage)&&((semantic>>16)&15)==index) return reg&2047;
+        }
+        at+=count+1;
+    }
+    throw std::runtime_error("Stock vertex declaration lacks a reflected input register");
+}
+void Shader::packUniforms(void* destination, std::span<const float> floats,
+    std::span<const int> integers, std::span<const int> booleans) const {
+    auto* output = static_cast<unsigned char*>(destination);
+    for (int i = 0; i < parsed->uniform_count; ++i) {
+        const auto& uniform = parsed->uniforms[i]; const auto count = unsigned((std::max)(1, uniform.array_count));
+        if (uniform.index < 0) throw std::runtime_error("Invalid shader constant register");
+        const auto index = unsigned(uniform.index);
+        std::memset(output, 0, count * 16);
+        if (uniform.type == MOJOSHADER_UNIFORM_FLOAT) {
+            if ((index + count) * 4 > floats.size()) throw std::runtime_error("Vertex/pixel float registers exceeded");
+            std::memcpy(output, floats.data() + index * 4, count * 16);
+        } else if (uniform.type == MOJOSHADER_UNIFORM_INT) {
+            if ((index + count) * 4 > integers.size()) throw std::runtime_error("Vertex/pixel integer registers exceeded");
+            std::memcpy(output, integers.data() + index * 4, count * 16);
+        } else if (uniform.type == MOJOSHADER_UNIFORM_BOOL) {
+            if (index + count > booleans.size()) throw std::runtime_error("Vertex/pixel boolean registers exceeded");
+            for (unsigned j = 0; j < count; ++j) std::memcpy(output + j * 16, &booleans[index + j], 4);
+        } else throw std::runtime_error("Unsupported shader uniform type");
+        for (int j = 0; j < parsed->constant_count; ++j) {
+            const auto& constant = parsed->constants[j];
+            if (constant.type != uniform.type || constant.index < uniform.index || unsigned(constant.index - uniform.index) >= count) continue;
+            const auto bytes = constant.type == MOJOSHADER_UNIFORM_BOOL ? 4 : 16;
+            std::memcpy(output + unsigned(constant.index - uniform.index) * 16, &constant.value, bytes);
+        }
+        output += count * 16;
+    }
+}
+void validateSpirv(std::span<const std::uint32_t> words, const char* name) {
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    std::string diagnostics;
+    tools.SetMessageConsumer([&](spv_message_level_t, const char*, const spv_position_t& p, const char* text) {
+        diagnostics += std::to_string(p.index) + ": " + text + '\n';
+    });
+    if (!tools.Validate(words.data(), words.size())) throw std::runtime_error(std::string("Invalid Vulkan SPIR-V: ") + name + '\n' + diagnostics);
+}
+LinkedShaders link(const Shader& vertex, const Shader& pixel, std::span<const MOJOSHADER_vertexAttribute> attributes) {
+    LinkedShaders result;
+    auto vp = *vertex.parsed; auto pp = *pixel.parsed;
+    result.vertex.resize(std::size_t(vp.output_len) / 4); result.pixel.resize(std::size_t(pp.output_len) / 4);
+    std::memcpy(result.vertex.data(), vp.output, vp.output_len); std::memcpy(result.pixel.data(), pp.output, pp.output_len);
+    vp.output = reinterpret_cast<const char*>(result.vertex.data()); pp.output = reinterpret_cast<const char*>(result.pixel.data());
+    const int patchBytes = MOJOSHADER_linkSPIRVShaders(&vp, &pp, attributes.data(), int(attributes.size()));
+    if (patchBytes <= 0 || patchBytes % 4 || patchBytes >= vp.output_len || patchBytes >= pp.output_len) throw std::runtime_error("Stock vertex/pixel shader linkage failed");
+    result.vertex.resize((vp.output_len - patchBytes) / 4); result.pixel.resize((pp.output_len - patchBytes) / 4);
+    if(pixel.parsed->major_ver<2) {
+        // MojoShader emits the PS 1.x final r0 register as an Output variable
+        // without a Location decoration. D3D defines r0 as COLOR0. Add only
+        // that missing interface decoration; all instructions stay unchanged.
+        std::unordered_set<std::uint32_t> decorated;
+        std::vector<std::uint32_t> outputs;
+        std::size_t types=0;
+        for(std::size_t at=5;at<result.pixel.size();) {
+            const auto count=result.pixel[at]>>16,op=result.pixel[at]&65535;
+            if(op==spv::OpDecorate&&(result.pixel[at+2]==spv::DecorationLocation||result.pixel[at+2]==spv::DecorationBuiltIn)) decorated.insert(result.pixel[at+1]);
+            if(op==spv::OpVariable&&result.pixel[at+3]==spv::StorageClassOutput) outputs.push_back(result.pixel[at+2]);
+            if(!types&&op==spv::OpTypeVoid) types=at;
+            at+=count;
+        }
+        for(auto output:outputs) if(!decorated.contains(output)) {
+            if(!types) throw std::runtime_error("Legacy pixel interface has no type section");
+            const std::uint32_t location[]={4u<<16|spv::OpDecorate,output,spv::DecorationLocation,0};
+            result.pixel.insert(result.pixel.begin()+types,std::begin(location),std::end(location));types+=4;
+        }
+    }
+    validateSpirv(result.vertex, vertex.name.c_str()); validateSpirv(result.pixel, pixel.name.c_str());
+    return result;
+}
+}

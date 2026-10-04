@@ -28,7 +28,7 @@ BLOCK = 1024 * 1024
 SECRET_NAMES = {'.env', 'hosts.yml', 'credentials', 'id_rsa', 'id_ed25519'}
 SECRET_SUFFIXES = {'.pem', '.pfx', '.p12', '.key'}
 STORE_SUFFIXES = {'.iwd', '.ff', '.zip', '.nupkg', '.png', '.jpg', '.jpeg', '.bik', '.gz', '.7z'}
-SOURCE_DIRS = {'engine', 'upstream', 'native', 'tests', 'config', 'scripts', 'docs', 'sdk', 'staged'}
+SOURCE_DIRS = {'engine', 'upstream', 'native', 'tests', 'config', 'scripts', 'docs', 'sdk', 'staged', 'cmake'}
 BUILD_DIRS = {'bin', 'build', 'release', 'debug', '__pycache__', '.git'}
 BUILD_SUFFIXES = {'.pyc', '.obj', '.pdb', '.ilk', '.tlog', '.suo', '.user', '.log'}
 

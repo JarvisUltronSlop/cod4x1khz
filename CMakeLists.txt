@@ -6,6 +6,10 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 option(COD4X1KHZ_BUILD_ENGINE "Build the multiplayer client and dedicated server" ON)
 option(COD4X1KHZ_INSTRUMENT "Enable Tracy engine instrumentation" OFF)
 include(CTest)
+option(COD4X1KHZ_BUILD_VULKAN "Build the project-local native Vulkan renderer and probes" ON)
+if(COD4X1KHZ_BUILD_VULKAN)
+  include(cmake/vulkan.cmake)
+endif()
 add_executable(khz_inspect native/inspect.cpp)
 target_link_libraries(khz_inspect PRIVATE dbghelp)
 target_compile_definitions(khz_inspect PRIVATE KISAK_MP COD4X1KHZ=1)
@@ -14,6 +18,8 @@ target_include_directories(khz_inspect PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engi
   "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
 add_executable(khz_launch_probe EXCLUDE_FROM_ALL native/launch_probe.cpp)
 target_link_libraries(khz_launch_probe PRIVATE dbghelp)
+add_executable(khz_thread_probe EXCLUDE_FROM_ALL native/thread_probe.cpp)
+target_link_libraries(khz_thread_probe PRIVATE dbghelp psapi)
 add_executable(khz_audio_probe EXCLUDE_FROM_ALL native/audio_probe.cpp)
 target_sources(khz_audio_probe PRIVATE native/archive_io_bridge.cpp engine/src/qcommon/unzip.cpp
   engine/deps/zlib/adler32.c engine/deps/zlib/crc32.c engine/deps/zlib/infblock.c
@@ -278,7 +284,17 @@ if(COD4X1KHZ_BUILD_ENGINE)
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>")
   endforeach()
   target_sources(KisakCOD-mp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_render_profile.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_frontend_upload.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_frontend_upload.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_shader_inventory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/gfx/gfx_hash.cpp")
+  target_link_libraries(KisakCOD-mp PRIVATE bcrypt)
+  if(COD4X1KHZ_BUILD_VULKAN)
+    target_compile_definitions(KisakCOD-mp PRIVATE COD4X1KHZ_NATIVE_VULKAN=1)
+    target_link_libraries(KisakCOD-mp PRIVATE khz_vulkan_legacy)
+    # Native driver mappings, validation and two frame arenas need the full
+    # Win32 address space on a 64-bit host; serialized asset pointers stay x86.
+    target_link_options(KisakCOD-mp PRIVATE /LARGEADDRESSAWARE)
+  endif()
   set_target_properties(KisakCOD-dedi PROPERTIES ENABLE_EXPORTS ON)
   add_library(khz_regression SHARED sdk/tests/regression_plugin.c)
   target_include_directories(khz_regression PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")

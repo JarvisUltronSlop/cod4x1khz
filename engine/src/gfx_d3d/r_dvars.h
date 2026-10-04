@@ -1,4 +1,9 @@
 #pragma once
+#ifdef COD4X1KHZ
+extern const struct dvar_s *r_graphicsApi;
+extern const struct dvar_s *r_vkDevice;
+extern const struct dvar_s *r_vkFramesInFlight;
+#endif
 
 enum GfxAspectRatio : int32_t
 {

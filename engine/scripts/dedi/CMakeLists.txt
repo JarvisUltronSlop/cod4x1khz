@@ -15,6 +15,10 @@ include(${SCRIPTS_DIR}/source_groups.cmake)
 # Handle platform configs and overrides
 include (${PLATFORM_DIR}/${KISAK_PLATFORM}/platform.cmake)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    list(FILTER BINKLIB EXCLUDE REGEX "binktextures\\.cpp$")
+endif()
+
 # Add the new executable
 add_executable(${PROJECT_NAME}
     ${SRCROOT}

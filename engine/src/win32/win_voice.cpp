@@ -46,7 +46,7 @@ static uint32_t __cdecl mixerGetRecordLevel(char *SrcName)
         return -1;
     if (mixerOpen(&phmx, 0, 0, 0, 0))
         return -1;
-    mixerline.cbStruct = 168;
+    mixerline.cbStruct = sizeof(mixerline);
     mixerline.dwComponentType = 7;
     MMRESULT res = mixerGetLineInfoA((HMIXEROBJ)phmx, &mixerline, 3u); // KISAKTODO: this fails with ret: 0x400 - idk why
     jj = mixerline.cConnections;
@@ -57,15 +57,15 @@ static uint32_t __cdecl mixerGetRecordLevel(char *SrcName)
         v2 = strstr(mixerline.szName, SrcName);
         if (v2)
         {
-            mxlc.cbStruct = 24;
+            mxlc.cbStruct = sizeof(mxlc);
             mxlc.dwLineID = mixerline.dwLineID;
             mxlc.dwControlID = 1342373889;
             mxlc.cControls = 1;
-            mxlc.cbmxctrl = 148;
+            mxlc.cbmxctrl = sizeof(tagMIXERCONTROLA);
             mxlc.pamxctrl = &mxc;
             if (!mixerGetLineControlsA((HMIXEROBJ)phmx, &mxlc, 2u))
             {
-                mxcd.cbStruct = 24;
+                mxcd.cbStruct = sizeof(mxcd);
                 mxcd.cChannels = 1;
                 mxcd.cbDetails = 4;
                 mxcd.paDetails = &newSetting;
@@ -120,19 +120,19 @@ int __cdecl mixerSetRecordSource(char *SrcName)
     lpmxc = 0;
     lpListText = 0;
     lpListBool = 0;
-    mixerline.cbStruct = 168;
+    mixerline.cbStruct = sizeof(mixerline);
     mixerline.dwComponentType = 7;
     if (mixerGetLineInfoA(phmx, &mixerline, 3u) != MMSYSERR_NOERROR)
     {
         mixerClose(mixerHandle); // KISAKTODO: this fails always for some reason.
         return 0;
     }
-    lpmxc = (tagMIXERCONTROLA*)calloc(148 * mixerline.cControls, 1u);
-    mxlc.cbStruct = 24;
+    lpmxc = (tagMIXERCONTROLA*)calloc(mixerline.cControls, sizeof(tagMIXERCONTROLA));
+    mxlc.cbStruct = sizeof(mxlc);
     mxlc.dwLineID = mixerline.dwLineID;
     mxlc.dwControlID = 0;
     mxlc.cControls = mixerline.cControls;
-    mxlc.cbmxctrl = 148;
+    mxlc.cbmxctrl = sizeof(tagMIXERCONTROLA);
     mxlc.pamxctrl = lpmxc;
     err = mixerGetLineControlsA(phmx, &mxlc, 0);
     if (!err)
@@ -148,7 +148,7 @@ int __cdecl mixerSetRecordSource(char *SrcName)
                 if ((lpmxc[ii].fdwControl & 2) != 0)
                     iMultipleItems = lpmxc[ii].cMultipleItems;
                 lpListText = (tagMIXERCONTROLDETAILS_LISTTEXTA*)calloc(72 * iMultipleItems * iNumChannels, 1u);
-                mxcd.cbStruct = 24;
+                mxcd.cbStruct = sizeof(mxcd);
                 mxcd.dwControlID = lpmxc[ii].dwControlID;
                 mxcd.cChannels = iNumChannels;
                 mxcd.cMultipleItems = iMultipleItems;
@@ -238,12 +238,12 @@ int __cdecl mixerGetRecordSource(char *srcName)
         mixerClose(mixerHandle); // KISAKTODO: this fails always for some reason.
         return 0;
     }
-    lpmxc = (tagMIXERCONTROLA*)calloc(148 * mixerline.cControls, 1u);
-    mxlc.cbStruct = 24;
+    lpmxc = (tagMIXERCONTROLA*)calloc(mixerline.cControls, sizeof(tagMIXERCONTROLA));
+    mxlc.cbStruct = sizeof(mxlc);
     mxlc.dwLineID = mixerline.dwLineID;
     mxlc.dwControlID = 0;
     mxlc.cControls = mixerline.cControls;
-    mxlc.cbmxctrl = 148;
+    mxlc.cbmxctrl = sizeof(tagMIXERCONTROLA);
     mxlc.pamxctrl = lpmxc;
     err = mixerGetLineControlsA(phmx, &mxlc, 0);
     if (!err)
@@ -259,7 +259,7 @@ int __cdecl mixerGetRecordSource(char *srcName)
                 if ((lpmxc[ii].fdwControl & 2) != 0)
                     iMultipleItems = lpmxc[ii].cMultipleItems;
                 lpListText = (tagMIXERCONTROLDETAILS_LISTTEXTA*)calloc(72 * iMultipleItems * iNumChannels, 1u);
-                mxcd.cbStruct = 24;
+                mxcd.cbStruct = sizeof(mxcd);
                 mxcd.dwControlID = lpmxc[ii].dwControlID;
                 mxcd.cChannels = iNumChannels;
                 mxcd.cMultipleItems = iMultipleItems;
@@ -332,7 +332,7 @@ int __cdecl mixerSetRecordLevel(char *SrcName, unsigned __int16 newLevel)
     // LWSS: Winapi sucks
     HMIXEROBJ phmx = (HMIXEROBJ)mixerHandle;
 
-    mixerline.cbStruct = 168;
+    mixerline.cbStruct = sizeof(mixerline);
     mixerline.dwComponentType = 7;
     if (mixerGetLineInfoA(phmx, &mixerline, 3u))
         return 0;
@@ -345,16 +345,16 @@ int __cdecl mixerSetRecordLevel(char *SrcName, unsigned __int16 newLevel)
             v3 = strstr(mixerline.szName, SrcName);
             if (v3)
             {
-                mxlc.cbStruct = 24;
+                mxlc.cbStruct = sizeof(mxlc);
                 mxlc.dwLineID = mixerline.dwLineID;
                 mxlc.dwControlID = 1342373889;
                 mxlc.cControls = 1;
-                mxlc.cbmxctrl = 148;
+                mxlc.cbmxctrl = sizeof(tagMIXERCONTROLA);
                 mxlc.pamxctrl = &mxc;
                 err = mixerGetLineControlsA(phmx, &mxlc, 2u);
                 if (!err)
                 {
-                    mxcd.cbStruct = 24;
+                    mxcd.cbStruct = sizeof(mxcd);
                     mxcd.cChannels = 1;
                     mxcd.cbDetails = 4;
                     mxcd.paDetails = &newSetting;
@@ -398,7 +398,7 @@ int __cdecl mixerSetMicrophoneMute(unsigned __int8 bMute)
     // LWSS: Winapi sucks
     HMIXEROBJ phmx = (HMIXEROBJ)mixerHandle;
 
-    mixerline.cbStruct = 168;
+    mixerline.cbStruct = sizeof(mixerline);
     mixerline.dwComponentType = 4;
     err = mixerGetLineInfoA(phmx, &mixerline, 3u);
     if (!err)
@@ -411,16 +411,16 @@ int __cdecl mixerSetMicrophoneMute(unsigned __int8 bMute)
             v2 = strstr(mixerline.szName, "Mic");
             if (v2)
             {
-                mxlc.cbStruct = 24;
+                mxlc.cbStruct = sizeof(mxlc);
                 mxlc.dwLineID = mixerline.dwLineID;
                 mxlc.dwControlID = 536936450;
                 mxlc.cControls = 1;
-                mxlc.cbmxctrl = 148;
+                mxlc.cbmxctrl = sizeof(tagMIXERCONTROLA);
                 mxlc.pamxctrl = &mxc;
                 err = mixerGetLineControlsA(phmx, &mxlc, 2u);
                 if (!err)
                 {
-                    mxcd.cbStruct = 24;
+                    mxcd.cbStruct = sizeof(mxcd);
                     mxcd.cChannels = 1;
                     mxcd.cbDetails = 4;
                     mxcd.paDetails = &newSetting;

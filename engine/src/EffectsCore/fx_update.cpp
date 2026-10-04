@@ -924,7 +924,7 @@ FxUpdateResult __cdecl FX_UpdateElement(
 {
     float msec; // [esp+0h] [ebp-140h]
     bool v7; // [esp+10h] [ebp-130h]
-    int32_t physObjId; // [esp+8Ch] [ebp-B4h]
+    intptr_t physObjId; // [esp+8Ch] [ebp-B4h]
     FxUpdateElem update; // [esp+A8h] [ebp-98h] BYREF
     const FxElemDef *elemDef; // [esp+128h] [ebp-18h]
     FxUpdateResult updateResult; // [esp+12Ch] [ebp-14h] BYREF

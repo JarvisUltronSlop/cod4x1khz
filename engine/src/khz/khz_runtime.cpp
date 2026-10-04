@@ -182,9 +182,17 @@ LONG WINAPI reportCrash(EXCEPTION_POINTERS* exception) {
     SymInitialize(process, "../bin/Release", TRUE);
     auto context = *exception->ContextRecord;
     STACKFRAME64 frame{};
+#if defined(_WIN64)
+    constexpr DWORD machine = IMAGE_FILE_MACHINE_AMD64;
+    frame.AddrPC = {context.Rip, 0, AddrModeFlat};
+    frame.AddrFrame = {context.Rbp, 0, AddrModeFlat};
+    frame.AddrStack = {context.Rsp, 0, AddrModeFlat};
+#else
+    constexpr DWORD machine = IMAGE_FILE_MACHINE_I386;
     frame.AddrPC = {context.Eip, 0, AddrModeFlat};
     frame.AddrFrame = {context.Ebp, 0, AddrModeFlat};
     frame.AddrStack = {context.Esp, 0, AddrModeFlat};
+#endif
     for (unsigned i = 0; i < 40 && frame.AddrPC.Offset; ++i) {
         alignas(SYMBOL_INFO) char buffer[sizeof(SYMBOL_INFO) + 1024]{};
         auto* symbol = reinterpret_cast<SYMBOL_INFO*>(buffer);
@@ -195,7 +203,7 @@ LONG WINAPI reportCrash(EXCEPTION_POINTERS* exception) {
             if (SymGetLineFromAddr64(process, frame.AddrPC.Offset, &lineOffset, &line)) std::fprintf(output, " (%s:%lu)", line.FileName, line.LineNumber);
             std::fputc('\n', output);
         } else std::fprintf(output, "%llx\n", frame.AddrPC.Offset);
-        if (!StackWalk64(IMAGE_FILE_MACHINE_I386, process, GetCurrentThread(), &frame, &context, nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) break;
+        if (!StackWalk64(machine, process, GetCurrentThread(), &frame, &context, nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) break;
     }
     std::fclose(output); SymCleanup(process);
     return EXCEPTION_EXECUTE_HANDLER;

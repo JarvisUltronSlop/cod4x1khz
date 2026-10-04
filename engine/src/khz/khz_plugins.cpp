@@ -135,7 +135,8 @@ constexpr const char* callbackNames[] = {
     "OnScreenshotArrived", "OnDemoArrived", "OnTerminate"
 };
 static_assert(ARRAY_COUNT(callbackNames) == plug::PublicEventCount);
-static_assert(sizeof(scr_entref_t) == 4 && sizeof(std::uintptr_t) == 4, "adapted SDK currently requires Win32");
+static_assert(sizeof(scr_entref_t) == 4);
+static_assert(COD4X1KHZ_PLUGIN_SDK_VERSION == (sizeof(void*) == 8 ? 3 : 2));
 void owner() { iassert(Sys_IsMainThread()); }
 void callerContext(void* address) {
     if (!Sys_IsMainThread()) return; // job ownership is already pinned in TLS
@@ -282,7 +283,11 @@ bool load(const char* requested) {
     if (name.size() > 4 && plug::sameName(std::string_view(name).substr(name.size() - 4), ".dll")) name.resize(name.size() - 4);
     const int plugin = registry.BeginLoad(name); if (plugin < 0) return false;
     pluginNetworkActivate(unsigned(plugin), registry.Get(plugin)->generation);
-    const auto directory = std::filesystem::path(KHZ_RuntimeRoot()) / "plugins";
+    const auto directory = std::filesystem::path(KHZ_RuntimeRoot()) / "plugins"
+#ifdef _WIN64
+        / "x64"
+#endif
+        ;
     std::error_code error; std::filesystem::create_directories(directory, error);
     const auto path = directory / (name + ".dll");
     auto& module = modules[plugin];
@@ -312,7 +317,7 @@ bool load(const char* requested) {
     }
     registry.RequestUnload(plugin); tryUnload(plugin); return false;
 }
-void loadCommand() { if (Cmd_Argc() != 2 || !load(Cmd_Argv(1))) Com_Printf(CON_CHANNEL_SERVER, "loadPlugin <name>: initialization failed; use a rebuilt project SDK DLL in runtime/plugins.\n"); }
+void loadCommand() { if (Cmd_Argc() != 2 || !load(Cmd_Argv(1))) Com_Printf(CON_CHANNEL_SERVER, "loadPlugin <name>: initialization failed; use a rebuilt project SDK DLL in %s.\n", sizeof(void*) == 8 ? "runtime/plugins/x64" : "runtime/plugins"); }
 void unloadCommand() {
     const int plugin = Cmd_Argc() == 2 ? registry.FindPlugin(Cmd_Argv(1)) : -1;
     if (plugin < 0) { Com_Printf(CON_CHANNEL_SERVER, "unloadPlugin <name>: plugin not found.\n"); return; }

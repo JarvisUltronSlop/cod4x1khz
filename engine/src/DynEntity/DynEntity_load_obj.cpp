@@ -12,7 +12,7 @@ const char *dynEntClassNames[2] =
     "dyn_model"
 };
 
-const DynEntityProps dynEntProps[3] =
+extern const DynEntityProps dynEntProps[3] =
 {
     { "invalid", false, false, false, false },
     { "clutter", true, false, true, false },
@@ -130,7 +130,7 @@ char __cdecl DynEnt_Create(DynEntityDef *dynEntDef, const DynEntityCreateParams 
             "%s",
             "!IS_NAN((params->angles)[0]) && !IS_NAN((params->angles)[1]) && !IS_NAN((params->angles)[2])");
     }
-    Com_Memset((uint32_t *)dynEntDef, 0, 96);
+    Com_Memset(dynEntDef, 0, sizeof(*dynEntDef));
     if (params->typeName[0])
     {
         dynEntDef->type = (DynEntityType)DynEnt_GetType(params->typeName);
@@ -276,54 +276,7 @@ int32_t __cdecl DynEnt_GetEntityCountFromString(const char *entityString)
     return count;
 }
 
-int32_t __cdecl DynEnt_CompareEntities(_DWORD *arg0, _DWORD *arg1)
-{
-    int32_t hasModel0; // [esp+8h] [ebp-14h]
-    int32_t value1; // [esp+10h] [ebp-Ch]
-    int32_t hasModel1; // [esp+14h] [ebp-8h]
-    int32_t value0; // [esp+18h] [ebp-4h]
-
-    if (!arg0)
-        MyAssertHandler(".\\DynEntity\\DynEntity_load_obj.cpp", 361, 0, "%s", "arg0");
-    if (!arg1)
-        MyAssertHandler(".\\DynEntity\\DynEntity_load_obj.cpp", 362, 0, "%s", "arg1");
-    if (*arg0 >= 3u)
-        MyAssertHandler(
-            ".\\DynEntity\\DynEntity_load_obj.cpp",
-            367,
-            0,
-            "dynEntDef0->type doesn't index DYNENT_TYPE_COUNT\n\t%i not in [0, %i)",
-            *arg0,
-            3);
-    if (*arg1 >= 3u)
-        MyAssertHandler(
-            ".\\DynEntity\\DynEntity_load_obj.cpp",
-            368,
-            0,
-            "dynEntDef1->type doesn't index DYNENT_TYPE_COUNT\n\t%i not in [0, %i)",
-            *arg1,
-            3);
-    hasModel0 = arg0[8] != 0;
-    hasModel1 = arg1[8] != 0;
-    if (hasModel0 != hasModel1)
-        return hasModel0 - hasModel1;
-    value0 = dynEntProps[*arg0].clientOnly;
-    value1 = dynEntProps[*arg1].clientOnly;
-    if (value0 != value1)
-        return value0 - value1;
-    if (arg0[8])
-    {
-        if (!arg1[8])
-            MyAssertHandler(".\\DynEntity\\DynEntity_load_obj.cpp", 387, 0, "%s", "dynEntDef1->xModel");
-        return arg0[8] < arg1[8] ? -1 : 1;
-    }
-    else
-    {
-        if (arg1[8])
-            MyAssertHandler(".\\DynEntity\\DynEntity_load_obj.cpp", 392, 0, "%s", "!dynEntDef1->xModel");
-        return *((uint16_t *)arg0 + 18) - *((uint16_t *)arg1 + 18);
-    }
-}
+int32_t __cdecl DynEnt_CompareEntities(const void *left, const void *right);
 
 uint8_t *__cdecl DynEnt_Alloc(int32_t count, int32_t size)
 {
@@ -363,7 +316,7 @@ void __cdecl DynEnt_LoadEntities()
     uint32_t drawType; // [esp+60h] [ebp-274h]
     uint32_t drawTypea; // [esp+60h] [ebp-274h]
     int32_t dynEntIndex; // [esp+68h] [ebp-26Ch]
-    uint8_t *dynEntDefList; // [esp+6Ch] [ebp-268h]
+    DynEntityDef *dynEntDefList; // [esp+6Ch] [ebp-268h]
     int32_t dynEntStringCount; // [esp+70h] [ebp-264h]
     DynEntityDef *dynEntDef; // [esp+74h] [ebp-260h]
     int32_t dynEntCount; // [esp+78h] [ebp-25Ch]
@@ -391,7 +344,7 @@ void __cdecl DynEnt_LoadEntities()
         Com_Error(ERR_DROP, "Found [%d] Dyn Entities, Max is [%d]\n", dynEntStringCount, 4095);
     if (dynEntStringCount)
     {
-        dynEntDefList = Hunk_Alloc(96 * dynEntStringCount, "DynEnt_LoadDefs", 9);
+        dynEntDefList = (DynEntityDef *)Hunk_Alloc(sizeof(DynEntityDef) * dynEntStringCount, "DynEnt_LoadDefs", 9);
         dynEntCount = 0;
         ptr = Com_EntityString(0);
         while (1)
@@ -400,7 +353,7 @@ void __cdecl DynEnt_LoadEntities()
             if (!ptr || *token != 123)
                 break;
             isDynEnt = 0;
-            Com_Memset((uint32_t *)&params, 0, 448);
+            Com_Memset(&params, 0, sizeof(params));
             while (1)
             {
                 token = (const char *)Com_Parse(&ptr);
@@ -564,16 +517,16 @@ void __cdecl DynEnt_LoadEntities()
             {
                 if (dynEntCount >= dynEntStringCount)
                     MyAssertHandler(".\\DynEntity\\DynEntity_load_obj.cpp", 545, 0, "%s", "dynEntCount < dynEntStringCount");
-                if (DynEnt_Create((DynEntityDef *)&dynEntDefList[96 * dynEntCount], &params))
+                if (DynEnt_Create(&dynEntDefList[dynEntCount], &params))
                     ++dynEntCount;
             }
         }
         if (dynEntCount)
         {
-            qsort(dynEntDefList, dynEntCount, 0x60u, (int(__cdecl *)(const void *, const void *))DynEnt_CompareEntities);
+            qsort(dynEntDefList, dynEntCount, sizeof(*dynEntDefList), DynEnt_CompareEntities);
             for (dynEntIndex = 0; dynEntIndex < dynEntCount; ++dynEntIndex)
             {
-                dynEntDef = (DynEntityDef *)&dynEntDefList[96 * dynEntIndex];
+                dynEntDef = &dynEntDefList[dynEntIndex];
                 if (dynEntDef->xModel)
                 {
                     drawType = 0;
@@ -599,9 +552,9 @@ void __cdecl DynEnt_LoadEntities()
             {
                 if (cm.dynEntCount[drawTypea])
                 {
-                    cm.dynEntPoseList[drawTypea] = (DynEntityPose *)DynEnt_Alloc(cm.dynEntCount[drawTypea], 32);
-                    cm.dynEntClientList[drawTypea] = (DynEntityClient *)DynEnt_Alloc(cm.dynEntCount[drawTypea], 12);
-                    cm.dynEntCollList[drawTypea] = (DynEntityColl *)DynEnt_Alloc(cm.dynEntCount[drawTypea], 20);
+                    cm.dynEntPoseList[drawTypea] = (DynEntityPose *)DynEnt_Alloc(cm.dynEntCount[drawTypea], sizeof(DynEntityPose));
+                    cm.dynEntClientList[drawTypea] = (DynEntityClient *)DynEnt_Alloc(cm.dynEntCount[drawTypea], sizeof(DynEntityClient));
+                    cm.dynEntCollList[drawTypea] = (DynEntityColl *)DynEnt_Alloc(cm.dynEntCount[drawTypea], sizeof(DynEntityColl));
                 }
             }
         }
@@ -769,43 +722,4 @@ int32_t __cdecl DynEnt_GetXModelUsageCount(const XModel *xModel)
         }
     }
     return count;
-}
-
-void DynEnt_SaveEntities(MemoryFile *memFile)
-{
-    int v2; // r26
-    uint16_t *dynEntCount; // r27
-    DynEntityClient **dynEntClientList; // r29
-    uint32_t v5; // r31
-    bool v6; // [sp+50h] [-40h] BYREF
-
-    iassert(memFile);
-    v2 = 2;
-    dynEntCount = cm.dynEntCount;
-    dynEntClientList = cm.dynEntClientList;
-    do
-    {
-        MemFile_WriteData(memFile, 2, dynEntCount);
-        if (*dynEntCount)
-        {
-            MemFile_WriteData(memFile, 32 * *dynEntCount, *(dynEntClientList - 2));
-            MemFile_WriteData(memFile, 4 * (*dynEntCount + __ROL4__(*dynEntCount, 1)), *dynEntClientList);
-            if (*dynEntCount)
-            {
-                v5 = 0;
-                do
-                {
-                    //v6 = (_cntlzw((*dynEntClientList)[v5].physObjId) & 0x20) == 0;
-                    v6 = (*dynEntClientList)[v5].physObjId != 0;
-                    MemFile_WriteData(memFile, 1, &v6);
-                    if (v6)
-                        Phys_ObjSave((dxBody*)(*dynEntClientList)[v5].physObjId, memFile);
-                    v5 = (uint16_t)(v5 + 1);
-                } while (v5 < *dynEntCount);
-            }
-        }
-        --v2;
-        ++dynEntClientList;
-        ++dynEntCount;
-    } while (v2);
 }

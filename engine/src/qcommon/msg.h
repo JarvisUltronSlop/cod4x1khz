@@ -3,6 +3,7 @@
 #ifndef KISAK_SP
 #error This File is SinglePlayer Only
 #endif
+#include "msg_buffer.h"
 
 // LWSS: these are aislop generated, may be inaccurate.
 #define BUTTON_ATTACK         (1 <<  0)  // +attack
@@ -27,20 +28,6 @@
 #define BUTTON_THROW          (1 << 19)  // +throw (frag throwback)
 #define BUTTON_LOC_SELECTING  (1 << 20)  // location-selection UI active
 #define BUTTON_BIT_COUNT 21
-
-struct msg_t
-{
-	int overflowed;
-	int readOnly;
-	unsigned __int8 *data;
-	unsigned __int8 *splitData;
-	int maxsize;
-	int cursize;
-	int splitSize;
-	int readcount;
-	int bit;
-	int lastEntityRef;
-};
 
 struct netField_t
 {

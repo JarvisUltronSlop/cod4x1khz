@@ -1,11 +1,12 @@
 # RenderFps 0 leaves presentation uncapped. Gameplay remains fixed at 1,000 Hz.
 # Change the presentation cap while playing with: com_maxfps <fps> (0 = uncapped).
-param([string]$Server = '127.0.0.1:28960', [ValidateSet('720p','480p')][string]$Resolution = '720p', [ValidateRange(0,10000)][int]$RenderFps = 0, [ValidateRange(1024,65535)][int]$Port = 28962, [switch]$Benchmark, [switch]$TestControls, [string]$Configuration = 'Release')
+param([string]$Server = '127.0.0.1:28960', [ValidateSet('1080p','720p','480p')][string]$Resolution = '720p', [ValidateRange(0,10000)][int]$RenderFps = 0, [ValidateRange(1024,65535)][int]$Port = 28962, [switch]$Benchmark, [switch]$TestControls, [string]$Configuration = 'Release', [ValidateSet('Win32','x64')][string]$Architecture = 'Win32', [ValidateSet('d3d9','vulkan')][string]$Renderer = 'd3d9')
 $ErrorActionPreference = 'Stop'
 $runtimeRoot = Join-Path $PSScriptRoot 'runtime'
-$executable = Join-Path $runtimeRoot 'cod4x1khz.exe'
+$executableRoot = if ($Architecture -eq 'x64') { Join-Path $runtimeRoot 'x64' } else { $runtimeRoot }
+$executable = Join-Path $executableRoot 'cod4x1khz.exe'
 if (!(Test-Path -LiteralPath $executable)) { throw 'Build the client with build.ps1 first' }
-$dimensions = if ($Resolution -eq '720p') { '1280x720' } else { '640x480' }
+$dimensions = switch ($Resolution) { '1080p' { '1920x1080' } '720p' { '1280x720' } '480p' { '640x480' } }
 $arguments = @('+set','net_port',"$Port")
 if ($Benchmark) {
     $arguments += @('+set','khz_benchmark','1','+set','com_introPlayed','1','+set','r_customMode',$dimensions,'+set','r_mode',$dimensions,'+set','r_fullscreen','0','+exec','client.cfg','+set','com_maxfps',"$RenderFps")
@@ -14,5 +15,6 @@ if ($Benchmark) {
     if ($PSBoundParameters.ContainsKey('Resolution')) { $arguments += @('+set','r_customMode',$dimensions,'+set','r_mode',$dimensions) }
 }
 if ($TestControls) { $arguments += @('+set','khz_test_controls','1') }
+if ($PSBoundParameters.ContainsKey('Renderer')) { $arguments += @('+set','r_graphicsApi',$Renderer) }
 if ($Benchmark -or $PSBoundParameters.ContainsKey('Server')) { $arguments += @('+connect',$Server) }
 Start-Process -FilePath $executable -ArgumentList $arguments -WorkingDirectory $runtimeRoot -PassThru

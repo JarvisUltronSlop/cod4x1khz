@@ -5,7 +5,8 @@ experimental. The accepted root and runtime clients retain the Build 86 DX9
 binary, SHA-256 `fa9baca2076ec15275ef2474a9587497a32aa3ec5c0310def49ec056459db577`.
 Release `v0.1` and its private workspace archives remain intact.
 
-The client and server are **32-bit Win32** builds. Gameplay, prediction, input
+The client and server now have native **x64 / PE32+** builds alongside the
+existing Win32 build. Native packaging uses `runtime/x64`. Gameplay, prediction, input
 and networking retain their existing independent 1 ms owners. These renderer
 changes do not establish that all gameplay or public CoD4x acceptance gates pass.
 
@@ -210,18 +211,17 @@ visual correctness and independent gameplay progress. Vulkan becomes the
 automatic default only after correctness passes and both checked routes improve
 beyond measured run variability.
 
-## Recommended subsequent 64-bit phase
+## Native x64 integration
 
-An x64 migration is recommended after Vulkan correctness and its Win32 baseline
-are established. It has not been started or included in the accepted renderer
-scope. It requires serialized/in-memory asset separation, audits of pointer
-casts and packed structures, replacement of x86 inline assembly, 64-bit versions
-or replacements for runtime libraries, and an adapted plugin ABI. Retain the
-custom protocol and repeat gameplay/replay/performance gates. More address space
-is a clear benefit; an FPS improvement must be measured.
-
-Use `backup.ps1` for source/private workspace backups; it includes otherwise
-ignored engine sources and CMake files. Never move `v0.1` or force-push. Keep
-retail assets, captures and personal profiles private. The readiness marker
-`docs/vulkan-ready.json` must remain absent until the complete renderer is
-accepted. The backup automation does not authorize renderer changes itself.
+The [x64 migration](X64.md) now builds the production client, server, updater and
+SDK3 plugin with native asset layouts, OpenAL, FFmpeg and the Vulkan adapter.
+Both architectures pass 57 core suites. The packaged native direct DX9 path
+completed an uncapped Backlot session, measuring 779.96 FPS over 30.88 seconds in
+the checked broad 1080p view with two bots and 1,000 Hz simulation. The packaged
+client also passed hosting, map change, fast/video/sound restart, leave and quit.
+The Vulkan path completed a
+90-second match but measured 243.56 FPS and displays black models. A mirrored
+DX9 reference also shows black models for the same immutable packets; the
+adapter/data path still needs investigation. Native Vulkan performance and
+visual acceptance remain open. Moving to x64 has not established 1,000 FPS or
+full GPU utilization.

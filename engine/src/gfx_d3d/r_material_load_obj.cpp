@@ -2532,9 +2532,9 @@ char __cdecl Material_SetShaderArguments(
 
     if (*argCount + usedCount <= argLimit)
     {
-        qsort(localArgs, usedCount, 8u, (int(*)(const void*, const void*))Material_CompareShaderArgumentsForCombining);
+        qsort(localArgs, usedCount, sizeof(MaterialShaderArgument), (int(*)(const void*, const void*))Material_CompareShaderArgumentsForCombining);
         usedCounta = Material_CombineShaderArguments(usedCount, localArgs);
-        memcpy(&args[*argCount], localArgs, 8 * usedCounta);
+        memcpy(&args[*argCount], localArgs, sizeof(MaterialShaderArgument) * usedCounta);
         *argCount += usedCounta;
         return 1;
     }
@@ -4194,7 +4194,7 @@ bool __cdecl Material_LoadPass(
         {
             if (!Material_LoadPassPixelShader(text, renderer, techFlags, &pixelParamSet, pass, 0x40u, &argCount, args))
                 goto LABEL_8;
-            qsort(args, argCount, 8u, (int(*)(const void*, const void*))Material_CompareShaderArgumentsForRuntime);
+            qsort(args, argCount, sizeof(MaterialShaderArgument), (int(*)(const void*, const void*))Material_CompareShaderArgumentsForRuntime);
             firstArg = 0;
             pass->perPrimArgCount = Material_CountArgsWithUpdateFrequency(MTL_UPDATE_PER_PRIM, args, argCount, &firstArg);
             pass->perObjArgCount = Material_CountArgsWithUpdateFrequency(MTL_UPDATE_PER_OBJECT, args, argCount, &firstArg);
@@ -4226,8 +4226,8 @@ bool __cdecl Material_LoadPass(
                 ++customArg;
             }
             argCount = pass->stableArgCount + pass->perObjArgCount + pass->perPrimArgCount;
-            pass->args = (MaterialShaderArgument*)Material_Alloc(8 * argCount);
-            memcpy(pass->args, args, 8 * argCount);
+            pass->args = (MaterialShaderArgument*)Material_Alloc(sizeof(MaterialShaderArgument) * argCount);
+            memcpy(pass->args, args, sizeof(MaterialShaderArgument) * argCount);
             arg = pass->args;
             for (argIndex = 0; argIndex < pass->perPrimArgCount; ++argIndex)
             {
@@ -4341,29 +4341,31 @@ MaterialTechnique *__cdecl Material_LoadTechnique(char *name, GfxRenderer render
         }
         else if (passCount)
         {
-            stateMapSize = 4 * passCount;
+            stateMapSize = sizeof(MaterialStateMap *) * passCount;
             nameSize = strlen(name) + 1;
-            technique = Material_Alloc(nameSize + 24 * passCount + 8);
-            stateMapForPass = (MaterialStateMap**)&technique[20 * passCount + 8];
-            *(DWORD*)technique = (DWORD)&stateMapForPass[passCount];
-            memcpy(*(unsigned char**)technique, name, nameSize);
-            *((_WORD *)technique + 2) = techFlags;
-            if (!strcmp(*(const char**)technique, "zprepass"))
-                *((_WORD *)technique + 2) |= 4u;
+            const size_t passBytes = sizeof(MaterialPass) * passCount;
+            technique = Material_Alloc(offsetof(MaterialTechnique, passArray) + passBytes + stateMapSize + nameSize);
+            auto *nativeTechnique = reinterpret_cast<MaterialTechnique *>(technique);
+            stateMapForPass = reinterpret_cast<MaterialStateMap **>(technique + offsetof(MaterialTechnique, passArray) + passBytes);
+            nativeTechnique->name = reinterpret_cast<char *>(stateMapForPass + passCount);
+            memcpy(const_cast<char *>(nativeTechnique->name), name, nameSize);
+            nativeTechnique->flags = techFlags;
+            if (!strcmp(nativeTechnique->name, "zprepass"))
+                nativeTechnique->flags |= 4u;
             for (passIndex = 0; passIndex < passCount; ++passIndex)
             {
                 vertexDecl = passes[passIndex].vertexDecl;
-                iassert( vertexDecl );
+                iassert(vertexDecl);
                 if (vertexDecl->hasOptionalSource)
                 {
-                    *((_WORD *)technique + 2) |= 8u;
+                    nativeTechnique->flags |= 8u;
                     break;
                 }
             }
-            *((_WORD *)technique + 3) = passCount;
-            memcpy(technique + 8, passes, 20 * passCount);
+            nativeTechnique->passCount = passCount;
+            memcpy(nativeTechnique->passArray, passes, passBytes);
             memcpy(stateMapForPass, stateMap, stateMapSize);
-            return (MaterialTechnique*)technique;
+            return nativeTechnique;
         }
         else
         {
@@ -4735,27 +4737,27 @@ Material *__cdecl Material_Duplicate(Material *mtlCopy, char *name)
     else
     {
         v3 = strlen(name);
-        mtlNew = Material_Alloc(v3 + 81);
-        memcpy(mtlNew, mtlCopy, 0x50u);
-        *(_DWORD *)mtlNew = (uint32)mtlNew + 80;
-        memcpy(*(uint8_t **)mtlNew, (uint8_t *)name, v3 + 1);
-        stateBitsTableSize = 8 * mtlCopy->stateBitsCount;
-        *((_DWORD *)mtlNew + 19) = (uint32)Material_Alloc(stateBitsTableSize);
-        memcpy(*((uint8_t **)mtlNew + 19), (uint8_t *)mtlCopy->stateBitsTable, stateBitsTableSize);
+        auto *copy = reinterpret_cast<Material *>(Material_Alloc(sizeof(Material) + v3 + 1));
+        *copy = *mtlCopy;
+        copy->info.name = reinterpret_cast<char *>(copy + 1);
+        memcpy(const_cast<char *>(copy->info.name), name, v3 + 1);
+        stateBitsTableSize = sizeof(GfxStateBits) * mtlCopy->stateBitsCount;
+        copy->stateBitsTable = reinterpret_cast<GfxStateBits *>(Material_Alloc(stateBitsTableSize));
+        memcpy(copy->stateBitsTable, mtlCopy->stateBitsTable, stateBitsTableSize);
         if (mtlCopy->textureTable)
         {
-            textureTableSize = 12 * mtlCopy->textureCount;
-            *((_DWORD *)mtlNew + 17) = (uint32)Material_Alloc(textureTableSize);
-            memcpy(*((uint8_t **)mtlNew + 17), (uint8_t *)mtlCopy->textureTable, textureTableSize);
+            textureTableSize = sizeof(MaterialTextureDef) * mtlCopy->textureCount;
+            copy->textureTable = reinterpret_cast<MaterialTextureDef *>(Material_Alloc(textureTableSize));
+            memcpy(copy->textureTable, mtlCopy->textureTable, textureTableSize);
         }
         if (mtlCopy->constantTable)
         {
-            constantTableSize = 32 * mtlCopy->constantCount;
-            *((_DWORD *)mtlNew + 18) = (uint32)Material_Alloc(constantTableSize);
-            memcpy(*((uint8_t **)mtlNew + 18), (uint8_t *)mtlCopy->constantTable, constantTableSize);
+            constantTableSize = sizeof(MaterialConstantDef) * mtlCopy->constantCount;
+            copy->constantTable = reinterpret_cast<MaterialConstantDef *>(Material_Alloc(constantTableSize));
+            memcpy(copy->constantTable, mtlCopy->constantTable, constantTableSize);
         }
-        Material_Add((Material *)mtlNew, hashIndex[0]);
-        return (Material *)mtlNew;
+        Material_Add(copy, hashIndex[0]);
+        return copy;
     }
 }
 

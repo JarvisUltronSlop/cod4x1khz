@@ -2536,7 +2536,7 @@ void Com_CheckError()
     if (v0)
     {
         void * value = Sys_GetValue(2);
-        longjmp((int*)value, -1);
+        longjmp(*static_cast<jmp_buf*>(value), -1);
     }
 }
 

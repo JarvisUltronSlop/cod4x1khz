@@ -1,3 +1,7 @@
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KHZ_D3DX9_RUNTIME}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/D3DX9_43.dll")
+else()
 # [POST_BUILD] Copy over MILES dependency.
 # copy_directory_if_different, NOT copy_directory: every target (mp/sp/dedi) runs this
 # into the same bin/<config> dir, so unconditional copies race each other during parallel
@@ -18,3 +22,4 @@ add_custom_command(
         ${BIN_DIR}/${CMAKE_BUILD_TYPE}
         COMMENT "COPYING STEAM DEPENDENCIES"
 )
+endif()

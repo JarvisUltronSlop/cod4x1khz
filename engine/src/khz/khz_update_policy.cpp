@@ -82,7 +82,7 @@ bool FormatPolicy(const Policy& policy,std::string* output) {
 bool ReadInstalledVersion(const std::filesystem::path& root,std::uint64_t* result) {
     std::filesystem::path file; std::string text;
     if (!result||!content::ConfinedPath(root,".khz-version-root-check",&file)) return false;
-    const auto directory=root/L"updates";
+    const auto directory=root/StorageDirectory;
     const DWORD directoryFlags=GetFileAttributesW(directory.c_str());
     if (directoryFlags==INVALID_FILE_ATTRIBUTES) {
         const auto error=GetLastError();
@@ -90,7 +90,7 @@ bool ReadInstalledVersion(const std::filesystem::path& root,std::uint64_t* resul
         *result=0; return true;
     }
     if (!(directoryFlags&FILE_ATTRIBUTE_DIRECTORY)||(directoryFlags&FILE_ATTRIBUTE_REPARSE_POINT)
-        ||!content::ConfinedPath(root,"updates/version.txt",&file)) return false;
+        ||!content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/version.txt",&file)) return false;
     const DWORD flags=GetFileAttributesW(file.c_str());
     if (flags==INVALID_FILE_ATTRIBUTES) { const auto error=GetLastError(); if (error!=ERROR_FILE_NOT_FOUND&&error!=ERROR_PATH_NOT_FOUND) return false; *result=0; return true; }
     if (!read(file,64,&text)||text.empty()||text.back()!='\n') return false;

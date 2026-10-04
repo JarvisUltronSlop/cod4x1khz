@@ -93,6 +93,17 @@ void __cdecl DB_AllocXZoneMemory(
         size = blockSize[blockIndex];
         if (size)
         {
+#if defined(_WIN64)
+            // Keep disk block offsets separately in DB_InitStreams. Native
+            // pointer records and their alignment use at most twice the wire
+            // storage; vertex/index buffers retain their original byte sizes.
+            if (blockIndex < 7)
+            {
+                if (size > (UINT32_MAX - 16u) / 2u)
+                    Com_Error(ERR_DROP, "Native asset block exceeds zone capacity: %s", filename);
+                size = size * 2u + 16u;
+            }
+#endif
             buf = DB_MemAlloc(size, g_block_mem_type[blockIndex], allocType);
             if (!buf)
             {

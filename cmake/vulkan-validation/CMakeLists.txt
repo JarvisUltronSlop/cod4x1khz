@@ -16,8 +16,12 @@ add_subdirectory("${KHZ_DEPS}/validation-spirv-tools" spirv-tools)
 add_subdirectory("${KHZ_DEPS}/utility" utility)
 add_subdirectory("${KHZ_DEPS}/robin-hood" robin-hood)
 add_subdirectory("${KHZ_DEPS}/validation" validation)
-set_target_properties(vvl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${KHZ_DEPS}/layers"
-  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${KHZ_DEPS}/layers/Release"
-  LIBRARY_OUTPUT_DIRECTORY "${KHZ_DEPS}/layers"
-  LIBRARY_OUTPUT_DIRECTORY_RELEASE "${KHZ_DEPS}/layers/Release")
+set(KHZ_LAYER_OUTPUT "${KHZ_DEPS}/layers")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(KHZ_LAYER_OUTPUT "${KHZ_LAYER_OUTPUT}/x64")
+endif()
+set_target_properties(vvl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${KHZ_LAYER_OUTPUT}"
+  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${KHZ_LAYER_OUTPUT}/Release"
+  LIBRARY_OUTPUT_DIRECTORY "${KHZ_LAYER_OUTPUT}"
+  LIBRARY_OUTPUT_DIRECTORY_RELEASE "${KHZ_LAYER_OUTPUT}/Release")
 add_custom_target(khz_vulkan_validation DEPENDS vvl)

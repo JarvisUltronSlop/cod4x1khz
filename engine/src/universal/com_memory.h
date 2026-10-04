@@ -16,7 +16,7 @@ struct TempMemInfo // sizeof=0x28
     mem_track_t data;                   // ...
 };
 
-void __cdecl Hunk_AddAsset(XAssetHeader header, _DWORD *data);
+void __cdecl Hunk_AddAsset(XAssetHeader header, void* data);
 
 void Com_TouchMemory();
 
@@ -61,19 +61,20 @@ struct HunkUser // sizeof=0x24
     HunkUser* current;
     HunkUser* next;
     int maxSize;
-    int end;
-    int pos;
+    uintptr_t end;
+    uintptr_t pos;
     const char* name;
     bool fixed;
     bool tempMem;
     // padding byte
     // padding byte
     int type;
-    uint8_t buf[1];
+    alignas(32) uint8_t buf[1];
     // padding byte
     // padding byte
     // padding byte
 };
+static_assert(offsetof(HunkUser, buf) == (sizeof(void*) == 8 ? 64 : 32));
 
 // KISAKTODO: Move to proper spot?
 struct fileData_s // sizeof=0xC
@@ -93,7 +94,7 @@ void Hunk_Clear();
 int __cdecl Hunk_Used();
 uint8_t* __cdecl Hunk_Alloc(uint32_t size, const char* name, int type);
 uint8_t* __cdecl Hunk_AllocAlign(uint32_t size, int alignment, const char* name, int type);
-uint32_t __cdecl Hunk_AllocateTempMemoryHigh(int size, const char* name);
+uint8_t* __cdecl Hunk_AllocateTempMemoryHigh(int size, const char* name);
 void Hunk_ClearTempMemoryHigh();
 uint8_t* __cdecl Hunk_AllocLow(uint32_t size, const char* name, int type);
 uint8_t* __cdecl Hunk_AllocLowAlign(uint32_t size, int alignment, const char* name, int type);

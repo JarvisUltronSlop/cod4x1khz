@@ -202,7 +202,7 @@ struct GfxWorld // sizeof=0x2DC
     GfxWorldDpvsStatic dpvs;            // ...
     GfxWorldDpvsDynamic dpvsDyn;        // ...
 };
-static_assert(sizeof(GfxWorld) == 0x2DC);
+static_assert(sizeof(GfxWorld) == (sizeof(void*) == 8 ? 1032 : 732));
 
 // r_bsp
 void __cdecl R_ReloadWorld();
@@ -287,5 +287,7 @@ int __cdecl R_AllocDrawSurf(
     GfxDrawSurf drawSurf,
     GfxDrawSurfList *drawSurfList,
     uint32_t size);
+inline constexpr uint32_t R_PRIM_DRAW_SURF_POINTER_WORDS = sizeof(void *) / sizeof(uint32_t);
+void __cdecl R_WritePrimDrawSurfPointer(GfxDelayedCmdBuf *delayedCmdBuf, const void *value);
 void __cdecl R_WritePrimDrawSurfInt(GfxDelayedCmdBuf *delayedCmdBuf, uint32_t value);
 void __cdecl R_WritePrimDrawSurfData(GfxDelayedCmdBuf *delayedCmdBuf, uint8_t *data, uint32_t count);

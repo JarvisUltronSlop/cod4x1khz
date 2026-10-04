@@ -1,7 +1,8 @@
-param([ValidateSet('mp_killhouse','mp_crash')][string]$Map = 'mp_killhouse', [ValidateRange(1024,65535)][int]$Port = 28960, [ValidateRange(0,15)][int]$BotCount = 15, [ValidateRange(0,3)][int]$BotDifficulty = 1, [switch]$Benchmark, [switch]$ScriptTests, [switch]$TestControls, [string]$Configuration = 'Release')
+param([ValidateSet('mp_killhouse','mp_crash','mp_backlot')][string]$Map = 'mp_killhouse', [ValidateRange(1024,65535)][int]$Port = 28960, [ValidateRange(0,15)][int]$BotCount = 15, [ValidateRange(0,3)][int]$BotDifficulty = 1, [switch]$Benchmark, [switch]$ScriptTests, [switch]$TestControls, [string]$Configuration = 'Release', [ValidateSet('Win32','x64')][string]$Architecture = 'Win32')
 $ErrorActionPreference = 'Stop'
 $runtimeRoot = Join-Path $PSScriptRoot 'runtime'
-$executable = Join-Path $runtimeRoot 'cod4x1khz_server.exe'
+$executableRoot = if ($Architecture -eq 'x64') { Join-Path $runtimeRoot 'x64' } else { $runtimeRoot }
+$executable = Join-Path $executableRoot 'cod4x1khz_server.exe'
 if (!(Test-Path -LiteralPath $executable)) { throw 'Build the server with build.ps1 first' }
 # khz_bots is latched and script bootstrap is selected at initialization.
 # A later exec cannot enable it for the already initialized first map.

@@ -1,5 +1,7 @@
 #include <universal/q_shared.h>
 #include "database.h"
+#include "asset_native_stream.h"
+#include <asset_bootstrap_layout.hpp>
 
 #include <qcommon/threads.h>
 #include <win32/win_local.h>
@@ -214,7 +216,7 @@ void __cdecl DB_FinishGeometryBlocks(XZoneMemory *zoneMem)
     }
 }
 
-void __cdecl DB_LoadXFileInternal()
+static void DB_LoadXFileBody()
 {
     int32_t err; // [esp+8h] [ebp-4Ch]
     bool fileIsSecure; // [esp+Fh] [ebp-45h]
@@ -289,7 +291,7 @@ void __cdecl DB_LoadXFileInternal()
         }
     }
     DB_AllocXZoneMemory(file.blockSize, g_load.filename, g_load.zoneMem, g_load.allocType);
-    DB_InitStreams(g_load.zoneMem);
+    DB_InitStreams(g_load.zoneMem, file.blockSize);
     Load_XAssetListCustom();
     DB_PushStreamPos(4);
     if (varXAssetList->assets)
@@ -302,6 +304,9 @@ void __cdecl DB_LoadXFileInternal()
     DB_FinishGeometryBlocks(g_load.zoneMem);
     --g_loadingAssets;
     Load_DelayStream();
+#if defined(_WIN64)
+    DB_FinishNativeReferences();
+#endif
     DB_LoadDelayedImages();
     iassert(g_load.compressBufferStart);
     Com_Printf(CON_CHANNEL_FILES, "Loaded zone '%s'\n", g_load.filename);
@@ -323,11 +328,37 @@ bool __cdecl DB_IsMinimumFastFileLoaded()
 #endif
 }
 
+void __cdecl DB_LoadXFileInternal()
+{
+#if defined(_WIN64)
+    char error[1024]{};
+    try { DB_LoadXFileBody(); }
+    catch (const std::exception& failure) {
+        // Unwind temporary conversion storage before the engine's error jump.
+        std::snprintf(error, sizeof(error), "%s", failure.what());
+    }
+    if (*error) {
+        DB_ResetNativeLoads();
+        Com_Error(ERR_DROP, "Cannot load native fastfile %s: %s", g_load.filename, error);
+    }
+#else
+    DB_LoadXFileBody();
+#endif
+}
+
 void Load_XAssetListCustom()
 {
     varXAssetList = &g_varXAssetList;
     
+#if defined(_WIN64)
+    khz::asset_wire::XAssetList32 wire{};
+    DB_LoadXFileData(reinterpret_cast<uint8_t*>(&wire), sizeof(wire));
+    khz::asset_wire::decode(khz::asset_wire::assetListLayout(),
+        {reinterpret_cast<const std::byte*>(&wire), sizeof(wire)},
+        {reinterpret_cast<std::byte*>(&g_varXAssetList), sizeof(g_varXAssetList)});
+#else
     DB_LoadXFileData((uint8_t *)&g_varXAssetList, sizeof(XAssetList));
+#endif
     DB_PushStreamPos(4);
     varScriptStringList = &varXAssetList->stringList;
     Load_ScriptStringList(0);
@@ -339,7 +370,9 @@ void __cdecl Load_XAssetArrayCustom(int32_t count)
     XAsset *var; // [esp+0h] [ebp-8h]
     int32_t i; // [esp+4h] [ebp-4h]
 
-    Load_Stream(1, (uint8_t *)varXAsset, 8 * count);
+    static constexpr khz::asset_wire::Schema schema{"XAsset", 8, sizeof(XAsset),
+        [](std::span<const std::byte>, std::vector<khz::asset_wire::Field>&) { return khz::asset_wire::assetLayout<XAsset>(); }};
+    DB_LoadTypedStream(1, reinterpret_cast<uint8_t*>(varXAsset), 8 * count, schema);
     var = varXAsset;
     for (i = 0; i < count; ++i)
     {

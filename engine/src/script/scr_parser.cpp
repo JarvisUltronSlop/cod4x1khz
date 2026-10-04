@@ -704,7 +704,7 @@ char *__cdecl Scr_ReadFile(const char *filename, char *extFilename, const char *
     }
 #endif
 
-    if (*(_BYTE *)fs_gameDirVar->current.integer)
+    if (*(_BYTE *)fs_gameDirVar->current.string)
     {
         if ((FS_FOpenFileRead(extFilename, &file) & 0x80000000) != 0)
         {
@@ -1191,8 +1191,8 @@ void __cdecl Scr_CalcScriptFileProfile()
                 v1->avgTime = (profileTime + 4 * v1->avgTime) / 5;
                 if (profileTime > v1->maxTime)
                     v1->maxTime = profileTime;
-                v1->totalTime = (double)profileTime * *((float *)Sys_GetValue(0) + 20782) + v1->totalTime;
-                v1->totalBuiltIn = (double)profileBuiltInTime * *((float *)Sys_GetValue(0) + 20782) + v1->totalBuiltIn;
+                v1->totalTime = (double)profileTime * static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale + v1->totalTime;
+                v1->totalBuiltIn = (double)profileBuiltInTime * static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale + v1->totalBuiltIn;
                 Script->srcTotal += profileTime;
             }
             else if (scrParserGlob.opcodeLookup[i].profileTime)
@@ -1305,7 +1305,7 @@ char __cdecl Scr_PrintProfileTimes(float minTime)
     time = 0;
     for (i = 0; i < scrParserGlob.opcodeLookupLen; time += scrParserGlob.opcodeLookup[i++].profileTime)
         ;
-    if (minTime <= (double)time * *((float *)Sys_GetValue(0) + 20782))
+    if (minTime <= (double)time * static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale)
     {
     LABEL_10:
         profileCount = 0;
@@ -1350,11 +1350,8 @@ char __cdecl Scr_PrintProfileTimes(float minTime)
             maxNameLength = 0;
         for (profileIndexa = 0; profileIndexa < 40; ++profileIndexa)
         {
-            v4 = (int)&profile->profileScriptNames[profileIndexa][1];
-            v5 = (uint32_t)&profile->profileScriptNames[profileIndexa][strlen(profile->profileScriptNames[profileIndexa])
-                + 1];
-            if (v5 - v4 > maxNameLength)
-                maxNameLength = v5 - v4;
+            const auto length = static_cast<int>(strlen(profile->profileScriptNames[profileIndexa]));
+            if (length > maxNameLength) maxNameLength = length;
         }
         for (profileIndexb = 0; profileIndexb < 40; ++profileIndexb)
         {
@@ -1362,7 +1359,7 @@ char __cdecl Scr_PrintProfileTimes(float minTime)
             if (*name)
             {
                 strlen(name);
-                v8 = *((float *)Sys_GetValue(0) + 20782);
+                v8 = static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale;
                 Com_Printf(CON_CHANNEL_PARSERSCRIPT, "%-*s %6.2f\n", maxNameLength, name, (double)profile->write[profileIndexb].totalTime * v8);
             }
         }
@@ -1370,8 +1367,8 @@ char __cdecl Scr_PrintProfileTimes(float minTime)
         for (profileIndexc = 0; profileIndexc < profileCount; ++profileIndexc)
         {
             opcodeLookup = (OpcodeLookup *)&sortedOpcodeLookup[24 * profileIndexc];
-            v7 = *((float *)Sys_GetValue(0) + 20782);
-            v6 = *((float *)Sys_GetValue(0) + 20782);
+            v7 = static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale;
+            v6 = static_cast<ProfileStack *>(Sys_GetValue(0))->prof_timescale;
             Com_Printf(
                 CON_CHANNEL_PARSERSCRIPT,
                 "time: %f, builtin: %f, usage: %d\n",
@@ -1555,7 +1552,7 @@ void __cdecl RuntimeErrorInternal(int channel, char *codePos, uint32_t index, co
             Com_PrintError(channel, "called from:\n");
             Scr_PrintPrevCodePos(
                 CON_CHANNEL_DONT_FILTER,
-                (char *)scrVmPub.stack[3 * i - 96].u.intValue,
+                const_cast<char*>(scrVmPub.function_frame_start[i].fs.pos),
                 scrVmPub.function_frame_start[i].fs.localId == 0);
         }
         Com_PrintError(channel, "started from:\n");

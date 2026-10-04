@@ -27,7 +27,7 @@ CinematicGlob cinematicGlob;
 bool g_cinematicThreadInitialized;
 CinematicThreadState g_cinematicThreadState;
 
-int __cdecl CinematicHunk_Alloc(CinematicHunk* hunk, int size)
+void *__cdecl CinematicHunk_Alloc(CinematicHunk* hunk, int size)
 {
     const char* v2; // eax
     char* alloced; // [esp+0h] [ebp-4h]
@@ -40,13 +40,13 @@ int __cdecl CinematicHunk_Alloc(CinematicHunk* hunk, int size)
     alloced = (char*)hunk->atFront;
     hunk->atFront = &alloced[size];
     if (hunk->atFront <= hunk->atBack)
-        return (int)alloced;
+        return alloced;
     if (!alwaysfails)
     {
-        v2 = va("CinematicHunk_Alloc failed: 0x%08x 0x%08x 0x%08x\n", hunk->atFront, size, hunk->atBack);
+        v2 = va("CinematicHunk_Alloc failed: %p 0x%08x %p\n", hunk->atFront, size, hunk->atBack);
         MyAssertHandler(".\\r_cinematic.cpp", 376, 0, v2);
     }
-    return -1;
+    return nullptr;
 }
 
 void R_Cinematic_RelinquishIO()
@@ -499,7 +499,7 @@ char __cdecl R_Cinematic_StartPlayback_Now(const char *filename, uint32_t playba
     R_Cinematic_CheckBinkError();
 #ifndef KISAK_OPENAL
     Driver = MSS_GetDriver();
-    BinkSetSoundSystem(BinkOpenMiles, (uint32_t)Driver);
+    BinkSetSoundSystem(BinkOpenMiles, (UINTa)Driver);
     R_Cinematic_CheckBinkError();
 #else
     // KISAK_OPENAL TODO: Bink has no OpenAL sound-system adapter.

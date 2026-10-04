@@ -7,6 +7,7 @@
 #endif
 #include <universal/surfaceflags.h>
 #include "r_material.h"
+#include "r_assetlists.h"
 #include "r_init.h"
 #include "r_state.h"
 #include <universal/com_memory.h>
@@ -294,7 +295,7 @@ uint8_t *__cdecl Material_Alloc(uint32_t size)
 
 void __cdecl Load_CreateMaterialPixelShader(GfxPixelShaderLoadDef *loadDef, MaterialPixelShader *mtlShader)
 {
-#ifdef COD4X1KHZ
+#if defined(COD4X1KHZ) && !defined(KISAK_DEDICATED)
     KHZ_CaptureStockShader(mtlShader->name,static_cast<const uint32_t*>(loadDef->program),loadDef->programSize,loadDef->loadForRenderer,"pixel");
 #endif
     iassert( loadDef == &mtlShader->prog.loadDef );
@@ -315,7 +316,7 @@ void __cdecl Load_CreateMaterialPixelShader(GfxPixelShaderLoadDef *loadDef, Mate
 
 void __cdecl Load_CreateMaterialVertexShader(GfxVertexShaderLoadDef *loadDef, MaterialVertexShader *mtlShader)
 {
-#ifdef COD4X1KHZ
+#if defined(COD4X1KHZ) && !defined(KISAK_DEDICATED)
     KHZ_CaptureStockShader(mtlShader->name,static_cast<const uint32_t*>(loadDef->program),loadDef->programSize,loadDef->loadForRenderer,"vertex");
 #endif
     iassert( loadDef == &mtlShader->prog.loadDef );
@@ -625,24 +626,17 @@ void __cdecl R_MaterialList_f()
     Material *material; // [esp+13Ch] [ebp-401Ch]
     int v3; // [esp+140h] [ebp-4018h]
     MaterialMemory *v4; // [esp+144h] [ebp-4014h]
-    uint32_t inData; // [esp+148h] [ebp-4010h] BYREF
-    MaterialMemory v6[2049]; // [esp+14Ch] [ebp-400Ch] BYREF
+    RMaterialList materialList{};
     float v7; // [esp+4154h] [ebp-4h]
 
     v3 = 0;
     Com_Printf(CON_CHANNEL_GFX, "-----------------------\n");
-    inData = 0;
-    DB_EnumXAssets(ASSET_TYPE_MATERIAL, (void(__cdecl *)(XAssetHeader, void*))R_GetMaterialList, &inData, 0);
-    // std::_Sort<ShadowCandidate *, int, bool(__cdecl *)(ShadowCandidate const &, ShadowCandidate const &)>(
-    //     (ShadowCandidate *)v6,
-    //     (ShadowCandidate *)&v6[inData],
-    //     (int)(8 * inData) >> 3,
-    //     R_MaterialCompare);
-    std::sort(&v6[0], &v6[inData], R_MaterialCompare);
+    DB_EnumXAssets(ASSET_TYPE_MATERIAL, R_GetMaterialList, &materialList, 0);
+    std::sort(materialList.sorted, materialList.sorted + materialList.count, R_MaterialCompare);
     Com_Printf(CON_CHANNEL_GFX, "geo KB   name\n");
-    for (i = 0; i < inData; ++i)
+    for (i = 0; i < materialList.count; ++i)
     {
-        v4 = &v6[i];
+        v4 = &materialList.sorted[i];
         material = v4->material;
         iassert( material );
         v3 += v4->memory;
@@ -656,25 +650,10 @@ void __cdecl R_MaterialList_f()
     }
     Com_Printf(CON_CHANNEL_GFX, "-----------------------\n");
     Com_Printf(CON_CHANNEL_GFX, "current total  %5.1f MB\n", (double)v3 / 1048576.0);
-    Com_Printf(CON_CHANNEL_GFX, "%i total geometry materials\n", inData);
+    Com_Printf(CON_CHANNEL_GFX, "%i total geometry materials\n", materialList.count);
     Com_Printf(CON_CHANNEL_GFX, "Related commands: meminfo, imagelist, gfx_world, gfx_model, cg_drawfps, com_statmon, tempmeminfo\n");
 }
 
-void __cdecl R_GetMaterialList(XAssetHeader header, char *data)
-{
-    int memory; // [esp+0h] [ebp-Ch]
-    XAssetHeader *materialMemory; // [esp+4h] [ebp-8h]
-
-    memory = R_GetMaterialMemory(header.material);
-    if (memory)
-    {
-        //iassert( materialList->count < ARRAY_COUNT( materialList->sorted ) ); // KISAKTODO
-        materialMemory = (XAssetHeader *)&data[8 * *(uint32_t *)data + 4];
-        materialMemory->xmodelPieces = header.xmodelPieces;
-        materialMemory[1].xmodelPieces = (XModelPieces *)memory;
-        ++*(uint32_t *)data;
-    }
-}
 
 int __cdecl R_GetMaterialMemory(Material *material)
 {

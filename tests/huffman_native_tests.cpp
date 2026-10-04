@@ -78,6 +78,21 @@ int main() {
     assert(!rejected.build(native.compressDecompress.tree, native.compressDecompress.loc) && !rejected.ready());
     native.compressDecompress.loc[1]->parent = malformed;
     std::vector<unsigned char> output(65536);
+    // Architecture-independent fingerprint of every native code and a complete
+    // deterministic packet. This is compared against the original x86 encoder.
+    std::uint64_t wireDigest = 14695981039346656037ull;
+    const auto digestByte = [&](unsigned char byte) { wireDigest = (wireDigest ^ byte) * 1099511628211ull; };
+    for (unsigned symbol = 0; symbol != 256; ++symbol) {
+        digestByte(static_cast<unsigned char>(table[symbol].length));
+        for (unsigned shift = 0; shift != 32; shift += 8)
+            digestByte(static_cast<unsigned char>(table[symbol].bits >> shift));
+    }
+    const auto wireSize = reference(native.compressDecompress, packet.data(), output.data(), int(packet.size()), int(output.size()));
+    assert(wireSize > 0);
+    for (int i = 0; i < wireSize; ++i) digestByte(output[i]);
+    // Captured with HEAD's original x86 huffman.cpp and the same frequencies,
+    // code table serialization and deterministic input on 2026-10-04.
+    assert(wireDigest == 0x31442bde5f36413full);
     const auto measure = [&](bool packed) {
         const auto started = std::chrono::steady_clock::now();
         for (unsigned pass = 0; pass != 64; ++pass)
@@ -86,6 +101,7 @@ int main() {
         return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count();
     };
     const auto referenceUs = measure(false), packedUs = measure(true);
-    std::printf("{\"native_comparisons\":%u,\"max_code_bits\":%u,\"reference_us\":%lld,\"packed_us\":%lld,\"same_wire_bytes\":true,\"match_timing_gate\":false}\n",
-        comparisons, maximum, static_cast<long long>(referenceUs), static_cast<long long>(packedUs));
+    std::printf("{\"process_bits\":%zu,\"wire_digest\":\"%016llx\",\"native_comparisons\":%u,\"max_code_bits\":%u,\"reference_us\":%lld,\"packed_us\":%lld,\"same_wire_bytes\":true,\"match_timing_gate\":false}\n",
+        sizeof(void*) * 8, static_cast<unsigned long long>(wireDigest), comparisons, maximum,
+        static_cast<long long>(referenceUs), static_cast<long long>(packedUs));
 }

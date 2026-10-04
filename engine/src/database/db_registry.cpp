@@ -495,7 +495,7 @@ char *__cdecl DB_ReferencedFFNameList()
 #endif
             if (g_zones[i].modZone)
             {
-                I_strncat(g_zoneNameList, 2080, (const char*)fs_gameDirVar->current.integer);
+                I_strncat(g_zoneNameList, 2080, (const char*)fs_gameDirVar->current.string);
                 I_strncat(g_zoneNameList, 2080, "/");
             }
             I_strncat(g_zoneNameList, 2080, g_zones[i].name);
@@ -651,7 +651,7 @@ void __cdecl TRACK_db_registry()
 void __cdecl DB_GetIndexBufferAndBase(uint8_t zoneHandle, void *indices, void **ib, int32_t *baseIndex)
 {
     *ib = g_zones[zoneHandle].mem.indexBuffer;
-    *baseIndex = ((uint32_t)indices - (uint32_t)g_zones[zoneHandle].mem.blocks[8].data) >> 1;
+    *baseIndex = static_cast<int32_t>((static_cast<uint8_t*>(indices) - g_zones[zoneHandle].mem.blocks[8].data) / 2);
 }
 
 void __cdecl DB_GetVertexBufferAndOffset(uint8_t zoneHandle, _BYTE *verts, void **vb, int32_t *vertexOffset)
@@ -665,7 +665,7 @@ void __cdecl DB_BuildOSPath_Mod(const char *zoneName, uint32_t size, char *filen
     char *v3; // eax
     const char *string; // [esp-8h] [ebp-8h]
 
-    if (!*(_BYTE *)fs_gameDirVar->current.integer)
+    if (!*(_BYTE *)fs_gameDirVar->current.string)
         MyAssertHandler(".\\database\\db_registry.cpp", 3204, 0, "%s", "IsUsingMods()");
     string = fs_gameDirVar->current.string;
 #ifdef COD4X1KHZ
@@ -688,7 +688,7 @@ bool __cdecl DB_ModFileExists()
     char filename[256]; // [esp+0h] [ebp-108h] BYREF
     void *zoneFile; // [esp+104h] [ebp-4h]
 
-    if (!*(_BYTE *)fs_gameDirVar->current.integer)
+    if (!*(_BYTE *)fs_gameDirVar->current.string)
         return 0;
     DB_BuildOSPath_Mod("mod", 0x100u, filename);
     zoneFile = CreateFileA(filename, 0x80000000, 1u, 0, 3u, 0x60000000u, 0);
@@ -989,22 +989,13 @@ void __cdecl Mark_MenuAsset(menuDef_t *menu)
 
 void __cdecl DB_DynamicCloneMenu(XAssetHeader from, XAssetHeader to, int32_t swag)
 {
-    windowDef_t *toWindow; // [esp+14h] [ebp-18h]
-    int32_t toIndex; // [esp+18h] [ebp-14h]
-    int32_t fromIndex; // [esp+1Ch] [ebp-10h]
-    windowDef_t *fromWindow; // [esp+24h] [ebp-8h]
-
-    to.xmodelPieces[6].pieces = from.xmodelPieces[6].pieces;
-    for (toIndex = 0; toIndex < (int)to.xmodelPieces[13].pieces; ++toIndex)
-    {
-        toWindow = *(windowDef_t **)(to.xmodelPieces[23].numpieces + 4 * toIndex);
-        if (toWindow->name)
-        {
-            for (fromIndex = 0; fromIndex < (int)from.xmodelPieces[13].pieces; ++fromIndex)
-            {
-                fromWindow = *(windowDef_t **)(from.xmodelPieces[23].numpieces + 4 * fromIndex);
-                if (fromWindow->name && !strcmp(fromWindow->name, toWindow->name))
-                {
+    to.menu->window.dynamicFlags[0] = from.menu->window.dynamicFlags[0];
+    for (int toIndex = 0; toIndex < to.menu->itemCount; ++toIndex) {
+        auto* toWindow = &to.menu->items[toIndex]->window;
+        if (toWindow->name) {
+            for (int fromIndex = 0; fromIndex < from.menu->itemCount; ++fromIndex) {
+                const auto* fromWindow = &from.menu->items[fromIndex]->window;
+                if (fromWindow->name && !strcmp(fromWindow->name, toWindow->name)) {
                     toWindow->dynamicFlags[0] = fromWindow->dynamicFlags[0];
                     break;
                 }
@@ -1161,7 +1152,7 @@ int32_t __cdecl DB_GetAllXAssetOfType_LoadObj(XAssetType type, XAssetHeader* ass
     assetList.assets = assets;
     assetList.assetCount = 0;
     assetList.maxCount = maxCount;
-    DB_EnumXAssets(type, (void(__cdecl*)(XAssetHeader, void*))Hunk_AddAsset, &assetList, 0);
+    DB_EnumXAssets(type, Hunk_AddAsset, &assetList, 0);
     return assetList.assetCount;
 }
 
@@ -1673,7 +1664,7 @@ XAssetEntry *__cdecl DB_CreateDefaultEntry(XAssetType type, char *name)
         newEntry->asset.header.sound->head = NULL;
     }
     newEntry->nextHash = db_hashTable[DB_HashForName(name, type)];
-    db_hashTable[DB_HashForName(name, type)] = ((char *)newEntry - (char *)g_assetEntryPool) >> 4;
+    db_hashTable[DB_HashForName(name, type)] = static_cast<uint16_t>(reinterpret_cast<XAssetEntryPoolEntry*>(newEntry) - g_assetEntryPool);
     DB_SetXAssetName(&newEntry->asset, SL_ConvertToString(SL_GetString(name, 4)));
     newEntry->inuse = 1;
     return newEntry;
@@ -2688,7 +2679,7 @@ int32_t __cdecl DB_TryLoadXFileInternal(char *zoneName, int32_t zoneFlags)
     iassert(!g_zoneInfoCount);
     if (I_stricmp(zoneName, "mp_patch"))
     {
-        if (*(_BYTE *)fs_gameDirVar->current.integer && DB_ShouldLoadFromModDir(zoneName))
+        if (*(_BYTE *)fs_gameDirVar->current.string && DB_ShouldLoadFromModDir(zoneName))
         {
             DB_BuildOSPath_Mod(zoneName, 256, filename);
             zoneFile = CreateFileA(filename, 0x80000000, 1u, 0, 3u, 0x60000000u, 0);

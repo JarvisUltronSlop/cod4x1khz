@@ -1,0 +1,22 @@
+include_guard(GLOBAL)
+get_filename_component(KHZ_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+# FFmpeg's shared LGPL build keeps its native C ABI across the MSVC boundary.
+set(KHZ_FFMPEG_ROOT "${KHZ_ROOT}/.deps/ffmpeg/ffmpeg-n8.1.3-9-g29e619e767-win64-lgpl-shared-8.1"
+    CACHE PATH "Native FFmpeg headers, import libraries and DLLs")
+if(NOT EXISTS "${KHZ_FFMPEG_ROOT}/include/libavcodec/avcodec.h")
+  message(FATAL_ERROR "Run scripts/prepare-native-video.ps1 before configuring the native client")
+endif()
+add_library(khz_native_video STATIC "${KHZ_ROOT}/engine/src/video/bink_ffmpeg.cpp")
+target_include_directories(khz_native_video PRIVATE "${KHZ_ROOT}/engine/deps" "${KHZ_FFMPEG_ROOT}/include")
+target_compile_definitions(khz_native_video PUBLIC KHZ_NATIVE_VIDEO=1 __RADINEXE__=1)
+target_compile_definitions(khz_native_video PRIVATE _CRT_SECURE_NO_WARNINGS)
+target_link_libraries(khz_native_video PUBLIC OpenAL::OpenAL)
+foreach(component avcodec avformat avutil swresample swscale)
+  target_link_libraries(khz_native_video PRIVATE "${KHZ_FFMPEG_ROOT}/lib/${component}.lib")
+endforeach()
+function(khz_stage_native_video target)
+  foreach(dll avcodec-62 avformat-62 avutil-60 swresample-6 swscale-9)
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KHZ_FFMPEG_ROOT}/bin/${dll}.dll" "$<TARGET_FILE_DIR:${target}>/${dll}.dll")
+  endforeach()
+endfunction()

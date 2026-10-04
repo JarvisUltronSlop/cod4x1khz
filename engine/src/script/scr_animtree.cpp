@@ -50,32 +50,6 @@ void __cdecl Scr_EmitAnimation(char *pos, uint32_t animName, uint32_t sourcePos)
         CompileError(sourcePos, "#using_animtree was not specified");
 }
 
-void __cdecl Scr_EmitAnimationInternal(char *pos, uint32_t animName, uint32_t names)
-{
-    uint32_t NewVariable; // eax
-    VariableValueInternal_u *value; // [esp+0h] [ebp-10h]
-    uint32_t animId; // [esp+4h] [ebp-Ch]
-    VariableValue tempValue; // [esp+8h] [ebp-8h] BYREF
-
-    iassert(names);
-    animId = FindVariable(names, animName);
-
-    if (animId)
-    {
-        value = GetVariableValueAddress(animId);
-        *(const char **)pos = value->u.codePosValue;
-        value->u.codePosValue = pos;
-    }
-    else
-    {
-        NewVariable = GetNewVariable(names, animName);
-        *(unsigned char**)pos = NULL;
-        tempValue.type = VAR_CODEPOS;
-        tempValue.u.codePosValue = pos;
-        SetVariableValue(NewVariable, &tempValue);
-    }
-}
-
 int __cdecl Scr_GetAnimsIndex(const XAnim_s *anims)
 {
     int i; // [esp+4h] [ebp-4h]
@@ -237,7 +211,7 @@ void __cdecl Scr_LoadAnimTreeAtIndex(uint32_t index, void *(__cdecl *Alloc)(int)
             RemoveRefToObject(scrAnimPub.animtree_node);
             scrAnimPub.animtree_node = 0;
             tempValue.type = VAR_CODEPOS;
-            tempValue.u.intValue = (int)animtree;
+            tempValue.u.codePosValue = reinterpret_cast<const char*>(animtree);
             Variable = GetVariable(fileId, 1);
             SetVariableValue(Variable, &tempValue);
             XAnimSetupSyncNodes(animtree);
@@ -276,41 +250,6 @@ int __cdecl Scr_GetAnimTreeSize(uint32_t parentNode)
     if (size)
         ++size;
     return size;
-}
-
-void __cdecl ConnectScriptToAnim(
-    uint32_t names,
-    uint16_t index,
-    uint32_t filename,
-    uint32_t name,
-    uint16_t treeIndex)
-{
-    scr_anim_s anim; // [esp+4h] [ebp-14h]
-    const char *codePos; // [esp+8h] [ebp-10h]
-    uint32_t animId; // [esp+Ch] [ebp-Ch]
-    VariableValueInternal_u *value; // [esp+10h] [ebp-8h]
-    const char *nextCodePos; // [esp+14h] [ebp-4h]
-
-    animId = FindVariable(names, name);
-    if (animId)
-    {
-        value = GetVariableValueAddress(animId);
-        if (!value->u.codePosValue)
-        {
-            Com_Error(ERR_DROP, "duplicate animation %s in animtrees/%s.atr", SL_ConvertToString(name), SL_ConvertToString(filename));
-        }
-
-        anim.index = index;
-        anim.tree = treeIndex;
-
-        for (codePos = (char *)value->u.codePosValue; codePos; codePos = nextCodePos)
-        {
-            nextCodePos = *(const char **)codePos;
-            *(scr_anim_s *)codePos = anim;
-        }
-
-        value->u.codePosValue = NULL;
-    }
 }
 
 int __cdecl Scr_CreateAnimationTree(
@@ -429,11 +368,11 @@ void __cdecl Scr_CheckAnimsDefined(uint32_t names, uint32_t filename)
         iassert(name < SL_MAX_STRING_INDEX);
 
         value = GetVariableValueAddress(animId);
-        if (value->u.intValue)
+        if (value->u.codePosValue)
         {
             msg = va("animation '%s' not defined in anim tree '%s'", SL_ConvertToString(name), SL_ConvertToString(filename));
             if (Scr_IsInOpcodeMemory(value->u.codePosValue))
-                CompileError2((char *)value->u.intValue, "%s", msg);
+                CompileError2(const_cast<char*>(value->u.codePosValue), "%s", msg);
             else
                 Com_Error(ERR_DROP, "%s", msg);
         }

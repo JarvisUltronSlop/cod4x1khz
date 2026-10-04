@@ -289,47 +289,49 @@ void __cdecl CM_TestGeomInLeafBrushNode(cLeaf_t *leaf, const objInfo *input, Res
         &io);
 }
 
-void __cdecl Phys_TestGeomInBrush(const cbrush_t *brush, uint32_t *userData)
+void __cdecl Phys_TestGeomInBrush(const cbrush_t *brush, void *userData)
 {
     Results *results; // [esp+68h] [ebp-8h]
 
-    results = (Results *)userData[1];
+    const auto *io = static_cast<const InputOutput *>(userData);
+    const objInfo *input = io->Input;
+    results = io->Output;
     if (results->contactCount < results->maxContacts)
     {
-        switch (*(uint32_t *)(*userData + 52))
+        switch (input->type)
         {
         case 1:
         {
             PROF_SCOPED("Phys_BoxBrushColl");
-            Phys_CollideBoxWithBrush(brush, (const objInfo *)*userData, results);
+            Phys_CollideBoxWithBrush(brush, input, results);
             break;
         }
         case 2:
         {
             PROF_SCOPED("Phys_BrushBrushColl");
-            Phys_CollideOrientedBrushModelWithBrush(brush, (const objInfo *)*userData, results);
+            Phys_CollideOrientedBrushModelWithBrush(brush, input, results);
             break;
         }
         case 3:
         {
             PROF_SCOPED("Phys_BrushBrushColl");
             Phys_CollideOrientedBrushWithBrush(
-                *(const cbrush_t **)(*userData + 140),
+                input->u.brush,
                 brush,
-                (const objInfo *)*userData,
+                input,
                 results);
             break;
         }
         case 4:
         {
             PROF_SCOPED("Phys_CylinderBrushColl");
-            Phys_CollideCylinderWithBrush(brush, (const objInfo *)*userData, results);
+            Phys_CollideCylinderWithBrush(brush, input, results);
             break;
         }
         case 5:
         {
             PROF_SCOPED("Phys_CapsuleBrushColl");
-            Phys_CollideCapsuleWithBrush(brush, (const objInfo *)*userData, results);
+            Phys_CollideCapsuleWithBrush(brush, input, results);
             break;
         }
         default:

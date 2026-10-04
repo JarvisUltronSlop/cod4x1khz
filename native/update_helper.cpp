@@ -51,8 +51,12 @@ std::wstring normalized(const std::filesystem::path& file){std::error_code error
 bool rootFor(const Options& options,std::filesystem::path* root){
     const auto image=update::CurrentExecutable();
     if(options.fixtureRoot.empty()){
-        const auto candidate=image.parent_path().parent_path();std::filesystem::path helper;
-        if(!content::ConfinedPath(candidate,"runtime/cod4x1khz_update.exe",&helper)||normalized(image)!=normalized(helper))return false;*root=candidate;return true;
+        auto candidate=image.parent_path().parent_path();
+#ifdef _WIN64
+        candidate=candidate.parent_path();
+#endif
+        std::filesystem::path helper;
+        if(!content::ConfinedPath(candidate,update::HelperPath,&helper)||normalized(image)!=normalized(helper))return false;*root=candidate;return true;
     }
     auto project=image.parent_path();bool found=false;
     for(unsigned i=0;i<8&&!project.empty();++i){std::filesystem::path marker;if(content::ConfinedPath(project,"config/update-policy.txt",&marker)&&GetFileAttributesW(marker.c_str())!=INVALID_FILE_ATTRIBUTES){found=true;break;}const auto parent=project.parent_path();if(parent==project)break;project=parent;}
@@ -67,11 +71,11 @@ std::string manifestHash(const update::Manifest& manifest){std::string body;cont
 int report(const std::filesystem::path& root,const Options& options,bool success,const std::string& detail,const update::Result& result={},std::uint64_t version=0,const std::string& selectedHash={}){
     const auto text="{\"format\":1,\"action\":"+jsonString(options.action)+",\"success\":"+(success?"true":"false")+",\"version\":"+std::to_string(version)
         +",\"manifest_sha256\":"+jsonString(selectedHash)+",\"applied\":"+(result.applied?"true":"false")+",\"rolled_back\":"+(result.rolledBack?"true":"false")+",\"recoverable\":"+(result.recoverable?"true":"false")+",\"detail\":"+jsonString(detail)+"}\n";
-    std::filesystem::path file;if(!root.empty()&&content::ConfinedPath(root,"updates/last-result.json",&file,true))content::AtomicWrite(file,text.data(),text.size());
+    std::filesystem::path file;if(!root.empty()&&content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/last-result.json",&file,true))content::AtomicWrite(file,text.data(),text.size());
     std::printf("%s",text.c_str());return success?0:1;
 }
 bool download(const std::filesystem::path& root,const update::Policy& policy,const update::Manifest& manifest,std::array<std::filesystem::path,2>* sources,std::string* reason){
-    std::filesystem::path staging,check;if(!content::ConfinedPath(root,"updates/incoming/staging/root-check",&check,true)){*reason="Cannot confine update staging";return false;}
+    std::filesystem::path staging,check;if(!content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/incoming/staging/root-check",&check,true)){*reason="Cannot confine update staging";return false;}
     staging=check.parent_path();
     if(!content::Start(root,staging)){*reason="Cannot start private update download worker";return false;}
     bool okay=true;for(unsigned i=0;i<2;++i){const auto& file=manifest.files[i];content::Request request;request.id=i+1;request.session=1;request.generation=manifest.version;request.expectedBytes=file.bytes;request.sha256=file.sha256;

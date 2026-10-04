@@ -1074,7 +1074,7 @@ void __cdecl CG_CreatePhysicsObject(int32_t localClientNum, centity_s *cent)
     const char *v2; // eax
     const char *Name; // eax
     float velocity[3]; // [esp+1Ch] [ebp-44h] BYREF
-    int32_t physObjId; // [esp+28h] [ebp-38h]
+    intptr_t physObjId; // [esp+28h] [ebp-38h]
     DObj_s *obj; // [esp+2Ch] [ebp-34h]
     PhysPreset *physPreset; // [esp+30h] [ebp-30h]
     float quat[4]; // [esp+34h] [ebp-2Ch] BYREF
@@ -1096,7 +1096,7 @@ void __cdecl CG_CreatePhysicsObject(int32_t localClientNum, centity_s *cent)
     if (physPreset)
     {
         Sys_EnterCriticalSection(CRITSECT_PHYSICS);
-        physObjId = (int)Phys_ObjCreate(PHYS_WORLD_FX, position, quat, velocity, physPreset);
+        physObjId = (intptr_t)Phys_ObjCreate(PHYS_WORLD_FX, position, quat, velocity, physPreset);
         if (physObjId)
         {
             DObjPhysicsSetCollisionFromXModel(obj, PHYS_WORLD_FX, (dxBody *)physObjId);

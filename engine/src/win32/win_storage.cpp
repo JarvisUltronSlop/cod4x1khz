@@ -196,7 +196,7 @@ void __cdecl LiveStorage_StatsInit(int controllerIndex)
     LiveStorage_UnlockClassHeavyGunner(controllerIndex);
     LiveStorage_UnlockClassSniper(controllerIndex);
     LiveStorage_UnlockClassSpecOps(controllerIndex);
-    if (!*(_BYTE *)fs_gameDirVar->current.integer)
+    if (!*(_BYTE *)fs_gameDirVar->current.string)
     {
         Dvar_SetStringByName("clanName", (char *)"");
         LiveStorage_SetFromLocString(controllerIndex, "customclass1", (char*)"CLASS_SLOT1");
@@ -572,7 +572,7 @@ void __cdecl LiveStorage_UploadStats()
         LiveStorage_WriteChecksumToBuffer(statData.playerStats, 0x2000);
         if (Com_HasPlayerProfile())
         {
-            if (*(_BYTE *)fs_gameDirVar->current.integer)
+            if (*(_BYTE *)fs_gameDirVar->current.string)
                 Com_BuildPlayerProfilePath(path, 260, "%s/%s", fs_gameDirVar->current.string, "mpdata");
             else
                 Com_BuildPlayerProfilePath(path, 260, "mpdata");

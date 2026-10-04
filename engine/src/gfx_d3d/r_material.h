@@ -316,7 +316,7 @@ struct MaterialPixelShaderProgram // sizeof=0xC
     IDirect3DPixelShader9 *ps;
     GfxPixelShaderLoadDef loadDef;
 };
-static_assert(sizeof(MaterialPixelShaderProgram) == 12);
+static_assert(sizeof(MaterialPixelShaderProgram) == (sizeof(void*) == 8 ? 24 : 12));
 
 struct MaterialPixelShader // sizeof=0x10
 {                                       // ...
@@ -507,7 +507,7 @@ struct MaterialTechniqueSet // sizeof=0x94
     MaterialTechniqueSet *remappedTechniqueSet;
     MaterialTechnique *techniques[TECHNIQUE_COUNT];
 };
-static_assert(sizeof(MaterialTechniqueSet) == 148);
+static_assert(sizeof(MaterialTechniqueSet) == (sizeof(void*) == 8 ? 296 : 148));
 
 struct Material // sizeof=0x50
 {                                       // ...
@@ -552,7 +552,7 @@ struct Material // sizeof=0x50
 // 8-byte alignment. The pad is harmless — the fields are read/written by name.
 static_assert(sizeof(Material) == 96);
 #else
-static_assert(sizeof(Material) == 80);
+static_assert(sizeof(Material) == (sizeof(void*) == 8 ? 104 : 80));
 #endif
 
 struct MaterialMemory // sizeof=0x8

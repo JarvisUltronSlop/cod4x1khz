@@ -59,7 +59,7 @@ void __cdecl Scr_ArchiveCanonicalStrings()
             len += strlen(SL_ConvertToString(stringValue)) + 1;
     }
     scrEvaluateGlob.archivedCanonicalStringsBuf = (char *)Hunk_AllocDebugMem(len);
-    scrEvaluateGlob.archivedCanonicalStrings = (ArchivedCanonicalStringInfo *)Hunk_AllocDebugMem(8 * scrVarPub.canonicalStrCount);
+    scrEvaluateGlob.archivedCanonicalStrings = (ArchivedCanonicalStringInfo *)Hunk_AllocDebugMem(sizeof(ArchivedCanonicalStringInfo) * scrVarPub.canonicalStrCount);
     scrEvaluateGlob.canonicalStringLookup = (int *)Hunk_AllocDebugMem(4 * scrVarPub.canonicalStrCount + 4);
     i = 0;
     lena = 0;
@@ -90,7 +90,7 @@ void __cdecl Scr_ArchiveCanonicalStrings()
     qsort(
         scrEvaluateGlob.archivedCanonicalStrings,
         scrVarPub.canonicalStrCount,
-        8u,
+        sizeof(ArchivedCanonicalStringInfo),
         (int(__cdecl *)(const void *, const void *))CompareCanonicalStrings);
     for (ia = 0; ia < (int)scrVarPub.canonicalStrCount; ++ia)
     {
@@ -305,9 +305,9 @@ void __cdecl Scr_GetValueString(uint32_t localId, VariableValue *value, int len,
         sprintf(
             s,
             "(%g, %g, %g)",
-            *(float *)value->u.intValue,
-            *(float *)(value->u.intValue + 4),
-            *(float *)(value->u.intValue + 8));
+            value->u.vectorValue[0],
+            value->u.vectorValue[1],
+            value->u.vectorValue[2]);
         break;
     case VAR_FLOAT:
         Com_sprintf(s, len, "%g", value->u.floatValue);
@@ -316,7 +316,7 @@ void __cdecl Scr_GetValueString(uint32_t localId, VariableValue *value, int len,
         Com_sprintf(s, len, "%i", value->u.intValue);
         break;
     case VAR_FUNCTION:
-        Scr_GetCodePos((const char *)(value->u.intValue - 1), 1u, s, len);
+        Scr_GetCodePos(value->u.codePosValue - 1, 1u, s, len);
         break;
     case VAR_ANIMATION:
         intValue = (uint16_t)value->u.intValue;
@@ -440,17 +440,17 @@ void __cdecl Scr_CompilePrimitiveExpression(sval_u *expr)
         break;
     case ENUM_string:
     case ENUM_istring:
-        *expr = debugger_string(expr->node[0].type, (char *)SL_ConvertToString(*(uint32_t *)(expr->type + 4)));
+        *expr = debugger_string(expr->node[0].type, (char *)SL_ConvertToString(expr->node[1].stringValue));
         break;
     case ENUM_variable:
         Scr_CompileVariableExpression(&expr->node[1]);
-        tempVariableId.block = (scr_block_s*)AllocValue();
+        tempVariableId.idValue = AllocValue();
         *expr = debugger_node2(ENUM_variable, expr->node[1], tempVariableId);
         break;
     case ENUM_call_expression:
         if (!Scr_CompileCallExpression(&expr->node[1]))
             goto LABEL_13;
-        tempVariableIda.block = (scr_block_s*)AllocValue();
+        tempVariableIda.idValue = AllocValue();
         *expr = debugger_node2(ENUM_call_expression, expr->node[1], tempVariableIda);
         break;
     case ENUM_undefined:
@@ -504,10 +504,10 @@ void __cdecl Scr_CompileVariableExpression(sval_u *expr)
     switch (expr->node[0].type)
     {
     case ENUM_local_variable:
-        *(uint32_t *)(expr->type + 4) = Scr_CompileCanonicalString(*(uint32_t *)(expr->type + 4));
-        if (*(uint32_t *)(expr->type + 4))
+        expr->node[1].stringValue = Scr_CompileCanonicalString(expr->node[1].stringValue);
+        if (expr->node[1].stringValue)
         {
-            tempVariableId.block = (scr_block_s*)AllocValue();
+            tempVariableId.idValue = AllocValue();
             *expr = debugger_node4(ENUM_local_variable, expr->node[1], 0, 0, tempVariableId);
         }
         else
@@ -522,8 +522,8 @@ void __cdecl Scr_CompileVariableExpression(sval_u *expr)
         break;
     case ENUM_field_variable:
         Scr_CompilePrimitiveExpressionFieldObject(&expr->node[1]);
-        *(uint32_t *)(expr->type + 8) = Scr_CompileCanonicalString(*(uint32_t *)(expr->type + 8));
-        if (*(uint32_t *)(expr->type + 8))
+        expr->node[2].stringValue = Scr_CompileCanonicalString(expr->node[2].stringValue);
+        if (expr->node[2].stringValue)
             *expr = debugger_node3(ENUM_field_variable, expr->node[1], expr->node[2], 0);
         else
             *expr = debugger_node0(ENUM_unknown_field);
@@ -533,7 +533,7 @@ void __cdecl Scr_CompileVariableExpression(sval_u *expr)
         *expr = debugger_node1(ENUM_self_field, expr->node[1]);
         break;
     case ENUM_object:
-        s = SL_ConvertToString(*(uint32_t *)(expr->type + 4));
+        s = SL_ConvertToString(expr->node[1].stringValue);
         if (*s == 116)
         {
             idValue.intValue = atoi(s + 1);
@@ -583,12 +583,12 @@ void __cdecl Scr_CompilePrimitiveExpressionFieldObject(sval_u *expr)
     {
     case ENUM_variable:
         Scr_CompileVariableExpression(&expr->node[1]);
-        tempVariableId.block = (scr_block_s*)AllocValue();
+        tempVariableId.idValue = AllocValue();
         *expr = debugger_node2(ENUM_variable, expr->node[1], tempVariableId);
         break;
     case ENUM_call_expression:
         Scr_CompileCallExpression(&expr->node[1]);
-        tempVariableIda.block = (scr_block_s*)AllocValue();
+        tempVariableIda.idValue = AllocValue();
         *expr = debugger_node2(ENUM_call_expression, expr->node[1], tempVariableIda);
         break;
     case ENUM_self:
@@ -658,7 +658,7 @@ char __cdecl Scr_CompileCallExpression(sval_u *expr)
             return 1;
         }
     }
-    else if (type == ENUM_method && Scr_CompileMethod(&expr->node[1], &expr->node[2], (sval_u *)(expr->type + 12)))
+    else if (type == ENUM_method && Scr_CompileMethod(&expr->node[1], &expr->node[2], &expr->node[3]))
     {
         *expr = debugger_node3(
             ENUM_method,
@@ -765,7 +765,7 @@ void __cdecl Scr_CompileTextInternal(const char *text, ScriptExpression_t *scrip
     char *start; // [esp+28h] [ebp-14h]
     char *end; // [esp+2Ch] [ebp-10h]
     HunkUser *user; // [esp+30h] [ebp-Ch]
-    uint32_t *expr; // [esp+38h] [ebp-4h]
+    sval_u *expr; // parse-tree entries contain native pointers
 
     if (!strcmp(text, "<locals>"))
     {
@@ -792,9 +792,9 @@ void __cdecl Scr_CompileTextInternal(const char *text, ScriptExpression_t *scrip
         else
         {
             scrCompilePub.developer_statement = 3;
-            expr = (uint32_t *)scriptExpr->parseData.type;
-            scriptExpr->parseData.type = (Enum_t)*(uint32_t *)(scriptExpr->parseData.type + 4);
-            if (*expr == 65)
+            expr = scriptExpr->parseData.node;
+            scriptExpr->parseData = expr[1];
+            if (expr[0].type == ENUM_expression)
             {
                 varUsagePos = scrVarPub.varUsagePos;
                 if (!scrVarPub.varUsagePos)
@@ -807,7 +807,7 @@ void __cdecl Scr_CompileTextInternal(const char *text, ScriptExpression_t *scrip
             }
             else
             {
-                if (*expr != 83)
+                if (expr[0].type != ENUM_statement)
                     MyAssertHandler(".\\script\\scr_evaluate.cpp", 2142, 0, "%s", "expr.node[0].type == ENUM_statement");
                 user = Hunk_UserCreate(0x10000, "Scr_CompileTextInternal", 0, 0, 0);
                 TempMemoryReset(user);
@@ -1158,18 +1158,18 @@ void __cdecl Scr_EvalVariableExpression(sval_u expr, uint32_t localId, VariableV
         }
         break;
     case 0x51:
-        if (*(uint32_t *)(expr.type + 4) && Scr_IsThreadAlive(*(uint32_t *)(expr.type + 4)))
+        if (expr.node[1].idValue && Scr_IsThreadAlive(expr.node[1].idValue))
         {
-            value->u.intValue = *(uint32_t *)(expr.type + 4);
+            value->u.intValue = expr.node[1].idValue;
             value->type = VAR_POINTER;
             AddRefToObject(value->u.intValue);
         }
         else
         {
-            if (*(uint32_t *)(expr.type + 4))
+            if (expr.node[1].idValue)
             {
-                RemoveRefToObject(*(uint32_t *)(expr.type + 4));
-                *(uint32_t *)(expr.type + 4) = 0;
+                RemoveRefToObject(expr.node[1].idValue);
+                expr.node[1].idValue = 0;
             }
             value->type = VAR_UNDEFINED;
             Scr_Error("thread not active");
@@ -1180,7 +1180,7 @@ void __cdecl Scr_EvalVariableExpression(sval_u expr, uint32_t localId, VariableV
         Scr_Error("bad expression");
         break;
     case 0x57:
-        Scr_GetValue(*(uint32_t *)(expr.type + 4), value);
+        Scr_GetValue(expr.node[1].idValue, value);
         break;
     default:
         return;
@@ -1414,8 +1414,8 @@ void __cdecl Scr_PreEvalBuiltin(sval_u params, uint32_t localId)
     if (scrVmPub.top > scrVmPub.maxstack)
         MyAssertHandler(".\\script\\scr_evaluate.cpp", 1581, 0, "%s", "scrVmPub.top <= scrVmPub.maxstack");
     index = 0;
-    for (node = *(sval_u **)params.type; node; node = node[1].node)
-        Scr_EvalExpression((sval_u)node->type, localId, &scrVmPub.top[-index++]);
+    for (node = params.node[0].node; node; node = node[1].node)
+        Scr_EvalExpression(node[0], localId, &scrVmPub.top[-index++]);
     scrVmPub.outparamcount = expr_count;
     if (!scrVarPub.evaluate)
         MyAssertHandler(".\\script\\scr_evaluate.cpp", 1593, 0, "%s", "scrVarPub.evaluate");
@@ -1782,9 +1782,9 @@ bool __cdecl Scr_RefCall(sval_u params)
     bool exprRemoved; // [esp+7h] [ebp-1h]
 
     exprRemoved = 0;
-    for (node = *(sval_u **)params.type; node; node = node[1].node)
+    for (node = params.node[0].node; node; node = node[1].node)
     {
-        if (Scr_RefExpression((sval_u)node->type))
+        if (Scr_RefExpression(node[0]))
             exprRemoved = 1;
     }
     return exprRemoved;

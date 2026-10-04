@@ -230,7 +230,7 @@ int __cdecl Sys_IsGameProcess(DWORD id)
 	if (snapshot == (void*)-1)
 		return 0;
 	isGame = 0;
-	me.dwSize = 548;
+	me.dwSize = sizeof(me);
 	if (Module32First(snapshot, &me))
 	{
 		GetModuleFileNameA(0, modulePath, 0x104u);
@@ -791,6 +791,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         MessageBoxA(nullptr, "Unable to locate the project runtime or prepare its profile. Run prepare.ps1, then launch cod4x1khz.exe.", "cod4x1khz", MB_OK | MB_ICONERROR);
         return 1;
     }
+#ifndef COD4X1KHZ_ISOLATED_BUILD
     std::string updateReason;
     const auto updateBootstrap = khz::update::Bootstrap(KHZ_ProjectRoot(), &updateReason);
     if (updateBootstrap == khz::update::BootstrapResult::ExitForHelper) return 0;
@@ -798,6 +799,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         MessageBoxA(nullptr, updateReason.c_str(), "cod4x1khz update recovery", MB_OK | MB_ICONERROR);
         return 1;
     }
+#endif
 #endif
 
 	// KISAK: make a pretty console in debug mode, redirect in/out/err stream

@@ -113,7 +113,7 @@ int  R_SkinSceneDObjModels(
 
     PROF_SCOPED("R_SkinXModel");
 
-    unsigned char surfsBuffer[150 * sizeof(GfxModelSkinnedSurface)]{0}; // ~3588
+    alignas(GfxModelRigidSurface) unsigned char surfsBuffer[150 * sizeof(GfxModelSkinnedSurface)]{0}; // ~3588
     GfxModelSkinnedSurface *surfPos = (GfxModelSkinnedSurface *)surfsBuffer;
     GfxModelSurfaceInfo targBoneIndexHigh;
 
@@ -204,7 +204,7 @@ int  R_SkinSceneDObjModels(
                     | partBitsCheck[0] & partbits[0])
                 {
                     surfPos->skinnedCachedOffset = -3;
-                    surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + 4);
+                    surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + R_MODEL_SURF_SKIP_BYTES);
                     continue;
                 }
 
@@ -278,7 +278,7 @@ int  R_SkinSceneDObjModels(
                 else if (surfPos2->skinnedCachedOffset == -3)
                 {
                     // idk
-                    surfPos2 = (GfxModelSkinnedSurface *)((char *)surfPos2 + 4);
+                    surfPos2 = (GfxModelSkinnedSurface *)((char *)surfPos2 + R_MODEL_SURF_SKIP_BYTES);
                 }
                 else
                 {
@@ -311,11 +311,11 @@ int  R_SkinSceneDObjModels(
                 else if (surfPos2->skinnedCachedOffset == -3)
                 {
                     // (Skip over the int)
-                    surfPos2 = (GfxModelSkinnedSurface *)((char *)surfPos2 + 4);
+                    surfPos2 = (GfxModelSkinnedSurface *)((char *)surfPos2 + R_MODEL_SURF_SKIP_BYTES);
                 }
                 else
                 {
-                    surfPos2->oldSkinnedCachedOffset = (int)&frontEndDataOut->tempSkinBuf[sizeof(GfxPackedVertex) * surfPos2->skinnedCachedOffset + firstSurf];
+                    surfPos2->skinnedVert = reinterpret_cast<GfxPackedVertex *>(&frontEndDataOut->tempSkinBuf[sizeof(GfxPackedVertex) * surfPos2->skinnedCachedOffset + firstSurf]);
                     surfPos2->skinnedCachedOffset = -1;
                     ++surfPos2;
                 }

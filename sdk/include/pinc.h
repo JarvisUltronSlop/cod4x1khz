@@ -1,4 +1,4 @@
-/* Adapted CoD4x public plugin API. Rebuild plugins for cod4x1khz Win32.
+/* Adapted CoD4x public plugin API. Rebuild plugins for the host architecture.
  * Public names/signatures follow pinned CoD4x ddd65fc; public addresses use
  * its explicit32-byte layout, while native gameplay types/timing are adapted.
  * See sdk/README.md and upstream notices. */
@@ -9,7 +9,11 @@
 #include <time.h>
 #define PLUGIN_HANDLER_VERSION_MAJOR 4
 #define PLUGIN_HANDLER_VERSION_MINOR 0
+#if UINTPTR_MAX > UINT32_MAX
+#define COD4X1KHZ_PLUGIN_SDK_VERSION 3
+#else
 #define COD4X1KHZ_PLUGIN_SDK_VERSION 2
+#endif
 #define COD4X1KHZ_PLUGIN_PROTOCOL 10002
 #ifdef __cplusplus
 #define KHZ_EXTERN extern "C"

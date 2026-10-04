@@ -1,5 +1,6 @@
 #include <universal/q_shared.h>
 #include "r_model_skin.h"
+#include <emmintrin.h>
 #include "r_init.h"
 #include "r_dvars.h"
 #include <qcommon/com_playerprofile.h>
@@ -82,7 +83,7 @@ void R_SkinXModelCmd(_WORD *data)
 
         if (skinnedSurf->skinnedCachedOffset == -3)
         {
-            surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + 4);
+            surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + R_MODEL_SURF_SKIP_BYTES);
             continue;
         }
 
@@ -99,7 +100,7 @@ void R_SkinXModelCmd(_WORD *data)
                 if (sseStateUsed)
                 {
                     sseStateUsed = false;
-                    _m_empty();
+                    _mm_sfence();
                 }
 
                 DObjSkelMat mat0, mat1;
@@ -117,7 +118,7 @@ void R_SkinXModelCmd(_WORD *data)
 
         if (skinnedSurf->skinnedCachedOffset == -2)
         {
-            surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + 56);
+            surfPos = (GfxModelSkinnedSurface *)((char *)surfPos + sizeof(GfxModelRigidSurface));
             continue;
         }
 
@@ -128,13 +129,13 @@ void R_SkinXModelCmd(_WORD *data)
 
         if (skinnedSurf->skinnedCachedOffset < 0)
         {
-            iassert((reinterpret_cast<uint>(skinnedSurf->skinnedVert) & 15) == 0);
+            iassert((reinterpret_cast<uintptr_t>(skinnedSurf->skinnedVert) & 15) == 0);
             skinVerticesOut = skinnedSurf->skinnedVert;
         }
         else
         {
             iassert(gfxBuf.skinnedCacheLockAddr);
-            iassert(((reinterpret_cast<uint>(gfxBuf.skinnedCacheLockAddr) & 15) == 0));
+            iassert(((reinterpret_cast<uintptr_t>(gfxBuf.skinnedCacheLockAddr) & 15) == 0));
             iassert(((skinnedSurf->skinnedCachedOffset & 15) == 0));
             skinVerticesOut = (GfxPackedVertex*)&gfxBuf.skinnedCacheLockAddr[skinnedSurf->skinnedCachedOffset];
         }
@@ -144,7 +145,7 @@ void R_SkinXModelCmd(_WORD *data)
             if (!sseStateUsed)
             {
                 sseStateUsed = true;
-                _m_empty();
+                _mm_sfence();
             }
         
             GfxPackedVertexNormal *skinVertNormalIn = 0, *skinVertNormalOut = 0;
@@ -152,8 +153,8 @@ void R_SkinXModelCmd(_WORD *data)
             {
                 if (skinnedSurf->skinnedCachedOffset >= 0)
                     skinVertNormalOut = &gfxBuf.skinnedCacheNormalsAddr[skinnedSurf->skinnedCachedOffset >> 5];
-                if (skinnedSurf->skinnedVert)
-                    skinVertNormalIn = &gfxBuf.oldSkinnedCacheNormalsAddr[(int)skinnedSurf->skinnedVert >> 5];
+                if (skinnedSurf->oldSkinnedCachedOffset >= 0)
+                    skinVertNormalIn = &gfxBuf.oldSkinnedCacheNormalsAddr[skinnedSurf->oldSkinnedCachedOffset >> 5];
             }
             R_SkinXSurfaceSkinnedSse(xsurf, &boneSkelMats[boneIndex], skinVertNormalIn, skinVertNormalOut, skinVerticesOut);
         }
@@ -164,7 +165,7 @@ void R_SkinXModelCmd(_WORD *data)
     }
 
     if (sseStateUsed)
-        _m_empty();
+        _mm_sfence();
 }
 
 

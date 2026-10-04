@@ -157,7 +157,7 @@ def main(archive_name, result_name):
         [implementation(host, 'Plugin_SteamIDToString'), implementation(helper, 'Selected'),
          implementation(helper, 'Steam3'), implementation(helper, 'Steam64'),
          implementation('engine/src/khz/khz_controls.h', 'KHZ_DvarScope'),
-         implementation('engine/src/khz/khz_controls.cpp', 'KHZ_DvarEnter')], selected + [supplement])
+         implementation('engine/src/khz/khz_dvar_lock.cpp', 'KHZ_DvarEnter')], selected + [supplement])
     record('Plugin_SteamIDTo64String', 'sdk_export',
         'Always emit complete uint64 decimal regardless of current sv_usesteam64id. Null/nonpositive outputs write nothing. '
         'Positive capacity below20 clears only byte0; twenty-digit values require capacity21, so capacity20 refuses without touching the remaining bytes. '

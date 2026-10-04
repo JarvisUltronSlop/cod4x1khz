@@ -1,0 +1,177 @@
+"""Run owned x64 game processes and collect map integration evidence.
+
+Broad-view bots join after camera protection so shader startup cannot kill the
+fixture human. Measurements require both bots and a stable actual camera.
+"""
+import argparse
+import json
+import math
+import os
+from pathlib import Path
+import subprocess
+import socket
+import shutil
+import time
+from monitor import query
+from gpu_metrics import GpuSampler
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--server", default="build/x64/native-dedicated/native-server/Release/cod4x1khz_server_x64.exe")
+parser.add_argument("--broad-view", action="store_true")
+parser.add_argument("--client", default="build/x64/native-client/native-client/Release/cod4x1khz_x64.exe")
+parser.add_argument("--renderer", choices=["d3d9", "vulkan"], default="d3d9")
+parser.add_argument("--resolution", default="640x480")
+parser.add_argument("--fps-cap", type=int, default=0)
+parser.add_argument("--profile", action="store_true")
+parser.add_argument("--compare", action="store_true")
+parser.add_argument("--validation", action="store_true")
+parser.add_argument("--seconds", type=int, default=40)
+parser.add_argument("--extra-client-args", default="")
+parser.add_argument("--output", default="results/x64-native-client-map")
+args = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+probe = root / "build/x64/Release/Release/khz_launch_probe.exe"
+server = (root / args.server).resolve()
+client = (root / args.client).resolve()
+prefix = root / args.output
+prefix.parent.mkdir(parents=True, exist_ok=True)
+env = dict(os.environ, KHZ_PROBE_HIDE_WINDOW="1", KHZ_PROBE_SECONDS="60")
+env.pop("KHZ_WATCH_HUNK", None)
+env.pop("KHZ_WATCH_SYMBOL", None)
+env["KHZ_PROBE_SECONDS"] = str(max(60, args.seconds + 20))
+if args.validation:
+    env["VK_LAYER_PATH"] = str(root / ".deps/vulkan/layers/x64/Release")
+server_args = "+set net_port 28997 +set dedicated 2 +set khz_benchmark 1 +set khz_test_controls 1 +set khz_bots 1 +set khz_bot_count " + ("0" if args.broad_view else "2") + " +set rcon_password local-khz-benchmark +set logfile 2 +set sv_lan 1 +map mp_backlot"
+client_args = "+set net_port 28995 +set khz_benchmark 1 +set khz_test_controls 1 +set logfile 2 +set com_introPlayed 1 +set r_vsync 0 +set com_maxfps 0 +set r_graphicsApi " + args.renderer + " +connect 127.0.0.1:28997"
+if not __import__("re").fullmatch(r"[0-9]{3,4}x[0-9]{3,4}", args.resolution) or not 0 <= args.fps_cap <= 10000 or not 20 <= args.seconds <= 300:
+    parser.error("Invalid resolution or FPS cap")
+client_args = client_args.replace("+set com_maxfps 0", "+set com_maxfps " + str(args.fps_cap))
+client_args += " +set r_customMode " + args.resolution + " +set r_vkProfile " + ("1" if args.profile else "0")
+client_args += " +set r_vkCompare " + ("1" if args.compare else "0") + " +set r_vkValidation " + ("1" if args.validation else "0")
+client_args += " +set cl_timeout 300 +set cl_connectTimeout 300"
+client_args += " " + args.extra_client_args
+samples = []
+screenshot = None
+shot_home = root / "runtime/benchmarks/client-28995/main/screenshots"
+before_shots = set(shot_home.glob("shot*.*"))
+shot_requested = False
+shot_error = None
+broad_view = None
+selected_view = None
+gpu_sampler = None
+query_errors = {}
+bots_requested = False
+profile_requested = None
+profile_paths = []
+profile_home = root / "runtime/benchmarks/client-28995/vulkan/diagnostics"
+profile_started = time.time()
+
+def set_bots():
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(1.2)
+        sock.sendto(b"\xff" * 4 + b"rcon local-khz-benchmark set khz_bot_count 2", ("127.0.0.1", 28997))
+        data, sender = sock.recvfrom(65536)
+        if sender != ("127.0.0.1", 28997):
+            raise ValueError("Bot command reply came from another endpoint")
+        return data.decode("latin1")
+
+class SceneFixture:
+    port = 28995
+    def rcon(self, command, marker="KHZ_JSON"):
+        return query(28997, "rcon local-khz-benchmark " + command, marker, 1.2)
+scene_fixture = SceneFixture()
+with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suffix(".client.log").open("w") as client_log:
+    owned_server = subprocess.Popen([str(probe), str(server), str(root), str(server.parent), server_args], cwd=root, env=env, stdout=server_log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
+    time.sleep(6)
+    if args.broad_view:
+        from native_render_scene_probe import choose, place
+        node, heading, nodes, evidence = choose(scene_fixture, root, "mp_backlot")
+        selected_view = (node, heading, evidence)
+    env["KHZ_PROBE_SECONDS"] = str(args.seconds)
+    owned_client = subprocess.Popen([str(probe), str(client), str(root), str(client.parent), client_args], cwd=root, env=env, stdout=client_log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
+    deadline = time.monotonic() + args.seconds + 5
+    while owned_client.poll() is None and time.monotonic() < deadline:
+        try:
+            state = query(28995, "khz_stats", "KHZ_JSON", .5)
+            server_state = query(28997, "rcon local-khz-benchmark khz_json", "KHZ_JSON", .5)
+            game_state = query(28995, "khz_state", "KHZ_STATE", .5)
+            ui_state = query(28995, "khz_ui status", "KHZ_UI", .5)
+            if gpu_sampler is None:
+                gpu_sampler = GpuSampler([state["process_id"]])
+            gpu_state = gpu_sampler.sample()
+            samples.append({"time": time.time(), "client": state, "server": server_state, "state": game_state, "ui": ui_state, "gpu": gpu_state})
+            playing = state.get("prediction_ticks", 0) > 0 and game_state.get("pm_type") == 0 and (not ui_state.get("top_menu") or args.compare)
+            if args.broad_view and playing and broad_view is None:
+                node, heading, evidence = selected_view
+                placed = place(scene_fixture, node["point"], heading["yaw"])
+                fixed = query(28995, "khz_ui console khz_scene fixed " + str(heading["yaw"]) + " 0", "KHZ_UI", .5)
+                broad_view = {"evidence": evidence, "placed": placed, "fixed": fixed, "after_presentations": state["presentations"], "after_seconds": state["seconds"]}
+            if broad_view and not bots_requested:
+                # RCON has a one-second throttle; placement itself uses RCON.
+                time.sleep(1.08)
+                broad_view["bots_command"] = set_bots()
+                bots_requested = True
+            if args.profile and profile_requested is None and broad_view and state["seconds"] > args.seconds - 12:
+                profile_requested = {"after_seconds": state["seconds"], "reply": query(28995, "khz_ui console r_vkWriteProfile", "KHZ_UI", .5)}
+            if playing and (not args.broad_view or broad_view is not None and state["presentations"] - broad_view["after_presentations"] > 300) and not shot_requested:
+                reply = query(28995, "khz_ui screenshot", "KHZ_UI", .5)
+                shot_requested = True
+                if reply.get("result") != "queued": shot_error = str(reply)
+            if shot_requested and screenshot is None:
+                for path in sorted(set(shot_home.glob("shot*.*")) - before_shots):
+                    data = path.read_bytes()
+                    if len(data) < 1000: continue
+                    from native_screenshot_png import convert
+                    suffix = ".png" if path.suffix.lower() == ".tga" else path.suffix
+                    screenshot = str(prefix.with_suffix(suffix))
+                    Path(screenshot).write_bytes(convert(data) if suffix == ".png" else data)
+                    break
+        except (OSError, TimeoutError, ValueError, RuntimeError) as error:
+            message = str(error)
+            query_errors[message] = query_errors.get(message, 0) + 1
+        time.sleep(.5)
+    client_exit = owned_client.wait(timeout=15)
+    server_exit = owned_server.wait(timeout=60)
+if gpu_sampler:
+    gpu_sampler.close()
+for path in profile_home.glob("*"):
+    if path.is_file() and path.stat().st_mtime >= profile_started and (path.name == "frame-timings.csv" or args.compare and path.name.startswith("reference")):
+        destination = prefix.parent / (prefix.name + "-diagnostics")
+        destination.mkdir(exist_ok=True)
+        shutil.copy2(path, destination / path.name)
+        profile_paths.append(str(destination / path.name))
+prefix.with_suffix(".json").write_text(json.dumps({"client_exit": client_exit, "server_exit": server_exit, "renderer": args.renderer, "resolution": args.resolution, "fps_cap": args.fps_cap, "profile": args.profile, "profile_export": profile_requested, "diagnostic_paths": profile_paths, "compare": args.compare, "validation": args.validation, "samples": samples, "query_errors": query_errors, "screenshot": screenshot, "screenshot_error": shot_error, "broad_view": broad_view}, indent=2))
+report = json.loads(prefix.with_suffix(".json").read_text())
+measurement = []
+camera_errors = []
+if broad_view:
+    point = broad_view["evidence"]["selected"]["point"]
+    yaw = broad_view["evidence"]["heading"]["yaw"]
+    for sample in samples:
+        if sample["client"]["seconds"] < broad_view["after_seconds"] + 3 or sample["server"].get("native_bots", {}).get("active", 0) != 2 or profile_requested and sample["client"]["seconds"] >= profile_requested["after_seconds"]:
+            continue
+        view = sample["state"].get("rendered_view_angles", [])
+        origin = sample["state"].get("origin", [])
+        if (sample["state"].get("pm_type") != 0 or sample["ui"].get("top_menu") or len(view) != 3 or len(origin) != 3 or
+                math.dist(origin[:2], point[:2]) > 20 or abs((view[1] - yaw + 180) % 360 - 180) > 2 or abs(view[0]) > 2):
+            camera_errors.append({"time": sample["time"], "state": sample["state"], "ui": sample["ui"]})
+        measurement.append(sample)
+if len(measurement) >= 2:
+    first, last = measurement[0], measurement[-1]
+    duration = last["client"]["seconds"] - first["client"]["seconds"]
+    server_duration = last["server"]["seconds"] - first["server"]["seconds"]
+    report["measurement"] = {"seconds": duration, "samples": len(measurement), "camera_passed": not camera_errors,
+        "camera_errors": camera_errors,
+        "fps": (last["client"]["gpu_presents"] - first["client"]["gpu_presents"]) / duration,
+        "prediction_hz": (last["client"]["prediction_ticks"] - first["client"]["prediction_ticks"]) / duration,
+        "server_hz": (last["server"]["ticks"] - first["server"]["ticks"]) / server_duration,
+        "client_debt": last["client"]["debt"], "server_debt": last["server"]["debt"]}
+else:
+    report["measurement"] = {"camera_passed": False, "error": "No sustained live broad-view interval was captured"}
+prefix.with_suffix(".json").write_text(json.dumps(report, indent=2))
+print(json.dumps(report["measurement"], indent=2), flush=True)
+if query_errors:
+    print(json.dumps(query_errors, indent=2), flush=True)
+print("Client exit", client_exit, "server exit", server_exit, "telemetry samples", len(samples), flush=True)
+print(prefix.with_suffix(".client.log").read_text(errors="replace")[-6500:], flush=True)
+raise SystemExit(client_exit or server_exit or (args.broad_view and not report["measurement"]["camera_passed"]))

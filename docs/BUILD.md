@@ -11,9 +11,24 @@ Steam's Manage > Browse local files locates the installed directory.
 Install Git, Python 3, CMake **3.25+**, and Visual Studio 2022 or its Build Tools
 with **Desktop development with C++**, MSVC v143 x86/x64 tools and a Windows SDK.
 Run from PowerShell with `git`, `cmake` and `python` available on PATH.
-The initial game targets are **Win32 Release**, not x64.
-The Vulkan development branch also remains Win32. Its experimental client is
-large-address-aware, which does not make it a 64-bit executable.
+The client, dedicated server, updater and regression plugin now build as native
+x64 applications. Native outputs use `bin/x64/Release`; packaging uses
+`runtime/x64`. The existing Win32 deployment remains available and `build.ps1`
+still defaults to Win32 while native acceptance continues. For explicit x64
+commands and current runtime limitations, see [x64 migration status](X64.md).
+
+For the native game on this branch, use:
+
+```powershell
+./build.ps1 -Architecture x64 -Configuration Release
+./launch-client.ps1 -Architecture x64 -Renderer d3d9 -RenderFps 0
+```
+
+The x64 build prepares its verified native FFmpeg dependency automatically.
+`launch-server.ps1` and `launch-bench.ps1` also accept `-Architecture x64`.
+The regular client renders the game; the headless benchmark executable is for
+simulation/network probes. Use `/com_maxfps 0` for uncapped rendering and
+`/r_vsync 0` to disable synchronization. Simulation continues at 1,000 Hz.
 
 ## Clone, prepare, build
 

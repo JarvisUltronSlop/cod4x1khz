@@ -54,6 +54,8 @@ if (MSVC)
     target_compile_options(OpenAL PRIVATE /Zc:preprocessor)
 endif()
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${openal_SOURCE_DIR}/include)
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenAL::OpenAL)
+if(TARGET ${PROJECT_NAME})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${openal_SOURCE_DIR}/include)
+    target_link_libraries(${PROJECT_NAME} PUBLIC OpenAL::OpenAL)
+endif()
 #################

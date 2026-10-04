@@ -45,7 +45,9 @@ bool hasExtension(Dispatch& api, VkPhysicalDevice device, const char* name) {
 Context::Context(const Config& config) {
     try {
         loader = LoadLibraryExW(L"vulkan-1.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-        if (!loader) throw std::runtime_error("The system's 32-bit Vulkan loader is unavailable");
+        if (!loader) throw std::runtime_error(sizeof(void*) == 8 ?
+            "The system's 64-bit Vulkan loader is unavailable" :
+            "The system's 32-bit Vulkan loader is unavailable");
         api.GetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(GetProcAddress(loader, "vkGetInstanceProcAddr"));
         if (!api.GetInstanceProcAddr) throw std::runtime_error("vkGetInstanceProcAddr is unavailable");
 #define GFX_VK_GLOBAL(n) api.n = reinterpret_cast<PFN_vk##n>(api.GetInstanceProcAddr(nullptr, "vk" #n));

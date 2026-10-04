@@ -103,7 +103,7 @@ const dvar_t *input_viewSensitivity;
 const dvar_t *input_autoAim;
 const dvar_t *cl_ingame;
 const dvar_t *cl_inGameVideo;
-const dvar_t *cl_noprint; 
+const dvar_t *cl_noprint;
 const dvar_t *m_side;
 const dvar_t *cl_profileTextY;
 const dvar_t *cl_serverStatusResendTime;
@@ -430,7 +430,7 @@ void __cdecl CL_ResetSkeletonCache(int32_t localClientNum)
     v1 = &CL_ACTIVE_ARRAY[localClientNum];
     if (!++v1->skelTimeStamp)
         ++v1->skelTimeStamp;
-    v1->skelMemoryStart = (char *)((uint32_t)&v1->skelMemory[15] & 0xFFFFFFF0);
+    v1->skelMemoryStart = reinterpret_cast<char *>(reinterpret_cast<uintptr_t>(&v1->skelMemory[15]) & ~uintptr_t(15));
     v1->skelMemPos = 0;
 }
 
@@ -472,7 +472,7 @@ void __cdecl CL_Disconnect(int32_t localClientNum)
     clientConnection_t *clc; // [esp+8h] [ebp-8h]
 
     iassert(Sys_IsMainThread());
-    
+
     clientUIActive_t *clUI = CL_GetLocalClientUIGlobals(localClientNum);
 
     if (clUI->isRunning)
@@ -595,7 +595,7 @@ void __cdecl CL_RequestAuthorization(int localClientNum)
     //if (!cls.authorizeServer.port)
     //{
     //    Com_Printf(CON_CHANNEL_CLIENT, "Resolving %s\n", com_authServerName->current.string);
-    //    if (!NET_StringToAdr((char *)com_authServerName->current.integer, &cls.authorizeServer))
+    //    if (!NET_StringToAdr((char *)com_authServerName->current.string, &cls.authorizeServer))
     //    {
     //        Com_Printf(CON_CHANNEL_CLIENT, "Couldn't resolve address\n");
     //        return;
@@ -1644,7 +1644,7 @@ char __cdecl CL_DispatchConnectionlessPacket(int localClientNum, netadr_t from, 
                             {
                                 if (cls.downloadName[0])
                                     return 1;
-         
+
                                 if (CL_GetLocalClientConnectionState(localClientNum) != CA_SENDINGSTATS)
                                 {
                                     if (localClientNum)
@@ -2123,7 +2123,7 @@ void __cdecl CL_WWWDownload()
         else if (ret == DL_DONE)
         {
             cls.download = 0;
-            FS_BuildOSPath((char*)fs_homepath->current.integer, cls.originalDownloadName, (char*)"", to_ospath);
+            FS_BuildOSPath((char*)fs_homepath->current.string, cls.originalDownloadName, (char*)"", to_ospath);
             to_ospath[&to_ospath[strlen(to_ospath) + 1] - &to_ospath[1] - 1] = 0;
             if (rename(cls.downloadTempName, to_ospath))
             {
@@ -2559,7 +2559,7 @@ void __cdecl CL_DrawLogo(int32_t localClientNum)
     float w; // [esp+64h] [ebp-4h]
 
     iassert(CL_GetLocalClientConnectionState(localClientNum) == CA_LOGO);
-    
+
     time = cls.realtime - cls.logo.startTime;
     if (cls.realtime - cls.logo.startTime >= cls.logo.fadein)
     {
@@ -3421,7 +3421,7 @@ void __cdecl Com_WriteLocalizedSoundAliasFiles()
     int32_t fileCount; // [esp+224h] [ebp-4h] BYREF
 
     FS_BuildOSPath(
-        (char*)fs_homepath->current.integer,
+        (char*)fs_homepath->current.string,
         (char*)"../source_data/string_resources/subtitle.st",
         (char*)"",
         stringEdExternalFileName);
@@ -3432,7 +3432,7 @@ void __cdecl Com_WriteLocalizedSoundAliasFiles()
     if (f)
     {
         fclose(f);
-        FS_BuildOSPath((char*)fs_basepath->current.integer, fs_gamedir, (char*)"soundaliases/subtitle.st", stringEdFileName);
+        FS_BuildOSPath((char*)fs_basepath->current.string, fs_gamedir, (char*)"soundaliases/subtitle.st", stringEdFileName);
         FS_CopyFile(stringEdExternalFileName, stringEdFileName);
         if (FS_FileExists((char*)"soundaliases/subtitle.st"))
         {
@@ -3667,7 +3667,7 @@ void __cdecl CL_InitOnceForAllClients()
     cl_showTimeDelta = Dvar_RegisterBool("cl_showTimeDelta", false, DVAR_NOFLAG, "Enable debugging information for time delta");
     cl_freezeDemo = Dvar_RegisterBool(
         "cl_freezeDemo",
-        false, 
+        false,
         DVAR_NOFLAG,
         "cl_freezeDemo is used to lock a demo in place for single frame advances");
     cl_activeAction = Dvar_RegisterString("activeAction", "", DVAR_NOFLAG, "Action to execute in first frame");

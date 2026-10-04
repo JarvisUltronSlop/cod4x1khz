@@ -1,6 +1,8 @@
 #pragma once
 #include "r_scene.h"
 
+inline constexpr size_t R_MODEL_SURF_SKIP_BYTES = alignof(void *);
+
 struct GfxModelSurfaceInfo // sizeof=0xC
 {                                       // ...
     const struct DObjAnimMat *baseMat;
@@ -24,14 +26,14 @@ struct GfxModelSkinnedSurface // sizeof=0x18
         int oldSkinnedCachedOffset;
     };
 };
-static_assert(sizeof(GfxModelSkinnedSurface) == 24);
+static_assert(sizeof(GfxModelSkinnedSurface) == (sizeof(void*) == 8 ? 40 : 24));
 
 struct GfxModelRigidSurface // sizeof=0x38
 {
     GfxModelSkinnedSurface surf;
     GfxScaledPlacement placement;
 };
-static_assert(sizeof(GfxModelRigidSurface) == 56);
+static_assert(sizeof(GfxModelRigidSurface) == (sizeof(void*) == 8 ? 72 : 56));
 
 struct SkinXModelCmd // sizeof=0x1C
 {                                       // ...

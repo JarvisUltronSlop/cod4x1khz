@@ -1095,55 +1095,17 @@ void __cdecl SND_PrintEqParams()
     }
 }
 
-double __cdecl SND_Get2DChannelVolume(int index)
-{
-    iassert(index >= 0 && index < 0 + g_snd.max_2D_channels);
 
-    // Unlike Miles' separate left/right levels, AL_GAIN is a single scalar regardless of
-    // channel count - no srcChannelCount branching needed on this side.
-    ALfloat gain;
-    alGetSourcef(alGlob.source[index], AL_GAIN, &gain);
-    return gain;
-}
 
-void __cdecl SND_Set2DChannelVolume(int index, float volume)
-{
-    iassert(index >= 0 && index < 0 + g_snd.max_2D_channels);
 
-    alSourcef(alGlob.source[index], AL_GAIN, volume);
-}
 
-double __cdecl SND_Get3DChannelVolume(int index)
-{
-    iassert(index >= (0 + 8) && index < (0 + 8) + g_snd.max_3D_channels);
 
-    ALfloat gain;
-    alGetSourcef(alGlob.source[index], AL_GAIN, &gain);
-    return gain;
-}
 
-void __cdecl SND_Set3DChannelVolume(int index, float volume)
-{
-    iassert(index >= (0 + 8) && index < (0 + 8) + g_snd.max_3D_channels);
 
-    alSourcef(alGlob.source[index], AL_GAIN, volume);
-}
 
-double __cdecl SND_GetStreamChannelVolume(int index)
-{
-    iassert(index >= SND_FIRST_STREAM_CHANNEL && index < SND_FIRST_STREAM_CHANNEL + g_snd.max_stream_channels);
 
-    ALfloat gain;
-    alGetSourcef(alGlob.source[index], AL_GAIN, &gain);
-    return gain;
-}
 
-void __cdecl SND_SetStreamChannelVolume(int index, float volume)
-{
-    iassert(index >= SND_FIRST_STREAM_CHANNEL && index < SND_FIRST_STREAM_CHANNEL + g_snd.max_stream_channels);
 
-    alSourcef(alGlob.source[index], AL_GAIN, volume);
-}
 
 int __cdecl SND_Get2DChannelPlaybackRate(int index)
 {
@@ -1523,52 +1485,7 @@ void __cdecl SND_SetHWND(HWND hwnd)
     // OpenAL has no window-handle dependency (no DirectSound backend to bind).
 }
 
-void __cdecl SND_SetData(MssSoundCOD4 *mssSound, void *srcData)
-{
-    // dr_wav (see SND_LoadFromBuffer, snd_driver_load_obj.cpp) always decodes to 16-bit PCM
-    // for us, so unlike the Miles branch above there's no ADPCM format to worry about here.
-    if (mssSound->info.rate > g_snd.playback_rate)
-    {
-        // Resample down to g_snd.playback_rate via simple decimation (nearest-frame
-        // resample), matching the halving loop in the Miles branch above. A real
-        // low-pass-filtered resample would sound better, but this matches WORK.md Phase 3's
-        // stated scope - revisit if downsampled loaded sounds turn out to sound too aliased.
-        uint32_t srcFrameCount = mssSound->info.samples;
-        uint32_t channels = mssSound->info.channels;
-        uint32_t rate = mssSound->info.rate;
-        uint32_t frameCount = srcFrameCount;
 
-        while (rate > g_snd.playback_rate)
-        {
-            rate /= 2;
-            frameCount /= 2;
-        }
-
-        uint32_t newDataLen = frameCount * channels * sizeof(int16_t);
-        mssSound->data = MSS_Alloc(newDataLen, rate);
-
-        const int16_t *src16 = (const int16_t *)srcData;
-        int16_t *dst16 = (int16_t *)mssSound->data;
-        for (uint32_t i = 0; i < frameCount; ++i)
-        {
-            uint32_t srcFrame = (uint32_t)((uint64_t)i * srcFrameCount / frameCount);
-            for (uint32_t c = 0; c < channels; ++c)
-                dst16[i * channels + c] = src16[srcFrame * channels + c];
-        }
-
-        mssSound->info.rate = rate;
-        mssSound->info.samples = frameCount;
-        mssSound->info.data_len = newDataLen;
-    }
-    else
-    {
-        mssSound->data = MSS_Alloc(mssSound->info.data_len, mssSound->info.rate);
-        Com_Memcpy(mssSound->data, srcData, mssSound->info.data_len);
-    }
-
-    mssSound->info.data_ptr = mssSound->data;
-    mssSound->info.initial_ptr = mssSound->data;
-}
 
 #ifdef KISAK_SP
 void SND_SetEqLerp(double lerp)

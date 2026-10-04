@@ -625,7 +625,7 @@ void Scr_ScriptWatch::AddElement(Scr_WatchElement_s *element, char *text)
         if (!scrVarPub.evaluate)
             MyAssertHandler(".\\script\\scr_debugger.cpp", 6623, 0, "%s", "scrVarPub.evaluate");
         scrVarPub.evaluate = 0;
-        Scr_ExecCode(*(const char**)(scriptExpr.parseData.type + 4), this->localId);
+        Scr_ExecCode(scriptExpr.parseData.node[1].codePosValue, this->localId);
         scrVarPub.evaluate = 1;
         SL_ShutdownSystem(2);
         Scr_FreeDebugExpr(&scriptExpr);
@@ -1635,7 +1635,7 @@ void __thiscall Scr_ScriptCallStack::UpdateStack()
         {
             if (i)
             {
-                codePos = (char*)scrVmPub.stack[3 * (scrVmPub.function_count - i) - 96].u.intValue;
+                codePos = (char*)scrVmPub.function_frame_start[scrVmPub.function_count - i].fs.pos;
                 index = scrVmPub.function_frame_start[scrVmPub.function_count - i].fs.localId == 0;
             }
             else
@@ -2331,9 +2331,9 @@ void Scr_ScriptWatch::EvaluateWatchChildren(Scr_WatchElement_s *parentElement)
             qsort(&names[hardcodedCount], count - hardcodedCount, 4u, (int(__cdecl *)(void const *, void const *))compare);
             oldElements = parentElement->childArrayHead;
             oldChildCount = parentElement->childCount;
-            newElements = (Scr_WatchElement_s*)Scr_AllocDebugMem(100 * count, "Scr_ScriptWatch::EvaluateWatchChildren3");
-            memset(newElements, 0, 100 * count);
-            newElementOldRef = (Scr_WatchElement_s**)Scr_AllocDebugMem(4 * count, "Scr_ScriptWatch::EvaluateWatchChildren");
+            newElements = (Scr_WatchElement_s*)Scr_AllocDebugMem(sizeof(*newElements) * count, "Scr_ScriptWatch::EvaluateWatchChildren3");
+            memset(newElements, 0, sizeof(*newElements) * count);
+            newElementOldRef = (Scr_WatchElement_s**)Scr_AllocDebugMem(sizeof(*newElementOldRef) * count, "Scr_ScriptWatch::EvaluateWatchChildren");
             v9 = oldElements && parentElement->objectType == oldObjectType;
             sameType = v9;
             elementChanged = 0;
@@ -2696,9 +2696,9 @@ void Scr_ScriptList::Init()
     qsort(
         &scriptWindowsNames[1],
         this->numLines - 1,
-        4u,
+        sizeof(scriptWindowsNames[0]),
         (int(__cdecl *)(const void *, const void *))ConDrawInput_CompareStrings);
-    this->scriptWindows = (Scr_ScriptWindow **)Scr_AllocDebugMem(4 * this->numLines, "Scr_ScriptList::Init2");
+    this->scriptWindows = (Scr_ScriptWindow **)Scr_AllocDebugMem(sizeof(*this->scriptWindows) * this->numLines, "Scr_ScriptList::Init2");
     memset(&info, 0, sizeof(info));
     Hunk_CheckTempMemoryHighClear();
     Scr_AddSourceBuffer(0, (char *)"scriptdebugger/help.txt", 0, 0);
@@ -3006,7 +3006,7 @@ void Scr_AbstractScriptList::AddEntry(Scr_ScriptWindow *scriptWindow, bool selec
     int newIndex; // [esp+28h] [ebp-10h]
     float newWidth; // [esp+2Ch] [ebp-Ch]
     int i; // [esp+30h] [ebp-8h]
-    uint8_t *newScriptWindows; // [esp+34h] [ebp-4h]
+    Scr_ScriptWindow **newScriptWindows; // [esp+34h] [ebp-4h]
 
     if (select && this->selectedLine >= 0)
         selectedLine = this->selectedLine;
@@ -3019,25 +3019,25 @@ void Scr_AbstractScriptList::AddEntry(Scr_ScriptWindow *scriptWindow, bool selec
         {
             if (selectedLine <= i)
             {
-                memmove(&this->scriptWindows[selectedLine + 1], &this->scriptWindows[selectedLine], 4 * (i - selectedLine));
+                memmove(&this->scriptWindows[selectedLine + 1], &this->scriptWindows[selectedLine], sizeof(*this->scriptWindows) * (i - selectedLine));
             }
             else
             {
                 newIndex = selectedLine - 1;
-                memmove(&this->scriptWindows[i], &this->scriptWindows[i + 1], 4 * (selectedLine - 1 - i));
+                memmove(&this->scriptWindows[i], &this->scriptWindows[i + 1], sizeof(*this->scriptWindows) * (selectedLine - 1 - i));
             }
             goto found_0;
         }
     }
     newNumLines = this->numLines + 1;
-    newScriptWindows = (unsigned char*)Scr_AllocDebugMem(4 * newNumLines, "Scr_AbstractScriptList::AddEntry");
+    newScriptWindows = (Scr_ScriptWindow**)Scr_AllocDebugMem(sizeof(*newScriptWindows) * newNumLines, "Scr_AbstractScriptList::AddEntry");
     if (this->scriptWindows)
     {
-        memcpy(newScriptWindows, this->scriptWindows, 4 * selectedLine);
+        memcpy(newScriptWindows, this->scriptWindows, sizeof(*newScriptWindows) * selectedLine);
         memcpy(
-            &newScriptWindows[4 * selectedLine + 4],
+            &newScriptWindows[selectedLine + 1],
             &this->scriptWindows[selectedLine],
-            4 * (this->numLines - selectedLine));
+            sizeof(*newScriptWindows) * (this->numLines - selectedLine));
         Scr_FreeDebugMem(this->scriptWindows);
     }
     this->scriptWindows = (Scr_ScriptWindow**)newScriptWindows;

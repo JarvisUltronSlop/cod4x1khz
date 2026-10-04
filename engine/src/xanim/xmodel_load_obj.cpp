@@ -46,7 +46,7 @@ void __cdecl XModelReadSurface_BuildCollisionTree(
     uint32_t leafEnd; // [esp+B8h] [ebp-E0h]
     float nodeMaxs[3]; // [esp+BCh] [ebp-DCh] BYREF
     uint32_t allocSize; // [esp+C8h] [ebp-D0h]
-    uint32_t alignedAddr; // [esp+CCh] [ebp-CCh]
+    uintptr_t alignedAddr; // [esp+CCh] [ebp-CCh]
     unsigned __int8 *alloced; // [esp+D0h] [ebp-C8h]
     float combinedVolume; // [esp+D4h] [ebp-C4h]
     float thisVolume; // [esp+D8h] [ebp-C0h]
@@ -218,7 +218,7 @@ void __cdecl XModelReadSurface_BuildCollisionTree(
     allocSize = 16 * nodeCount + 15;
     v3 = (unsigned char*)Alloc(allocSize);
     alloced = v3;
-    alignedAddr = (uintptr_t)(v3 + 15) & 0xFFFFFFF0;
+    alignedAddr = (uintptr_t)(v3 + 15) & ~uintptr_t(15);
     tree->nodes = (XSurfaceCollisionNode*)alignedAddr;
     if (((uintptr_t)tree->nodes & 0xF) != 0)
         MyAssertHandler(".\\r_xsurface_load_obj.cpp", 352, 0, "%s", "!(reinterpret_cast< uint32_t >( tree->nodes ) & 0x0F)");

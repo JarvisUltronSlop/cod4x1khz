@@ -45,7 +45,7 @@ union DevMenuChild // sizeof=0x4
     DevGraph *graph;
     uint16_t menu;
 };
-static_assert(sizeof(DevMenuChild) == 0x4);
+static_assert(sizeof(DevMenuChild) == (sizeof(void*) == 8 ? 8 : 4));
 
 struct DevMenuItem // sizeof=0x28
 {                                       // ...
@@ -58,7 +58,7 @@ struct DevMenuItem // sizeof=0x28
     uint16_t parent;            // ...
     DevMenuChild child;                 // ...
 };
-static_assert(sizeof(DevMenuItem) == 0x28);
+static_assert(sizeof(DevMenuItem) == (sizeof(void*) == 8 ? 48 : 40));
 
 struct devguiGlob_t // sizeof=0x5E10
 {                                       // ...
@@ -83,12 +83,12 @@ struct devguiGlob_t // sizeof=0x5E10
     int32_t right;                          // ...
     int32_t sliderWidth;                    // ...
 };
-static_assert(sizeof(devguiGlob_t) == 0x5E10);
+static_assert(sizeof(devguiGlob_t) == (sizeof(void*) == 8 ? 28896 : 24080));
 
 // devgui
 void __cdecl TRACK_devgui();
 void __cdecl DevGui_AddDvar(const char *path, const dvar_s *dvar);
-devguiGlob_t *__cdecl DevGui_GetMenu(uint16_t handle);
+DevMenuItem *__cdecl DevGui_GetMenu(uint16_t handle);
 uint16_t __cdecl DevGui_ConstructPath_r(uint16_t parent, const char *path);
 uint16_t __cdecl DevGui_RegisterMenu(uint16_t parentHandle, const char *label, __int16 sortKey);
 uint16_t __cdecl DevGui_CreateMenu(uint16_t parentHandle, const char *label, __int16 sortKey);

@@ -1,7 +1,7 @@
-#include <universal/q_shared.h>
 #include "pool_allocator.h"
 #include "assertive.h"
 #include <cstdint>
+#include <cstring>
 
 void __cdecl Pool_Init(char *pool, pooldata_t *pooldata, uint32_t itemSize, uint32_t itemCount)
 {
@@ -11,16 +11,17 @@ void __cdecl Pool_Init(char *pool, pooldata_t *pooldata, uint32_t itemSize, uint
         MyAssertHandler(".\\universal\\pool_allocator.cpp", 16, 0, "%s", "pool");
     if (!pooldata)
         MyAssertHandler(".\\universal\\pool_allocator.cpp", 17, 0, "%s", "pooldata");
-    if (itemSize < 4)
+    if (itemSize < sizeof(void*))
         MyAssertHandler(".\\universal\\pool_allocator.cpp", 18, 0, "%s", "itemSize >= sizeof( byte * )");
     if (itemCount < 2)
         MyAssertHandler(".\\universal\\pool_allocator.cpp", 19, 0, "%s", "itemCount >= 2");
     pooldata->firstFree = pool;
 
-    for (itemIndex = 0; itemIndex < itemCount - 1; ++itemIndex)
-        *(uint32_t *)&pool[itemSize * itemIndex] = (uint32_t)&pool[itemSize * (itemIndex + 1)];
-
-    *(uint32_t *)&pool[itemSize * itemIndex] = 0;
+    for (itemIndex = 0; itemIndex < itemCount; ++itemIndex) {
+        const auto offset = std::size_t(itemSize) * itemIndex;
+        auto* next = itemIndex + 1 < itemCount ? pool + offset + itemSize : nullptr;
+        std::memcpy(pool + offset, &next, sizeof(next));
+    }
     pooldata->activeCount = 0;
 }
 

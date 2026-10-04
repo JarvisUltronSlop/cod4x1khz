@@ -70,27 +70,7 @@ void __cdecl R_DrawStaticModelSurfLit(const uint32_t *primDrawSurfPos, GfxCmdBuf
         R_DrawStaticModelDrawSurfLightingNonOptimized(&drawStream, context);
 }
 
-int __cdecl R_GetNextStaticModelSurf(GfxStaticModelDrawStream *drawStream, XSurface **outSurf)
-{
-    XSurface *xsurf; // [esp+0h] [ebp-Ch]
-    const uint32_t *primDrawSurfPos; // [esp+4h] [ebp-8h]
 
-    drawStream->smodelCount = *drawStream->primDrawSurfPos++;
-    if (!drawStream->smodelCount)
-        return 0;
-    primDrawSurfPos = drawStream->primDrawSurfPos;
-    drawStream->primDrawSurfPos += ((drawStream->smodelCount + 1) >> 1) + 1;
-    xsurf = (XSurface *)*primDrawSurfPos;
-    drawStream->smodelList = (const uint16_t *)(primDrawSurfPos + 1);
-    drawStream->localSurf = xsurf;
-    g_frameStatsCur.geoIndexCount += 3 * drawStream->smodelCount * xsurf->triCount;
-
-    iassert(g_primStats);
-    g_primStats->dynamicIndexCount += 3 * drawStream->smodelCount * xsurf->triCount;
-    g_primStats->dynamicVertexCount += drawStream->smodelCount * xsurf->vertCount;
-    *outSurf = xsurf;
-    return 1;
-}
 
 void __cdecl R_DrawStaticModelSurf(const uint32_t *primDrawSurfPos, GfxCmdBufContext context)
 {
@@ -182,7 +162,7 @@ int __cdecl R_GetNextStaticModelCachedSurf(GfxStaticModelDrawStream *drawStream)
     drawStream->smodelCount = *drawStream->primDrawSurfPos++;
     if (!drawStream->smodelCount)
         return 0;
-    xsurf = (XSurface *)*drawStream->primDrawSurfPos++;
+    xsurf = R_ReadPrimDrawSurfXSurface(drawStream->primDrawSurfPos);
     drawStream->smodelList = (const unsigned short*)drawStream->primDrawSurfPos;
     drawStream->primDrawSurfPos += (drawStream->smodelCount + 1) >> 1;
     smodelDrawInst = &rgp.world->dpvs.smodelDrawInsts[R_GetCachedSModelSurf(*drawStream->smodelList)->smodelIndex];

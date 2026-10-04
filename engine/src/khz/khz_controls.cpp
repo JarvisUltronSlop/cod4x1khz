@@ -10,16 +10,9 @@
 #include <ui/keycodes.h>
 #include <Windows.h>
 
-namespace {
-INIT_ONCE initialized = INIT_ONCE_STATIC_INIT;
-CRITICAL_SECTION dvars;
-thread_local unsigned dvarDepth = 0, controlDepth = 0;
-BOOL CALLBACK initialize(PINIT_ONCE, PVOID, PVOID*) { InitializeCriticalSection(&dvars); return TRUE; }
-}
-void KHZ_DvarEnter() { InitOnceExecuteOnce(&initialized, initialize, nullptr, nullptr); EnterCriticalSection(&dvars); ++dvarDepth; }
-void KHZ_DvarLeave() { iassert(dvarDepth); --dvarDepth; LeaveCriticalSection(&dvars); }
+namespace { thread_local unsigned controlDepth = 0; }
 void KHZ_ControlsErrorUnwind() {
-    while (dvarDepth) KHZ_DvarLeave();
+    KHZ_DvarLocksErrorUnwind();
     controlDepth = 0;
     if (Sys_IsMainThread() && KHZ_ClientOwnerControlsActive()) KHZ_ClientOwnerEndControls();
 }
@@ -28,9 +21,9 @@ void KHZ_CommandControlBegin() {
     if (controlDepth++) return;
     if (!KHZ_ClientOwnerRunning() || KHZ_ClientOwnerControlsActive()) return;
     if (!KHZ_ClientOwnerPark())
-        Com_Error(ERR_DROP, "Gameplay command barrier park failed: %s dvar_depth=%u", KHZ_ClientOwnerBarrierFailure(), dvarDepth);
+        Com_Error(ERR_DROP, "Gameplay command barrier park failed: %s dvar_depth=%u", KHZ_ClientOwnerBarrierFailure(), KHZ_DvarLockDepth());
     if (!KHZ_ClientOwnerBeginControls())
-        Com_Error(ERR_DROP, "Gameplay command barrier control access failed: %s dvar_depth=%u", KHZ_ClientOwnerBarrierFailure(), dvarDepth);
+        Com_Error(ERR_DROP, "Gameplay command barrier control access failed: %s dvar_depth=%u", KHZ_ClientOwnerBarrierFailure(), KHZ_DvarLockDepth());
 }
 void KHZ_CommandControlEnd() {
     iassert(Sys_IsMainThread());

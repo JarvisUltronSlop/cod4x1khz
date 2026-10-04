@@ -85,16 +85,6 @@ FxSystemBuffers *__cdecl FX_GetSystemBuffers(int32_t clientIndex)
     return fx_systemBufferPool;
 }
 
-void __cdecl FX_LinkSystemBuffers(FxSystem *system, FxSystemBuffers *systemBuffers)
-{
-    system->elems = systemBuffers->elems;
-    system->effects = systemBuffers->effects;
-    system->trails = systemBuffers->trails;
-    system->trailElems = systemBuffers->trailElems;
-    system->visState = systemBuffers->visState;
-    system->deferredElems = systemBuffers->deferredElems;
-}
-
 void __cdecl FX_InitSystem(int32_t localClientNum)
 {
     FxSystem *system; // [esp+4h] [ebp-8h]
@@ -181,15 +171,6 @@ void __cdecl FX_ResetSystem(FxSystem *system)
     system->visStateBufferWrite = system->visState + 1;
 }
 
-int32_t __cdecl FX_EffectToHandle(FxSystem *system, FxEffect *effect)
-{
-    iassert(system);
-    iassert(effect && effect >= &system->effects[0] && effect < &system->effects[FX_EFFECT_LIMIT]);
-
-    return ((char *)effect - (char *)system->effects) / 4;
-}
-
-
 void __cdecl FX_ShutdownSystem(int32_t localClientNum)
 {
     FxSystem *system; // [esp+0h] [ebp-8h]
@@ -206,15 +187,6 @@ void __cdecl FX_ShutdownSystem(int32_t localClientNum)
     if (system->isInitialized)
         MyAssertHandler(".\\EffectsCore\\fx_system.cpp", 507, 1, "%s", "!system->isInitialized");
     FX_UnregisterAll();
-}
-
-void __cdecl FX_RelocateSystem(FxSystem *system, int32_t relocationDistance)
-{
-    if (relocationDistance)
-    {
-        system->visStateBufferRead = (const FxVisState *)((char *)system->visStateBufferRead + relocationDistance);
-        system->visStateBufferWrite = (FxVisState *)((char *)system->visStateBufferWrite + relocationDistance);
-    }
 }
 
 void __cdecl FX_EffectNoLongerReferenced(FxSystem *system, FxEffect *remoteEffect)
@@ -1886,7 +1858,7 @@ bool __cdecl FX_SpawnModelPhysics(
     visuals.anonymous = FX_GetElemVisuals(elemDef, randomSeed).anonymous;
     if (!*((_DWORD*)visuals.anonymous + 53))
         MyAssertHandler(".\\EffectsCore\\fx_system.cpp", 1853, 0, "%s", "visuals.model->physPreset");
-    elem->physObjId = (int)Phys_ObjCreate(
+    elem->physObjId = (intptr_t)Phys_ObjCreate(
         PHYS_WORLD_FX,
         worldOrigin,
         quat,

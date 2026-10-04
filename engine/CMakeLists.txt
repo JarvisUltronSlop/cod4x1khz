@@ -19,12 +19,16 @@ set(USE_ASAN OFF)
 
 # Set to ON to build the sound system against OpenAL instead of Miles/MSS.
 # When OFF (default), the original Miles Sound System (MSS/AIL) backend is used.
-set(KISAK_OPENAL OFF)
+option(KISAK_OPENAL "Use OpenAL instead of Miles" OFF)
 
 # Set the gloabl directory variables
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
-set(BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin/x64)
+else()
+    set(BIN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+endif()
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
 set(PLATFORM_DIR ${SCRIPTS_DIR}/platform)
 

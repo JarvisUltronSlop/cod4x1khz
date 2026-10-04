@@ -2,6 +2,14 @@
 #include "rb_backend.h"
 #include "rb_tess.h"
 
+inline XSurface *R_ReadPrimDrawSurfXSurface(const uint32_t *&position)
+{
+    XSurface *surface;
+    memcpy(&surface, position, sizeof(surface));
+    position += sizeof(surface) / sizeof(uint32_t);
+    return surface;
+}
+
 struct GfxStaticModelDrawStream // sizeof=0x1C
 {                                       // ...
     const uint32_t *primDrawSurfPos; // ...

@@ -75,7 +75,7 @@ struct FxEffectDef // sizeof=0x20
     int elemDefCountEmission;
     const FxElemDef *elemDefs;
 };
-static_assert(sizeof(FxEffectDef) == 32);
+static_assert(sizeof(FxEffectDef) == (sizeof(void*) == 8 ? 40 : 32));
 
 struct FxEffect // sizeof=0x80
 {                                       // ...
@@ -129,6 +129,9 @@ union FxElem_u // sizeof=0x4
     float trailTexCoord;
     uint16_t lightingHandle;
 };
+// Effect handles encode four-byte offsets into this compact pool. The body
+// pointer occupies eight of the existing twelve union bytes on x64.
+#pragma pack(push, 4)
 struct FxElem // sizeof=0x28
 {                                       // ...
     uint8_t defIndex;
@@ -142,7 +145,7 @@ struct FxElem // sizeof=0x28
     //$A58BA6DA60295001BBA5E9F807131CF1 ___u8;
     union
     {
-        int physObjId;
+        intptr_t physObjId;
         float origin[3];
     };
     //FxElem::<unnamed_type_u> u;
@@ -150,6 +153,8 @@ struct FxElem // sizeof=0x28
 
     static constexpr size_t HANDLE_SCALE = 4;
 };
+#pragma pack(pop)
+static_assert(sizeof(FxElem) == 40 && offsetof(FxElem, physObjId) == 24);
 struct FxTrail // sizeof=0x8
 {                                       // ...
     uint16_t nextTrailHandle;   // ...
@@ -302,7 +307,7 @@ struct FxUpdateElem // sizeof=0x7C
     // padding byte
     // padding byte
     // padding byte
-    int physObjId;                      // ...
+    intptr_t physObjId;                      // ...
 };
 struct FxCmd // sizeof=0xC
 {                                       // ...
@@ -477,7 +482,7 @@ struct FxImpactTable // sizeof=0x8
     const char *name;
     FxImpactEntry *table;
 };
-static_assert(sizeof(FxImpactTable) == 8);
+static_assert(sizeof(FxImpactTable) == (sizeof(void*) == 8 ? 16 : 8));
 
 struct FxSystemBuffers // sizeof=0x47480
 {                                       // ...

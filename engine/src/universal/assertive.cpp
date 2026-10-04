@@ -533,11 +533,38 @@ int __cdecl LoadMapFiles(char* msg)
 char g_module[MAX_PATH];
 
 #include <intrin.h>
+#if defined(_WIN64)
+#include <DbgHelp.h>
+#endif
 
 // KISAKX64
 // this is broken right now
 int __cdecl DoStackTrace(char* msg, int nIgnore)
 {
+#if defined(_WIN64)
+    void* frames[32]{};
+    const auto count = CaptureStackBackTrace(static_cast<DWORD>((std::max)(nIgnore, 0) + 1),
+        ARRAY_COUNT(frames), frames, nullptr);
+    auto* output = msg;
+    static SRWLOCK symbolsLock = SRWLOCK_INIT;
+    const bool locked = TryAcquireSRWLockExclusive(&symbolsLock) != FALSE;
+    const auto process = GetCurrentProcess();
+    const bool ownsSymbols = locked && SymInitialize(process, nullptr, TRUE) != FALSE;
+    for (USHORT i = 0; i < count; ++i)
+    {
+        alignas(SYMBOL_INFO) char storage[sizeof(SYMBOL_INFO) + 256]{};
+        auto* symbol = reinterpret_cast<SYMBOL_INFO*>(storage);
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO); symbol->MaxNameLen = 255;
+        DWORD64 displacement{};
+        const auto address = reinterpret_cast<DWORD64>(frames[i]);
+        if (locked && SymFromAddr(process, address, &displacement, symbol))
+            output += sprintf(output, "%p %.80s + 0x%llx\n", frames[i], symbol->Name, displacement);
+        else output += sprintf(output, "%p\n", frames[i]);
+    }
+    if (ownsSymbols) SymCleanup(process);
+    if (locked) ReleaseSRWLockExclusive(&symbolsLock);
+    return static_cast<int>(output - msg);
+#else
     int* v2; // ecx
     int* reg_ebp; // [esp+4h] [ebp-10h]
     int i; // [esp+10h] [ebp-4h]
@@ -562,6 +589,7 @@ int __cdecl DoStackTrace(char* msg, int nIgnore)
         }
     }
     return LoadMapFiles(msg);
+#endif
 }
 
 void __cdecl BuildAssertMessage(const char* expr, const char* filename, int line, int type, int skipLevels, char* message)

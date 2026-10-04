@@ -338,8 +338,8 @@ void __cdecl DObjCreateDuplicateParts(DObj_s *obj, DObjModel_s *dobjModels, uint
     iassert(boneCount == (byte)boneCount);
     obj->numBones = boneCount;
     iassert(numModels > 0);
-    obj->models = (XModel **)MT_Alloc(5 * numModels, MT_TYPE_MODEL_LIST);
-    memcpy((unsigned __int8 *)obj->models, (unsigned __int8 *)models, 4 * numModels);
+    obj->models = (XModel **)MT_Alloc((sizeof(XModel*) + 1) * numModels, MT_TYPE_MODEL_LIST);
+    memcpy((unsigned __int8 *)obj->models, (unsigned __int8 *)models, sizeof(XModel*) * numModels);
     memcpy((unsigned __int8 *)&obj->models[numModels], modelParents, numModels);
     iassert(g_empty);
     iassert(!obj->duplicateParts);
@@ -412,7 +412,7 @@ void __cdecl DObjFree(DObj_s *obj)
     models = obj->models;
     if (models)
     {
-        MT_Free((byte*)models, 5 * obj->numModels);
+        MT_Free((byte*)models, (sizeof(XModel*) + 1) * obj->numModels);
         obj->models = 0;
     }
     obj->numModels = 0; // LWSS: blops backport
@@ -526,8 +526,8 @@ void __cdecl DObjArchive(DObj_s *obj)
     obj->models = NULL;
     DObjFree(obj);
 
-    static_assert((sizeof(DObj_s) - sizeof(obj->models)) == 96);
-    memcpy(obj, &savedObj, sizeof(DObj_s) - sizeof(obj->models));
+    static_assert(sizeof(SavedDObj) <= offsetof(DObj_s, models));
+    memcpy(obj, &savedObj, sizeof(savedObj));
 }
 
 void __cdecl DObjUnarchive(DObj_s *obj)
@@ -545,7 +545,7 @@ void __cdecl DObjUnarchive(DObj_s *obj)
         model->model = savedObj.models[modelIndex];
         model->ignoreCollision = (savedObj.ignoreCollision & (1 << modelIndex)) != 0;
     }
-    MT_Free((_BYTE *)savedObj.models, 5 * savedObj.numModels);
+    MT_Free((_BYTE *)savedObj.models, (sizeof(XModel*) + 1) * savedObj.numModels);
     DObjCreate(dobjModels, savedObj.numModels, savedObj.tree, obj, savedObj.entnum);
     DObjSetHidePartBits(obj, savedObj.hidePartBits);
 }
@@ -1266,7 +1266,8 @@ void DObjClone(const DObj_s *from, DObj_s *obj)
     if (obj->duplicateParts && duplicateParts != g_empty)
         SL_AddRefToString(duplicateParts);
     obj->tree = 0;
-    v5 = (XModel **)MT_Alloc(from->numModels + __ROL4__(from->numModels, 2), MT_TYPE_MODEL_LIST);
+    const auto modelBytes = (sizeof(XModel*) + 1) * from->numModels;
+    v5 = (XModel **)MT_Alloc(modelBytes, MT_TYPE_MODEL_LIST);
     obj->models = v5;
-    memcpy(v5, from->models, from->numModels + __ROL4__(from->numModels, 2));
+    memcpy(v5, from->models, modelBytes);
 }

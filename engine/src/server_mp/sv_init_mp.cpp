@@ -526,7 +526,7 @@ void __cdecl SV_SpawnServer(char *mapname)
     }
 
 
-    I_strncpyz(sv.gametype, (char *)sv_gametype->current.integer, 64);
+    I_strncpyz(sv.gametype, (char *)sv_gametype->current.string, 64);
 
     KHZ_Srand(Sys_MillisecondsRaw());
     sv.checksumFeed = Sys_Milliseconds() ^ (KHZ_Rand() ^ (KHZ_Rand() << 16));

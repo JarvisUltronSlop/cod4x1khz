@@ -16,6 +16,13 @@
 
 namespace gfx::legacy {
 namespace {
+// System COM objects do not carry C++ RTTI. Check our private interface first.
+bool nativeObject(IUnknown* object) {
+    if(!object)return false;
+    IUnknown* verified=nullptr;
+    if(FAILED(object->QueryInterface(NativeObjectId,reinterpret_cast<void**>(&verified))))return false;
+    verified->Release();return true;
+}
 constexpr std::size_t packetLimit=8192,byteLimit=64*1024*1024;
 enum Metric {Frames,Draws,GpuSamples,GpuUs,WarmUs,RecordUs,SubmitUs,AcquireUs,PresentUs,RecycleUs,OwnerChanges,OwnerWaitUs,Submissions,PrepareUs,CommandsUs,ParallelBatches,ParallelDraws,MetricCount};
 std::array<std::atomic<std::uint64_t>,MetricCount> metrics{};
@@ -35,7 +42,7 @@ struct Command {
     std::array<ClearRect,2> blitRects{};bool hasSourceRect=false,hasDestinationRect=false,linear=false;
 };
 class Reference {
-    struct Entry {ResourceId source,target;ImageDesc image;std::string name;std::vector<std::uint32_t> shader;std::uint64_t draws=0;};
+    struct Entry {ResourceId source,target;ImageDesc image;std::string name;std::vector<std::uint32_t> shader;std::uint64_t draws=0;std::vector<float> firstConstants;};
     std::array<Entry,16384> entries{};
     struct Pass {ResourceId vertex,pixel,color,depth;MaterialState state;std::uint64_t draws=0;};
     std::vector<Pass> passes;
@@ -47,10 +54,14 @@ public:
     void release(ResourceId source){const auto target=map(source);backend.release(target);entries[(source.value&65535u)-1]={};}
     const ImageDesc& image(ResourceId source) const {map(source);return entries[(source.value&65535u)-1].image;}
     const std::string& name(ResourceId source)const{map(source);return entries[(source.value&65535u)-1].name;}
+    void constants(ResourceId source,std::span<const float> values){map(source);auto& entry=entries[(source.value&65535u)-1];if(entry.firstConstants.empty())entry.firstConstants.assign(values.begin(),values.end());}
     void count(ResourceId source){map(source);++entries[(source.value&65535u)-1].draws;}
     void name(ResourceId source,const char* text){map(source);entries[(source.value&65535u)-1].name=text;}
     void shader(ResourceId source,std::span<const std::uint32_t> words){map(source);entries[(source.value&65535u)-1].shader.assign(words.begin(),words.end());}
-    void report(const std::filesystem::path& folder){std::ofstream labels(folder/"reference-shaders.tsv");labels<<"id\tstage\tdraws\tname\n";for(const auto& entry:entries)if(!entry.shader.empty()&&entry.draws){const auto file="reference-shader-"+std::to_string(entry.source.value)+".bin";std::ofstream words(folder/file,std::ios::binary);words.write(reinterpret_cast<const char*>(entry.shader.data()),entry.shader.size()*4);labels<<entry.source.value<<'\t'<<((entry.shader[0]>>16)==0xfffe?"vertex":"pixel")<<'\t'<<entry.draws<<'\t'<<entry.name<<'\n';}
+    void report(const std::filesystem::path& folder){
+        std::ofstream constantsFile(folder/"reference-constants.tsv");constantsFile<<"shader\tname\tregister\tx\ty\tz\tw\n";
+        for(const auto& entry:entries)for(unsigned n=0;n+3<entry.firstConstants.size();n+=4)constantsFile<<entry.source.value<<'\t'<<entry.name<<'\t'<<n/4<<'\t'<<entry.firstConstants[n]<<'\t'<<entry.firstConstants[n+1]<<'\t'<<entry.firstConstants[n+2]<<'\t'<<entry.firstConstants[n+3]<<'\n';
+        std::ofstream labels(folder/"reference-shaders.tsv");labels<<"id\tstage\tdraws\tname\n";for(const auto& entry:entries)if(!entry.shader.empty()&&entry.draws){const auto file="reference-shader-"+std::to_string(entry.source.value)+".bin";std::ofstream words(folder/file,std::ios::binary);words.write(reinterpret_cast<const char*>(entry.shader.data()),entry.shader.size()*4);labels<<entry.source.value<<'\t'<<((entry.shader[0]>>16)==0xfffe?"vertex":"pixel")<<'\t'<<entry.draws<<'\t'<<entry.name<<'\n';}
         std::ofstream states(folder/"reference-passes.tsv");states<<"vs\tps\tcolor\tdepth\tztest\tzwrite\tzcompare\tblend\tsrc\tdst\tmask\tcull\tbias\tslope\tatest\taref\tacompare\tdraws\n";
         for(const auto& pass:passes)states<<pass.vertex.value<<'\t'<<pass.pixel.value<<'\t'<<pass.color.value<<'\t'<<pass.depth.value<<'\t'<<pass.state.depthTest<<'\t'<<pass.state.depthWrite<<'\t'<<unsigned(pass.state.depthCompare)<<'\t'<<pass.state.blend<<'\t'<<unsigned(pass.state.src)<<'\t'<<unsigned(pass.state.dst)<<'\t'<<pass.state.colorMask<<'\t'<<pass.state.cull<<'\t'<<pass.state.depthBias<<'\t'<<pass.state.slopeDepthBias<<'\t'<<pass.state.alphaTest<<'\t'<<pass.state.alphaRef<<'\t'<<unsigned(pass.state.alphaCompare)<<'\t'<<pass.draws<<'\n';
     }
@@ -58,7 +69,7 @@ public:
     std::vector<ResourceId> floatImages() const {std::vector<ResourceId> result;for(const auto& entry:entries)if(entry.source&&entry.image.format==ImageFormat::R32Float&&entry.image.renderTarget&&entry.image.samples==1)result.push_back(entry.source);return result;}
     void execute(const Command& c){
         switch(c.operation){
-        case Operation::Draw:{auto d=c.draw;pass(d);count(d.vertexShader);count(d.pixelShader);d.vertexShader=map(d.vertexShader);d.pixelShader=map(d.pixelShader);d.indexBuffer=map(d.indexBuffer);d.colorTarget=map(d.colorTarget);d.depthTarget=map(d.depthTarget);for(auto& id:d.vertexBuffers)id=map(id);for(auto& id:d.textures)id=map(id);backend.draw(d);break;}
+        case Operation::Draw:{auto d=c.draw;constants(d.vertexShader,d.vertexConstants);constants(d.pixelShader,d.pixelConstants);pass(d);count(d.vertexShader);count(d.pixelShader);d.vertexShader=map(d.vertexShader);d.pixelShader=map(d.pixelShader);d.indexBuffer=map(d.indexBuffer);d.colorTarget=map(d.colorTarget);d.depthTarget=map(d.depthTarget);for(auto& id:d.vertexBuffers)id=map(id);for(auto& id:d.textures)id=map(id);backend.draw(d);break;}
         case Operation::Clear:backend.clear(map(c.first),map(c.second),c.rgba,c.depth,c.stencil,c.clearDepth,c.clearStencil,c.rectangles);break;
         case Operation::Buffer:backend.updateBuffer(map(c.first),c.offset,c.bytes,c.discard,c.noOverwrite);break;
         case Operation::Image:backend.uploadImage(map(c.first),c.level,c.layer,c.bytes);break;
@@ -212,11 +223,19 @@ public:
     DWORD STDMETHODCALLTYPE GetDataSize() override {return type==D3DQUERYTYPE_TIMESTAMP?8:4;}
     HRESULT STDMETHODCALLTYPE Issue(DWORD flags) override {return checked([&]{std::lock_guard guard(state->mutex);if(flags!=D3DISSUE_BEGIN&&flags!=D3DISSUE_END)throw std::runtime_error("Invalid stock query issue flag");if(flags==D3DISSUE_BEGIN&&type!=D3DQUERYTYPE_OCCLUSION)throw std::runtime_error("Invalid stock query begin");auto& c=state->append(flags==D3DISSUE_BEGIN?Operation::QueryBegin:Operation::QueryEnd);c.first=id();lastIssue=c.sequence;state->keep(c,this);});}
     HRESULT STDMETHODCALLTYPE GetData(void* out,DWORD bytes,DWORD flags) override {
-        try {std::lock_guard guard(state->mutex);if(!state->failure.empty())throw std::runtime_error(state->failure);if(out&&bytes!=GetDataSize())return D3DERR_INVALIDCALL;
+        try {if(out&&bytes!=GetDataSize())return D3DERR_INVALIDCALL;
+            // Frontend workers poll fences while the submission owner uses
+            // that same worker pool to record commands. Blocking on its mutex
+            // here would prevent those recording jobs from ever running.
+            std::unique_lock guard(state->mutex,std::try_to_lock);if(!guard.owns_lock())return S_FALSE;
+            if(!state->failure.empty())throw std::runtime_error(state->failure);
             // D3D9 event queries start signaled. Stock loading barriers poll
             // them before the first Issue; treating idle as pending deadlocks.
             std::uint64_t value=1;if(!lastIssue&&type==D3DQUERYTYPE_EVENT){if(out)std::memcpy(out,&value,bytes);return S_OK;}
-            if(flags&D3DGETDATA_FLUSH)state->flush();
+            // Polling an already submitted issue must not drain newer CPU
+            // packets. Their next presentation owns that work; a flush is
+            // needed only while this query's issue is still queued.
+            if((flags&D3DGETDATA_FLUSH)&&lastIssue>state->submittedSequence)state->flush();
             // Never return an earlier issue's result while its replacement is
             // still queued on the CPU and absent from the submitted GPU work.
             if(lastIssue>state->submittedSequence)return S_FALSE;
@@ -456,7 +475,7 @@ public:
 };
 }
 IDirect3D9* createVulkanInterface(const Config& config) {try{return new Factory(config);}catch(const std::exception& e){unsupported(e.what());return nullptr;}}
-void nameResource(IUnknown* object,const char* name){if(!object||!name)return;if(auto* resource=dynamic_cast<Resource*>(object)){if(std::strlen(name)>256)return;resource->storage->debugName=name;if(const auto state=std::dynamic_pointer_cast<State>(resource->storage->host)){std::lock_guard guard(state->mutex);if(state->reference)state->reference->name(resource->id(),name);}}}
+void nameResource(IUnknown* object,const char* name){if(!object||!name||!nativeObject(object))return;if(auto* resource=dynamic_cast<Resource*>(object)){if(std::strlen(name)>256)return;resource->storage->debugName=name;if(const auto state=std::dynamic_pointer_cast<State>(resource->storage->host)){std::lock_guard guard(state->mutex);if(state->reference)state->reference->name(resource->id(),name);}}}
 const char* frameTelemetry(){
     thread_local char text[1024];
     const char* names[]={"frames","draws","gpu_samples","gpu_us","warm_us","record_us","submit_us","acquire_us","present_us","recycle_us","owner_changes","owner_wait_us","submissions","prepare_us","commands_us","parallel_batches","parallel_draws"};
@@ -464,6 +483,6 @@ const char* frameTelemetry(){
     for(unsigned n=0;n<MetricCount;++n)used+=std::snprintf(text+used,sizeof(text)-used,",\"%s\":%llu",names[n],metrics[n].load(std::memory_order_relaxed));
     std::snprintf(text+used,sizeof(text)-used,",\"trace_clock_us\":%llu}",traceClockUs.load(std::memory_order_relaxed));return text;
 }
-unsigned validationErrors(IDirect3DDevice9* device){const auto* native=dynamic_cast<Device*>(device);return native?native->validationErrorCount():UINT32_MAX;}
-bool writeFrameTimings(IDirect3DDevice9* device,const char* path){auto* native=dynamic_cast<Device*>(device);if(!native)return false;return SUCCEEDED(checked([&]{native->writeTimings(path);}));}
+unsigned validationErrors(IDirect3DDevice9* device){if(!nativeObject(device))return UINT32_MAX;const auto* native=dynamic_cast<Device*>(device);return native?native->validationErrorCount():UINT32_MAX;}
+bool writeFrameTimings(IDirect3DDevice9* device,const char* path){if(!nativeObject(device))return false;auto* native=dynamic_cast<Device*>(device);if(!native)return false;return SUCCEEDED(checked([&]{native->writeTimings(path);}));}
 }

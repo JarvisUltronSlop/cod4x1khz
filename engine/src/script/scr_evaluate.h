@@ -10,7 +10,7 @@ struct ArchivedCanonicalStringInfo // sizeof=0x8
     // padding byte
     const char *value;
 };
-static_assert(sizeof(ArchivedCanonicalStringInfo) == 0x8);
+static_assert(sizeof(ArchivedCanonicalStringInfo) == (sizeof(void*) == 8 ? 16 : 8));
 
 struct scrEvaluateGlob_t // sizeof=0x10
 {                                       // ...
@@ -22,7 +22,7 @@ struct scrEvaluateGlob_t // sizeof=0x10
     bool objectChanged;                 // ...
     // padding byte
 };
-static_assert(sizeof(scrEvaluateGlob_t) == 0x10);
+static_assert(sizeof(scrEvaluateGlob_t) == (sizeof(void*) == 8 ? 32 : 16));
 
 void __cdecl TRACK_scr_evaluate();
 uint32_t __cdecl Scr_GetBuiltin(sval_u func_name);

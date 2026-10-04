@@ -15,7 +15,6 @@
 namespace khz::update {
 namespace {
 constexpr char Identity[] = "KHZ_RELEASE_PROJECT=cod4x1khz;protocol=10002;format=1";
-constexpr std::string_view ClientMirrors = "client_mirrors=runtime/cod4x1khz.exe,runtime/cod4x1khz_bench.exe\n";
 char hexDigit(unsigned n) { return "0123456789abcdef"[n & 15]; }
 std::string hex(const void* data, std::size_t length) {
     const auto* bytes = static_cast<const std::uint8_t*>(data); std::string result(length * 2, '0');
@@ -75,7 +74,7 @@ std::string journalText(const Journal& journal) {
 }
 bool readJournal(const std::filesystem::path& root, const Policy& policy, Journal* result) {
     std::filesystem::path file; std::string text;
-    if (!path(root, "updates/transaction.txt", &file) || !read(file, &text, MaxManifestBytes + 1024)) return false;
+    if (!path(root, KHZ_UPDATE_DIRECTORY "/transaction.txt", &file) || !read(file, &text, MaxManifestBytes + 1024)) return false;
     constexpr std::string_view prefix = "KHZ_UPDATE_JOURNAL_2\nstate=";
     if (!text.starts_with(prefix)) return false;
     std::string_view view(text); view.remove_prefix(prefix.size());
@@ -97,7 +96,7 @@ bool readJournal(const std::filesystem::path& root, const Policy& policy, Journa
     if (!VerifyManifest(view, policy, journal.previous, &journal.manifest)) return false;
     *result = std::move(journal); return true;
 }
-bool saveJournal(const std::filesystem::path& root, const Journal& journal) { std::filesystem::path file; return path(root, "updates/transaction.txt", &file, true) && write(file, journalText(journal)); }
+bool saveJournal(const std::filesystem::path& root, const Journal& journal) { std::filesystem::path file; return path(root, KHZ_UPDATE_DIRECTORY "/transaction.txt", &file, true) && write(file, journalText(journal)); }
 bool matches(const std::filesystem::path& file, const content::Digest& hash, std::uint64_t expected = 0) {
     content::Digest actual{}; std::uint64_t size = 0; return content::HashFile(file, &actual, &size) && actual == hash && (!expected || size == expected);
 }
@@ -117,12 +116,12 @@ bool replaceCopy(const std::filesystem::path& source, const std::filesystem::pat
     return matches(destination, expected);
 }
 bool installedVersion(const std::filesystem::path& root, std::uint64_t fallback, std::uint64_t* value) {
-    std::filesystem::path file; if (!path(root, "updates/version.txt", &file, true)) return false;
+    std::filesystem::path file; if (!path(root, KHZ_UPDATE_DIRECTORY "/version.txt", &file, true)) return false;
     if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) { *value = fallback; return true; }
     std::string text; if (!read(file, &text, 64) || text.empty() || text.back() != '\n') return false;
     text.pop_back(); return number(text, value);
 }
-bool saveVersion(const std::filesystem::path& root, std::uint64_t version) { std::filesystem::path file; return path(root, "updates/version.txt", &file, true) && write(file, std::to_string(version)+"\n"); }
+bool saveVersion(const std::filesystem::path& root, std::uint64_t version) { std::filesystem::path file; return path(root, KHZ_UPDATE_DIRECTORY "/version.txt", &file, true) && write(file, std::to_string(version)+"\n"); }
 Result rollback(const std::filesystem::path& root, Journal& journal) {
     // Validate every old backup and every new optional mirror before touching
     // any destination. A missing pre-update mirror is removed only if it still
@@ -130,7 +129,7 @@ Result rollback(const std::filesystem::path& root, Journal& journal) {
     std::array<std::filesystem::path, InstalledPaths.size()> backups{}, targets{};
     for (unsigned i = 0; i < InstalledPaths.size(); ++i) {
         if (!path(root, InstalledPaths[i], &targets[i])
-            || (journal.oldPresent[i] && (!path(root, "updates/rollback/" + std::to_string(journal.manifest.version) + "/" + InstalledPaths[i], &backups[i]) || !matches(backups[i], journal.oldHashes[i]))))
+            || (journal.oldPresent[i] && (!path(root, KHZ_UPDATE_DIRECTORY "/rollback/" + std::to_string(journal.manifest.version) + "/" + InstalledPaths[i], &backups[i]) || !matches(backups[i], journal.oldHashes[i]))))
             return failure("Rollback backup missing or altered", true);
         if (!journal.oldPresent[i] && GetFileAttributesW(targets[i].c_str()) != INVALID_FILE_ATTRIBUTES) {
             const auto& source = journal.manifest.files[InstalledSourceIndexes[i]];
@@ -157,7 +156,7 @@ bool Configured(const Policy& policy) {
 }
 bool CanonicalBody(const Manifest& manifest, std::string* output) {
     if (!output || !manifest.version) return false;
-    std::string text = "KHZ_UPDATE_1\nproject=cod4x1khz\nplatform=windows-x86\nprotocol=10002\nversion=" + std::to_string(manifest.version) + "\n" + std::string(ClientMirrors) + "files=2\n";
+    std::string text = "KHZ_UPDATE_1\nproject=cod4x1khz\nplatform=" + std::string(Platform) + "\nprotocol=10002\nversion=" + std::to_string(manifest.version) + "\n" + std::string(ClientMirrors) + "files=2\n";
     for (unsigned i = 0; i < 2; ++i) {
         const auto& file = manifest.files[i];
         if (!std::memchr(file.name, 0, sizeof(file.name)) || std::strcmp(file.name, PackagePaths[i]) || !std::memchr(file.url, 0, sizeof(file.url))
@@ -181,7 +180,7 @@ bool VerifySignature(std::string_view body, const Signature& signature, const Pu
 }
 bool VerifyManifest(std::string_view text, const Policy& policy, std::uint64_t installed, Manifest* output) {
     if (!output || !Configured(policy) || text.size() > MaxManifestBytes || text.find('\0') != text.npos || text.find('\r') != text.npos) return false;
-    constexpr std::string_view prefix = "KHZ_UPDATE_1\nproject=cod4x1khz\nplatform=windows-x86\nprotocol=10002\nversion=";
+    const std::string prefix = "KHZ_UPDATE_1\nproject=cod4x1khz\nplatform=" + std::string(Platform) + "\nprotocol=10002\nversion=";
     if (!text.starts_with(prefix)) return false;
     const auto original = text; text.remove_prefix(prefix.size());
     auto end = text.find('\n'); Manifest manifest;
@@ -220,11 +219,11 @@ bool VerifyBinary(const std::filesystem::path& file) {
     auto u16 = [&](std::size_t at) { std::uint16_t value; std::memcpy(&value, bytes.data()+at, 2); return value; };
     auto u32 = [&](std::size_t at) { std::uint32_t value; std::memcpy(&value, bytes.data()+at, 4); return value; };
     const unsigned sections = u16(offset+6), optional = u16(offset+20), characteristics = u16(offset+22);
-    if (u16(offset+4) != 0x14c || !sections || sections > 96 || optional < 224 || !(characteristics & 2)
+    if (u16(offset+4) != BinaryMachine || !sections || sections > 96 || optional < OptionalBytes || !(characteristics & 2)
         || (characteristics & 0x2000) || std::uint64_t(offset) + 24 + optional + 40 * sections > bytes.size()) return false;
     const std::size_t header = offset+24;
     const auto imageSize = u32(header+56), headersSize = u32(header+60), entry = u32(header+16);
-    if (u16(header) != 0x10b || (u16(header+68) != 2 && u16(header+68) != 3) || !imageSize || !entry
+    if (u16(header) != OptionalMagic || (u16(header+68) != 2 && u16(header+68) != 3) || !imageSize || !entry
         || entry >= imageSize || headersSize > bytes.size() || headersSize < header + optional + 40 * sections) return false;
     const auto identity = bytes.find(Identity); bool identityInImage = false, executableEntry = false;
     for (unsigned i = 0; i < sections; ++i) {
@@ -244,7 +243,7 @@ Result Apply(const std::filesystem::path& root, const Manifest& manifest, const 
     std::uint64_t actualInstalled = 0;
     if (!installedVersion(root, installed, &actualInstalled) || actualInstalled != installed) return failure("Installed version changed or invalid");
     std::filesystem::path priorJournal;
-    if (!path(root, "updates/transaction.txt", &priorJournal, true)) return failure("Project root invalid or has reparse paths");
+    if (!path(root, KHZ_UPDATE_DIRECTORY "/transaction.txt", &priorJournal, true)) return failure("Project root invalid or has reparse paths");
     if (GetFileAttributesW(priorJournal.c_str()) != INVALID_FILE_ATTRIBUTES) {
         Journal prior;
         if (!readJournal(root, policy, &prior) || (prior.state != "committed" && prior.state != "rolledback")) return failure("Recover unfinished transaction before new update", true);
@@ -265,8 +264,8 @@ Result Apply(const std::filesystem::path& root, const Manifest& manifest, const 
         journal.oldPresent[i] = attributes != INVALID_FILE_ATTRIBUTES;
         if ((!journal.oldPresent[i] && i < PackagePaths.size())
             || (journal.oldPresent[i] && !content::HashFile(targets[i], &journal.oldHashes[i]))
-            || !path(root, "updates/rollback/" + std::to_string(checked.version) + "/" + InstalledPaths[i], &backups[i], true)
-            || !path(root, "updates/staged/" + std::to_string(checked.version) + "/" + InstalledPaths[i], &replacements[i], true))
+            || !path(root, KHZ_UPDATE_DIRECTORY "/rollback/" + std::to_string(checked.version) + "/" + InstalledPaths[i], &backups[i], true)
+            || !path(root, KHZ_UPDATE_DIRECTORY "/staged/" + std::to_string(checked.version) + "/" + InstalledPaths[i], &replacements[i], true))
             return failure("Installed binaries/backup confinement invalid");
     }
     for (unsigned i = 0; i < InstalledPaths.size(); ++i) {
@@ -295,13 +294,13 @@ Result Apply(const std::filesystem::path& root, const Manifest& manifest, const 
 RecordedState InspectRecordedState(const std::filesystem::path& root,const Policy& policy) {
     std::filesystem::path file;
     if (!path(root,".khz-inspect-root-check",&file)) return RecordedState::Invalid;
-    const DWORD directoryFlags=GetFileAttributesW((root/L"updates").c_str());
+    const DWORD directoryFlags=GetFileAttributesW((root/StorageDirectory).c_str());
     if (directoryFlags==INVALID_FILE_ATTRIBUTES) {
         const auto error=GetLastError();
         return error==ERROR_FILE_NOT_FOUND||error==ERROR_PATH_NOT_FOUND?RecordedState::None:RecordedState::Invalid;
     }
     if (!(directoryFlags&FILE_ATTRIBUTE_DIRECTORY)||(directoryFlags&FILE_ATTRIBUTE_REPARSE_POINT)
-        ||!path(root,"updates/transaction.txt",&file)) return RecordedState::Invalid;
+        ||!path(root,KHZ_UPDATE_DIRECTORY "/transaction.txt",&file)) return RecordedState::Invalid;
     if (GetFileAttributesW(file.c_str())==INVALID_FILE_ATTRIBUTES)
         return GetLastError()==ERROR_FILE_NOT_FOUND?RecordedState::None:RecordedState::Invalid;
     Journal journal;
@@ -321,7 +320,7 @@ RecordedState InspectRecordedState(const std::filesystem::path& root,const Polic
         }
     }
     std::string text;std::uint64_t version=0;
-    if (!path(root,"updates/version.txt",&file)||!read(file,&text,64)||text.empty()||text.back()!='\n') return RecordedState::RecoveryRequired;
+    if (!path(root,KHZ_UPDATE_DIRECTORY "/version.txt",&file)||!read(file,&text,64)||text.empty()||text.back()!='\n') return RecordedState::RecoveryRequired;
     text.pop_back();
     if (!number(text,&version)||version!=(journal.state=="committed"?journal.manifest.version:journal.previous)) return RecordedState::RecoveryRequired;
     return RecordedState::Healthy;
@@ -329,8 +328,8 @@ RecordedState InspectRecordedState(const std::filesystem::path& root,const Polic
 Result Recover(const std::filesystem::path& root, const Policy& policy) {
     std::filesystem::path file;
     if (!path(root, ".khz-root-check", &file)) return failure("Update project path invalid");
-    if (GetFileAttributesW((root / L"updates").c_str()) == INVALID_FILE_ATTRIBUTES) { Result result; std::snprintf(result.detail, sizeof(result.detail), "No update transaction"); return result; }
-    if (!path(root, "updates/transaction.txt", &file)) return failure("Update journal path invalid");
+    if (GetFileAttributesW((root / StorageDirectory).c_str()) == INVALID_FILE_ATTRIBUTES) { Result result; std::snprintf(result.detail, sizeof(result.detail), "No update transaction"); return result; }
+    if (!path(root, KHZ_UPDATE_DIRECTORY "/transaction.txt", &file)) return failure("Update journal path invalid");
     if (GetFileAttributesW(file.c_str()) == INVALID_FILE_ATTRIBUTES) { Result result; std::snprintf(result.detail, sizeof(result.detail), "No update transaction"); return result; }
     Journal journal;
     if (!readJournal(root, policy, &journal)) return failure("Update journal invalid; refuse game launch", true);

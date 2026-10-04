@@ -1268,7 +1268,7 @@ char *__cdecl UI_GetMapDisplayName(const char *pszMap)
 
     for (i = 0; i < sharedUiInfo.mapCount; ++i)
     {
-        if (!I_stricmp(pszMap, (const char *)sharedUiInfo.serverHardwareIconList[40 * i - 5119]))
+        if (!I_stricmp(pszMap, (const char *)sharedUiInfo.mapList[i].mapLoadName))
             return UI_SafeTranslateString((char *)sharedUiInfo.mapList[i].mapName);
     }
     return (char *)pszMap;
@@ -1282,8 +1282,8 @@ char *__cdecl UI_GetMapDisplayNameFromPartialLoadNameMatch(const char *mapName, 
         MyAssertHandler(".\\ui_mp\\ui_main_mp.cpp", 1043, 0, "%s", "mapLoadNameLen");
     for (i = 0; i < sharedUiInfo.mapCount; ++i)
     {
-        *mapLoadNameLen = strlen((const char *)sharedUiInfo.serverHardwareIconList[40 * i - 5119]);
-        if (!I_strnicmp(mapName, (const char *)sharedUiInfo.serverHardwareIconList[40 * i - 5119], *mapLoadNameLen))
+        *mapLoadNameLen = strlen((const char *)sharedUiInfo.mapList[i].mapLoadName);
+        if (!I_strnicmp(mapName, (const char *)sharedUiInfo.mapList[i].mapLoadName, *mapLoadNameLen))
             return UI_SafeTranslateString((char *)sharedUiInfo.mapList[i].mapName);
     }
     return 0;
@@ -1996,7 +1996,7 @@ void UI_CreatePlayerProfile()
 
     if (strlen(ui_playerProfileNameNew->current.string))
     {
-        I_strncpyz(name, (char *)ui_playerProfileNameNew->current.integer, 32);
+        I_strncpyz(name, (char *)ui_playerProfileNameNew->current.string, 32);
         Dvar_SetString((dvar_s *)ui_playerProfileNameNew, (char *)"");
 
         uiInfo_s *uiInfo = &uiInfoArray;
@@ -2161,7 +2161,7 @@ BOOL __cdecl UI_IsMapActive(int mapIndex)
             "%s\n\t(mapIndex) = %i",
             "(mapIndex >= 0 && mapIndex < sharedUiInfo.mapCount)",
             mapIndex);
-    return sharedUiInfo.serverHardwareIconList[40 * mapIndex - 5081] != 0;
+    return sharedUiInfo.mapList[mapIndex].active != 0;
 }
 
 void __cdecl UI_SelectListIndexForMapIndex(int mapIndex)
@@ -2178,7 +2178,7 @@ void UI_SelectFirstActiveMap()
 
     for (mapIndex = 0; mapIndex < sharedUiInfo.mapCount; ++mapIndex)
     {
-        if (sharedUiInfo.serverHardwareIconList[40 * mapIndex - 5081])
+        if (sharedUiInfo.mapList[mapIndex].active)
         {
             Menu_SetFeederSelection(&uiInfoArray.uiDC, 0, 4, 0, "createserver_maps");
             Dvar_SetInt(ui_currentNetMap, mapIndex);
@@ -2208,7 +2208,7 @@ void __cdecl UI_SelectCurrentMap(int localClientNum)
             iCount = 0;
             for (i = 0; i < sharedUiInfo.mapCount; ++i)
             {
-                if (sharedUiInfo.serverHardwareIconList[40 * i - 5081])
+                if (sharedUiInfo.mapList[i].active)
                 {
                     if (!I_stricmp(szMap, sharedUiInfo.mapList[i].mapName))
                     {
@@ -3280,8 +3280,7 @@ void __cdecl UI_RunMenuScript(int localClientNum, const char **args, const char 
                                     {
                                         v13 = va(
                                             "callvote map %s\n",
-                                            (const char *)sharedUiInfo.serverHardwareIconList[40 * ui_currentNetMap->current.integer
-                                            - 5119]);
+                                            (const char *)sharedUiInfo.mapList[ui_currentNetMap->current.integer].mapLoadName);
                                         Cbuf_AddText(localClientNum, v13);
                                     }
                                 }
@@ -3290,8 +3289,7 @@ void __cdecl UI_RunMenuScript(int localClientNum, const char **args, const char 
                                     v12 = va(
                                         "callvote typemap %s %s\n",
                                         sharedUiInfo.gameTypes[ui_netGameType->current.integer].gameType,
-                                        (const char *)sharedUiInfo.serverHardwareIconList[40 * ui_currentNetMap->current.integer
-                                        - 5119]);
+                                        (const char *)sharedUiInfo.mapList[ui_currentNetMap->current.integer].mapLoadName);
                                     Cbuf_AddText(localClientNum, v12);
                                 }
                             }
@@ -3379,7 +3377,7 @@ void __cdecl UI_RunMenuScript(int localClientNum, const char **args, const char 
             Dvar_SetStringByName("g_gametype", (char *)sharedUiInfo.gameTypes[ui_netGameType->current.integer].gameType);
             v4 = va(
                 "wait ; wait ; map %s\n",
-                (const char *)sharedUiInfo.serverHardwareIconList[40 * ui_currentNetMap->current.integer - 5119]);
+                (const char *)sharedUiInfo.mapList[ui_currentNetMap->current.integer].mapLoadName);
             Cbuf_AddText(localClientNum, v4);
         }
         else
@@ -3897,11 +3895,11 @@ int __cdecl UI_MapCountByGameType()
     c = 0;
     for (i = 0; i < sharedUiInfo.mapCount; ++i)
     {
-        sharedUiInfo.serverHardwareIconList[40 * i - 5081] = 0;
-        if (((int)sharedUiInfo.serverHardwareIconList[40 * i - 5115] & (1 << game)) != 0)
+        sharedUiInfo.mapList[i].active = 0;
+        if ((sharedUiInfo.mapList[i].typeBits & (1 << game)) != 0)
         {
             ++c;
-            sharedUiInfo.serverHardwareIconList[40 * i - 5081] = (Material *)1;
+            sharedUiInfo.mapList[i].active = 1;
         }
     }
     return c;
@@ -4235,11 +4233,11 @@ Material *__cdecl UI_GetLevelShot(int index)
 {
     if (index < 0 || index >= sharedUiInfo.mapCount)
         index = 0;
-    if (!sharedUiInfo.serverHardwareIconList[40 * index - 5082])
-        sharedUiInfo.serverHardwareIconList[40 * index - 5082] = Material_RegisterHandle(
-            (char *)sharedUiInfo.serverHardwareIconList[40 * index - 5118],
+    if (!sharedUiInfo.mapList[index].levelShot)
+        sharedUiInfo.mapList[index].levelShot = Material_RegisterHandle(
+            (char *)sharedUiInfo.mapList[index].imageName,
             IMAGE_TRACK_UI);
-    return sharedUiInfo.serverHardwareIconList[40 * index - 5082];
+    return sharedUiInfo.mapList[index].levelShot;
 }
 
 Material *__cdecl UI_FeederItemImage(float feederID, int index)
@@ -4297,7 +4295,7 @@ int __cdecl UI_GetListIndexFromMapIndex(int testMapIndex)
     listIndex = 0;
     for (mapIndex = 0; mapIndex < sharedUiInfo.mapCount; ++mapIndex)
     {
-        if (sharedUiInfo.serverHardwareIconList[40 * mapIndex - 5081])
+        if (sharedUiInfo.mapList[mapIndex].active)
         {
             if (mapIndex == testMapIndex)
                 return listIndex;
@@ -4359,7 +4357,7 @@ char *__cdecl UI_SelectedMap(int index, int *actual)
     *actual = 0;
     for (i = 0; i < sharedUiInfo.mapCount; ++i)
     {
-        if (sharedUiInfo.serverHardwareIconList[40 * i - 5081])
+        if (sharedUiInfo.mapList[i].active)
         {
             if (c == index)
             {

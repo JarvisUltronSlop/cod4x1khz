@@ -130,22 +130,6 @@ void __cdecl CM_LoadMapData_FastFile(const char *name)
 #endif
 }
 
-void __cdecl CM_Shutdown()
-{
-#if defined(COD4X1KHZ_SERVER_CHECKPOINT) && defined(COD4X1KHZ) && defined(KISAK_MP) && defined(KISAK_DEDICATED)
-    KHZ_ServerCollisionQueryScope collisionQuery(KHZ_COLLISION_CM_SCRATCH);
-    if (!collisionQuery.allowed()) { return; }
-    if (!KHZ_ServerCollisionAllowUnsupportedEffect("server_collision_map_shutdown")) return;
-    if (!KHZ_ServerCollisionInvalidateMapBinding()) return;
-#endif
-    const char *savedName; // [esp+0h] [ebp-4h]
-
-    savedName = cm.name;
-    Com_Memset((uint32_t *)&cm, 0, 284);
-    cm.name = savedName;
-    iassert( !cm.isInUse );
-}
-
 void __cdecl CM_Unload()
 {
 #if defined(COD4X1KHZ_SERVER_CHECKPOINT) && defined(COD4X1KHZ) && defined(KISAK_MP) && defined(KISAK_DEDICATED)

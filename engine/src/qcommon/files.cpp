@@ -514,8 +514,8 @@ void __cdecl FS_PureServerSetLoadedIwds(char *iwdSums, char *iwdNames)
     if (v7)
     {
         Com_DPrintf(CON_CHANNEL_FILES, "Connected to a pure server.\n");
-        Com_Memcpy(fs_serverIwds, src, 4 * fs_numServerIwds);
-        Com_Memcpy(fs_serverIwdNames, s0, 4 * fs_numServerIwds);
+        Com_Memcpy(fs_serverIwds, src, sizeof(*fs_serverIwds) * fs_numServerIwds);
+        Com_Memcpy(fs_serverIwdNames, s0, sizeof(*fs_serverIwdNames) * fs_numServerIwds);
         fs_fakeChkSum = 0;
     }
 #if defined(COD4X1KHZ) && defined(KISAK_MP)

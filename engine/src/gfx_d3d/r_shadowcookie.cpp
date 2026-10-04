@@ -646,9 +646,9 @@ void __cdecl R_GenerateBspShadowReceivers(ShadowCookieList *shadowCookieList)
     }
 }
 
-bool __cdecl R_AllowBspShadowReceiver(int surfIndex, uint32_t *shadowReceiverCallbackAsVoid)
+bool __cdecl R_AllowBspShadowReceiver(int surfIndex, void *shadowReceiverCallbackAsVoid)
 {
-    return *(_BYTE *)(*shadowReceiverCallbackAsVoid + surfIndex)
+    return static_cast<const ShadowReceiverCallback *>(shadowReceiverCallbackAsVoid)->surfaceVisData[surfIndex]
         && Material_GetTechnique(rgp.world->dpvs.surfaces[surfIndex].material, TECHNIQUE_SHADOWCOOKIE_RECEIVER) != 0;
 }
 

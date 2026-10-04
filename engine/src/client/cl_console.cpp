@@ -6,6 +6,7 @@
 #include <stringed/stringed_hooks.h>
 #include <win32/win_local.h>
 #include <gfx_d3d/r_rendercmds.h>
+#include <gfx_d3d/r_hud_icon.h>
 #include <qcommon/threads.h>
 #include <universal/com_files.h>
 #include <buildnumber.h>
@@ -21,8 +22,6 @@
 enum {
     COLOR_FIRST = 48,
     COLOR_LAST = 57,
-    CONTXTCMD_LEN_HUDICON = 7,
-    CONTXTCMD_ARG_HUDICON_MATERIAL = 3,
     CON_MSG_TIME_DRIFT_BUFFER = 1000,
     GAMEMSG_WINDOW_COUNT = 4
 };
@@ -223,8 +222,8 @@ void __cdecl Con_TimeNudged(int32_t localClientNum, int32_t serverTimeNudge)
         Con_NudgeMessageWindowTimes(&con.messageBuffer[localClientNum].gamemsgWindows[gameWindowIndex], serverTimeNudge, serverTime);
     }
 
-    Con_NudgeMessageWindowTimes((MessageWindow *)&con.color[4630 * localClientNum - 1122], serverTimeNudge, serverTime);
-    Con_NudgeMessageWindowTimes((MessageWindow *)&con.color[4630 * localClientNum - 53], serverTimeNudge, serverTime);
+    Con_NudgeMessageWindowTimes(&con.messageBuffer[localClientNum].miniconWindow, serverTimeNudge, serverTime);
+    Con_NudgeMessageWindowTimes(&con.messageBuffer[localClientNum].errorWindow, serverTimeNudge, serverTime);
 }
 #endif
 
@@ -901,16 +900,10 @@ char __cdecl CL_ConsolePrint_AddLine(
                     goto LABEL_70;
                 }
                 bcassert(con.lineOffset, sizeof(con.textTempLine) - CONTXTCMD_LEN_HUDICON); // 0x1F9
-                // Kisak: I screwed this up, and can't figure it out.
-                // iassert(IsValidMaterialHandle(*reinterpret_cast<Material*>(&text[CONTXTCMD_ARG_HUDICON_MATERIAL]))); // IsValidMaterialHandle( *reinterpret_cast< const MaterialHandle * >( &text[CONTXTCMD_ARG_HUDICON_MATERIAL] )
                 con.textTempLine[con.lineOffset++] = 94;
-                v9 = &con.textTempLine[con.lineOffset];
-                v10 = text;
-                *(uint32_t *)v9 = *(uint32_t *)text;
-                *((_WORD *)v9 + 2) = *((_WORD *)v10 + 2);
-                v9[6] = v10[6];
-                con.lineOffset += 7;
-                text += 7;
+                memcpy(&con.textTempLine[con.lineOffset], text, CONTXTCMD_LEN_HUDICON);
+                con.lineOffset += CONTXTCMD_LEN_HUDICON;
+                text += CONTXTCMD_LEN_HUDICON;
                 bcassert(con.lineOffset, sizeof(con.textTempLine) + 1); // 0x201
                 atStartOfBrokenLine = 0;
             }
@@ -1233,7 +1226,9 @@ int32_t __cdecl PrintableCharsCount(const MessageWindow *msgwnd, MessageLine *li
             c[0] = msgwnd->circularTextBuffer[(msgwnd->textBufSize - 1) & (idx + line->textBufPos)];
             if (c)
             {
-                if (c[0] != 94 && c[0] >= 48 && c[0] <= 57)
+                if (c[0] == 1 || c[0] == 2)
+                    idx += CONTXTCMD_LEN_HUDICON;
+                else if (c[0] != 94 && c[0] >= 48 && c[0] <= 57)
                     ++idx;
             }
         }
@@ -1454,8 +1449,8 @@ uint32_t __cdecl CL_AddDeathMessageIcon(
 
     iassert(deathMsgLend + sizeof(iconShader) <= deathMsgMaxLen);
 
-    *(uint32_t *)&deathMsg[deathMsgLend] = (uint32_t)iconShader;
-    deathMsgLene = deathMsgLend + 4;
+    memcpy(&deathMsg[deathMsgLend], &iconShader, sizeof(iconShader));
+    deathMsgLene = deathMsgLend + sizeof(iconShader);
 
     iassert(deathMsgLene - deathMsgLen == CONTXTCMD_LEN_HUDICON + 1);
 
@@ -1489,8 +1484,8 @@ uint32_t __cdecl CL_AddDeathMessageIcon(
     deathMsg[deathMsgLen++] = (char)(horzFlipIcon + 1);
     deathMsg[deathMsgLen++] = encodedWidth;
     deathMsg[deathMsgLen++] = encodedHeight;
-    *(uint32_t*)&deathMsg[deathMsgLen] = (uint32_t)iconShader;
-    deathMsgLen += 4;
+    memcpy(&deathMsg[deathMsgLen], &iconShader, sizeof(iconShader));
+    deathMsgLen += sizeof(iconShader);
 
     iassert(deathMsgLen - startLen == CONTXTCMD_LEN_HUDICON + 1);
 

@@ -135,12 +135,12 @@ void __cdecl Scr_BeginLoadScripts()
         scrVarPub.programHunkUser = Hunk_UserCreate(0x100000, "Scr_BeginLoadScripts", 1, 0, 7);
         TempMemoryReset(scrVarPub.programHunkUser);
         scrVarPub.programBuffer = TempMalloc(0);
-        if (((int)scrVarPub.programBuffer & 0x1F) != 0)
+        if ((reinterpret_cast<uintptr_t>(scrVarPub.programBuffer) & 0x1F) != 0)
             MyAssertHandler(
                 ".\\script\\scr_main.cpp",
                 209,
                 0,
-                "%s\n\t((int)scrVarPub.programBuffer) = %i",
+                "%s\n\t(scrVarPub.programBuffer) = %p",
                 "(!((int)scrVarPub.programBuffer & 31))",
                 scrVarPub.programBuffer);
         scrCompilePub.programLen = 0;
@@ -202,6 +202,7 @@ void __cdecl Scr_EndLoadScripts()
 
 void __cdecl Scr_BeginLoadAnimTrees(int user)
 {
+    Scr_ClearAnimationFixups();
     scrVarPub.varUsagePos = "<script compile variable>";
     iassert(!scrAnimPub.animtree_loading);
     scrAnimPub.animtree_loading = 1;
@@ -308,6 +309,7 @@ void __cdecl Scr_PrecacheAnimTrees(void *(__cdecl *Alloc)(int), int user)
 
 void __cdecl Scr_EndLoadAnimTrees()
 {
+    Scr_ClearAnimationFixups();
     iassert(scrAnimPub.animtrees);
     ClearObject(scrAnimPub.animtrees);
     if (scrVarDebugPub)

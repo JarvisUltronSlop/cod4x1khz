@@ -71,44 +71,6 @@ void __cdecl UpdateScores(int32_t localClientNum)
     }
 }
 
-const score_t *__cdecl UI_GetOurClientScore(int32_t localClientNum)
-{
-    return GetClientScore(localClientNum, CG_GetLocalClientGlobals(localClientNum)->clientNum);
-}
-
-const score_t *__cdecl GetClientScore(int32_t localClientNum, int32_t clientNum)
-{
-    int32_t scoreNum; // [esp+4h] [ebp-8h]
-    cg_s *cgameGlob;
-
-    cgameGlob = CG_GetLocalClientGlobals(localClientNum);
-
-    for (scoreNum = 0; scoreNum < cgameGlob->numScores; ++scoreNum)
-    {
-        if (cgameGlob->bgs.clientinfo[cgameGlob->scores[scoreNum].client].infoValid
-            && cgameGlob->scores[scoreNum].client == clientNum)
-        {
-            return &cgameGlob->scores[scoreNum];
-        }
-    }
-    return 0;
-}
-
-const score_t *__cdecl UI_GetScoreAtRank(int32_t localClientNum, int32_t rank)
-{
-    cg_s *cgameGlob;
-
-    cgameGlob = CG_GetLocalClientGlobals(localClientNum);
-
-    if (rank < 1 || rank > cgameGlob->numScores)
-        return 0;
-
-    if (cgameGlob->bgs.clientinfo[cgameGlob->teamScores[10 * rank + 2]].infoValid)
-        return (const score_t *)&cgameGlob->teamScores[10 * rank + 2];
-
-    return 0;
-}
-
 char *__cdecl CG_GetGametypeDescription(int32_t localClientNum)
 {
     return SEH_LocalizeTextMessage(CG_GetLocalClientGlobals(localClientNum)->objectiveText, "game objective display", LOCMSG_SAFE);

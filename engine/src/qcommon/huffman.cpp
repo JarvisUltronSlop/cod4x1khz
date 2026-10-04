@@ -1,7 +1,7 @@
-#include <universal/q_shared.h>
-
 #include "huffman.h"
 #include <universal/assertive.h>
+#include <cstdlib>
+#include <cstring>
 
 int bloc;
 
@@ -93,8 +93,7 @@ void __cdecl Huff_offsetTransmit(huff_t *huff, int ch, uint8_t *fout, int *offse
 
 void __cdecl Huff_Init(huffman_t *huff)
 {
-    //Com_Memset((uint32_t *)huff, 0, 19476);
-    Com_Memset((uint32_t *)huff, 0, sizeof(huffman_t));
+    std::memset(huff, 0, sizeof(*huff));
     huff->compressDecompress.loc[256] = &huff->compressDecompress.nodeList[huff->compressDecompress.blocNode++];
     huff->compressDecompress.tree = huff->compressDecompress.loc[256];
     huff->compressDecompress.tree->symbol = 256;
@@ -120,7 +119,9 @@ nodetype *__cdecl Huff_initNode(huff_t *huff, int ch, int weight)
 
 int __cdecl nodeCmp(const void *left, const void *right)
 {
-    return *(uint32_t *)(*(uint32_t *)left + 12) - *(uint32_t *)(*(uint32_t *)right + 12);
+    const auto* a = *static_cast<nodetype* const*>(left);
+    const auto* b = *static_cast<nodetype* const*>(right);
+    return (a->weight > b->weight) - (a->weight < b->weight);
 }
 
 void __cdecl Huff_BuildFromData(huff_t *huff, const int *msg_hData)
@@ -140,7 +141,7 @@ void __cdecl Huff_BuildFromData(huff_t *huff, const int *msg_hData)
         inited = Huff_initNode(huff, i, msg_hData[i]);
         heap[i] = inited;
     }
-    qsort(heap, 0x100u, 4u, nodeCmp);
+    qsort(heap, 0x100u, sizeof(heap[0]), nodeCmp);
     v3 = Huff_initNode(huff, 257, 1);
     v3->left = huff->tree;
     v3->right = heap[0];
@@ -150,7 +151,7 @@ void __cdecl Huff_BuildFromData(huff_t *huff, const int *msg_hData)
     heap[0] = v3;
     while (numNodes > 1)
     {
-        qsort(&heap[heapHead], 256 - heapHead, 4u, nodeCmp);
+        qsort(&heap[heapHead], 256 - heapHead, sizeof(heap[0]), nodeCmp);
         v4 = Huff_initNode(huff, 257, 1);
         v4->left = heap[heapHead];
         v4->right = heap[heapHead + 1];

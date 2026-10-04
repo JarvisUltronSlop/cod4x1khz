@@ -50,30 +50,30 @@ int32_t g_animRateOffsets[NUM_WEAP_ANIMS] =
   -1,
   -1,
   -1,
-  888,
+  offsetof(WeaponDef, iHoldFireTime),
   -1,
   -1,
-  896,
-  900,
-  904,
-  912,
-  920,
-  928,
-  936,
-  956,
-  932,
-  944,
-  940,
-  952,
-  948,
-  960,
-  964,
-  968,
-  972,
-  976,
+  offsetof(WeaponDef, iMeleeTime),
+  offsetof(WeaponDef, meleeChargeTime),
+  offsetof(WeaponDef, iReloadTime),
+  offsetof(WeaponDef, iReloadEmptyTime),
+  offsetof(WeaponDef, iReloadStartTime),
+  offsetof(WeaponDef, iReloadEndTime),
+  offsetof(WeaponDef, iRaiseTime),
+  offsetof(WeaponDef, iFirstRaiseTime),
+  offsetof(WeaponDef, iDropTime),
+  offsetof(WeaponDef, iAltRaiseTime),
+  offsetof(WeaponDef, iAltDropTime),
+  offsetof(WeaponDef, quickRaiseTime),
+  offsetof(WeaponDef, quickDropTime),
+  offsetof(WeaponDef, iEmptyRaiseTime),
+  offsetof(WeaponDef, iEmptyDropTime),
+  offsetof(WeaponDef, sprintInTime),
+  offsetof(WeaponDef, sprintLoopTime),
+  offsetof(WeaponDef, sprintOutTime),
   -1,
-  980,
-  992,
+  offsetof(WeaponDef, nightVisionWearTime),
+  offsetof(WeaponDef, nightVisionRemoveTime),
   -1,
   -1,
   -1,
@@ -168,9 +168,9 @@ void __cdecl CG_RegisterWeapon(int32_t localClientNum, uint32_t weaponNum)
                 DObjUpdateClientInfo(weapInfo->viewModelDObj, 0.05f, 0);
             }
             if (weapDef->hudIcon)
-                cgMedia.stanceMaterials[weaponNum - 129] = weapDef->hudIcon;
+                cgMedia.hintMaterials[weaponNum + WEAPON_HINT_OFFSET] = weapDef->hudIcon;
             else
-                cgMedia.stanceMaterials[weaponNum - 129] = 0;
+                cgMedia.hintMaterials[weaponNum + WEAPON_HINT_OFFSET] = 0;
             weapInfo->translatedDisplayName = SEH_StringEd_GetString(weapDef->szDisplayName);
             if (!weapInfo->translatedDisplayName)
             {
@@ -3989,13 +3989,13 @@ void __cdecl CG_SetupWeaponDef(int32_t localClientNum)
     char v1; // [esp+3h] [ebp-2225h]
     _BYTE *v2; // [esp+8h] [ebp-2220h]
     const char *v3; // [esp+Ch] [ebp-221Ch]
-    _DWORD dst[129]; // [esp+10h] [ebp-2218h] BYREF
+    const char *dst[129]; // [esp+10h] [ebp-2218h] BYREF
     const char *ConfigString; // [esp+214h] [ebp-2014h]
     int32_t iNumFiles; // [esp+218h] [ebp-2010h]
     _BYTE *v7; // [esp+21Ch] [ebp-200Ch]
     _BYTE v8[8196]; // [esp+220h] [ebp-2008h] BYREF
 
-    memset((uint8_t *)dst, 0, 0x1FCu);
+    memset(dst, 0, sizeof(dst));
     iNumFiles = 0;
     ConfigString = CL_GetConfigString(localClientNum, CS_WEAPONFILES);
     v3 = ConfigString;
@@ -4006,7 +4006,7 @@ void __cdecl CG_SetupWeaponDef(int32_t localClientNum)
         *v2++ = *v3++;
     } while (v1);
     v7 = v8;
-    dst[iNumFiles++] = (_DWORD)v8;
+    dst[iNumFiles++] = reinterpret_cast<const char *>(v8);
     while (*v7)
     {
         if (*v7 == 32)
@@ -4016,7 +4016,7 @@ void __cdecl CG_SetupWeaponDef(int32_t localClientNum)
             {
                 if (iNumFiles >= 127)
                     break;
-                dst[iNumFiles++] = (_DWORD)v7;
+                dst[iNumFiles++] = reinterpret_cast<const char *>(v7);
             }
         }
         else
@@ -4024,7 +4024,7 @@ void __cdecl CG_SetupWeaponDef(int32_t localClientNum)
             ++v7;
         }
     }
-    ParseWeaponDefFiles((const char **)dst, iNumFiles);
+    ParseWeaponDefFiles(dst, iNumFiles);
 #elif KISAK_SP
     iassert(bg_lastParsedWeaponIndex > 0);
 #endif

@@ -592,16 +592,16 @@ void __cdecl Script_SetItemColor(UiContext *dc, itemDef_s *item, const char **ar
 
 int __cdecl Menu_ItemsMatchingGroup(menuDef_t *menu, char *name)
 {
-    int v2; // eax
+    const char *v2;
     int wildcard; // [esp+4h] [ebp-Ch]
     int i; // [esp+8h] [ebp-8h]
     int count; // [esp+Ch] [ebp-4h]
 
     count = 0;
     wildcard = -1;
-    v2 = (int)strstr(name, "*");
+    v2 = strstr(name, "*");
     if (v2)
-        wildcard = v2 - (uint32_t)name;
+        wildcard = static_cast<int>(v2 - name);
     for (i = 0; i < menu->itemCount; ++i)
     {
         if (wildcard == -1)
@@ -623,16 +623,16 @@ int __cdecl Menu_ItemsMatchingGroup(menuDef_t *menu, char *name)
 
 itemDef_s *__cdecl Menu_GetMatchingItemByNumber(menuDef_t *menu, int index, char *name)
 {
-    int v3; // eax
+    const char *v3;
     int wildcard; // [esp+4h] [ebp-Ch]
     int i; // [esp+8h] [ebp-8h]
     int count; // [esp+Ch] [ebp-4h]
 
     count = 0;
     wildcard = -1;
-    v3 = (int)strstr(name, "*");
+    v3 = strstr(name, "*");
     if (v3)
-        wildcard = v3 - (uint32_t)name;
+        wildcard = static_cast<int>(v3 - name);
     for (i = 0; i < menu->itemCount; ++i)
     {
         if (wildcard == -1)
@@ -3760,7 +3760,7 @@ int __cdecl Item_DvarEnum_EnumIndex(itemDef_s *item)
         return enumIndex;
     for (enumIndexa = 0; enumIndexa < enumDvar->domain.enumeration.stringCount; ++enumIndexa)
     {
-        if (!I_stricmp(enumString, *(const char **)(enumDvar->domain.integer.max + 4 * enumIndexa)))
+        if (!I_stricmp(enumString, enumDvar->domain.enumeration.strings[enumIndexa]))
             return enumIndexa;
     }
     return 0;
@@ -4684,7 +4684,7 @@ char __cdecl Menu_Paint(UiContext *dc, menuDef_t *menu)
 
     iassert(menu);
 
-    if (*(_BYTE *)ui_showMenuOnly->current.integer
+    if (*(_BYTE *)ui_showMenuOnly->current.string
         && menu->window.name
         && I_stricmp(menu->window.name, ui_showMenuOnly->current.string))
     {
@@ -5782,7 +5782,7 @@ const char *__cdecl Item_DvarEnum_Setting(itemDef_s *item)
             "enumIndex >= 0 && enumIndex < enumDvar->domain.enumeration.stringCount",
             v2);
     }
-    return *(const char **)(enumDvar->domain.integer.max + 4 * enumIndex);
+    return enumDvar->domain.enumeration.strings[enumIndex];
 }
 
 void __cdecl Item_Slider_Paint(UiContext *dc, itemDef_s *item)

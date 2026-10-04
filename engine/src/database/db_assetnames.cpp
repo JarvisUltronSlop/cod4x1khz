@@ -96,105 +96,48 @@ static const char *__cdecl DB_StringTableGetName(const XAssetHeader *header);
 static const char *__cdecl DB_LocalizeEntryGetName(const XAssetHeader *header);
 static void __cdecl DB_LocalizeEntrySetName(XAssetHeader *header, const char *name);
 
-int32_t __cdecl DB_SizeofXAsset_RawFile_()
+// Original x86 COMDAT aliases cannot be reused: each native asset's size
+// depends on its own pointer fields and alignment.
+template<class T>
+static int32_t __cdecl DB_SizeofXAsset()
 {
-    return sizeof(RawFile);
+    return sizeof(T);
 }
-int32_t __cdecl DB_SizeofXAsset_GameWorldSp_()
+int(__cdecl *DB_GetXAssetSizeHandler[ASSET_TYPE_COUNT])() =
 {
-    return sizeof(GameWorldSp);
-}
-int32_t __cdecl DB_SizeofXAsset_XAnimParts_()
-{
-    return sizeof(XAnimParts);
-}
-int32_t __cdecl DB_SizeofXAsset_XModel_()
-{
-    return sizeof(XModel);
-}
-int32_t __cdecl DB_SizeofXAsset_Material_()
-{
-    return sizeof(Material);
-}
-int32_t __cdecl DB_SizeofXAsset_MaterialTechniqueSet_()
-{
-    return sizeof(MaterialTechniqueSet);
-}
-int32_t __cdecl DB_SizeofXAsset_GfxImage_()
-{
-    return sizeof(GfxImage);
-}
-int32_t __cdecl DB_SizeofXAsset_SndCurve_()
-{
-    return sizeof(SndCurve);
-}
-int32_t __cdecl DB_SizeofXAsset_menuDef_t_()
-{
-    return sizeof(menuDef_t);
-}
-int32_t __cdecl DB_SizeofXAsset_StringTable_()
-{
-    return sizeof(StringTable);
-}
-int32_t __cdecl DB_SizeofXAsset_GameWorldMp_()
-{
-    return sizeof(GameWorldMp);
-}
-int32_t __cdecl DB_SizeofXAsset_GfxWorld_()
-{
-    return sizeof(GfxWorld);
-}
-int32_t __cdecl DB_SizeofXAsset_Font_s_()
-{
-    return sizeof(Font_s);
-}
-int32_t __cdecl DB_SizeofXAsset_FxImpactTable_()
-{
-    return sizeof(FxImpactTable);
-}
-int32_t __cdecl DB_SizeofXAsset_WeaponDef_()
-{
-    return sizeof(WeaponDef);
-}
-int32_t __cdecl DB_SizeofXAsset_FxEffectDef_()
-{
-    return sizeof(FxEffectDef);
-}
-int(__cdecl *DB_GetXAssetSizeHandler[33])() =
-{
-    DB_SizeofXAsset_RawFile_,
-    DB_SizeofXAsset_GameWorldSp_,
-    DB_SizeofXAsset_XAnimParts_,
-    DB_SizeofXAsset_XModel_,
-    DB_SizeofXAsset_Material_,
-    DB_SizeofXAsset_MaterialTechniqueSet_,
-    DB_SizeofXAsset_GfxImage_,
-    DB_SizeofXAsset_RawFile_,
-    DB_SizeofXAsset_SndCurve_,
-    DB_SizeofXAsset_GameWorldSp_,
-    DB_SizeofXAsset_menuDef_t_,
-    DB_SizeofXAsset_menuDef_t_,
-    DB_SizeofXAsset_StringTable_,
-    DB_SizeofXAsset_GameWorldSp_,
-    DB_SizeofXAsset_GameWorldMp_,
-    DB_SizeofXAsset_RawFile_,
-    DB_SizeofXAsset_GfxWorld_,
-    DB_SizeofXAsset_StringTable_,
-    0,
-    DB_SizeofXAsset_Font_s_,
-    DB_SizeofXAsset_RawFile_,
-    DB_SizeofXAsset_menuDef_t_,
-    DB_SizeofXAsset_FxImpactTable_,
-    DB_SizeofXAsset_WeaponDef_,
-    0,
-    DB_SizeofXAsset_FxEffectDef_,
-    DB_SizeofXAsset_FxImpactTable_,
-    0,
-    0,
-    0,
-    0,
-    DB_SizeofXAsset_RawFile_,
-    DB_SizeofXAsset_StringTable_,
+    DB_SizeofXAsset<XModelPieces>,
+    DB_SizeofXAsset<PhysPreset>,
+    DB_SizeofXAsset<XAnimParts>,
+    DB_SizeofXAsset<XModel>,
+    DB_SizeofXAsset<Material>,
+    DB_SizeofXAsset<MaterialTechniqueSet>,
+    DB_SizeofXAsset<GfxImage>,
+    DB_SizeofXAsset<snd_alias_list_t>,
+    DB_SizeofXAsset<SndCurve>,
+    DB_SizeofXAsset<LoadedSound>,
+    DB_SizeofXAsset<clipMap_t>,
+    DB_SizeofXAsset<clipMap_t>,
+    DB_SizeofXAsset<ComWorld>,
+    DB_SizeofXAsset<GameWorldSp>,
+    DB_SizeofXAsset<GameWorldMp>,
+    DB_SizeofXAsset<MapEnts>,
+    DB_SizeofXAsset<GfxWorld>,
+    DB_SizeofXAsset<GfxLightDef>,
+    nullptr,
+    DB_SizeofXAsset<Font_s>,
+    DB_SizeofXAsset<MenuList>,
+    DB_SizeofXAsset<menuDef_t>,
+    DB_SizeofXAsset<LocalizeEntry>,
+    DB_SizeofXAsset<WeaponDef>,
+    nullptr,
+    DB_SizeofXAsset<FxEffectDef>,
+    DB_SizeofXAsset<FxImpactTable>,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    DB_SizeofXAsset<RawFile>,
+    DB_SizeofXAsset<StringTable>,
 };
 
 void __cdecl DB_StringTableSetName(XAssetHeader *header, const char *name)

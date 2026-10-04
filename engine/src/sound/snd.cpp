@@ -1385,7 +1385,7 @@ int __cdecl SND_PlaySoundAlias_Internal(
         Vec3Sub(a->orient.origin, org, diff);
         distListenerSq = Vec3LengthSq(diff);
         outOfRange = distListenerSq > distMax * distMax;
-        if (*(_BYTE *)snd_debugAlias->current.integer)
+        if (*(_BYTE *)snd_debugAlias->current.string)
         {
             SND_DebugAliasPrint(outOfRange, alias0, va("Not playing, out of range: %.1f > %.1f", sqrt(distListenerSq), distMax));
         }
@@ -3745,7 +3745,7 @@ void __cdecl SND_SaveLengthNotifyInfo(const sndLengthNotifyInfo *info, MemoryFil
             else
             {
                 v3 = info->data[i];
-                MemFile_WriteData(memFile, 4, &v3);
+                MemFile_WriteData(memFile, sizeof(v3), &v3);
             }
         }
     }
@@ -3954,7 +3954,7 @@ void __cdecl SND_RestoreChanInfo(snd_channel_info_t *chaninfo, MemoryFile *memFi
     chaninfo->master = v5 != 0;
     MemFile_ReadData(memFile, 1, &v4);
     chaninfo->timescale = v4 != 0;
-    MemFile_ReadData(memFile, 4, (uint8_t *)&v3);
+    MemFile_ReadData(memFile, sizeof(v3), (uint8_t *)&v3);
     chaninfo->startDelay = v3;
     MemFile_ReadData(memFile, 4, (uint8_t *)&v2);
     chaninfo->startTime = v2;
@@ -4002,7 +4002,7 @@ void __cdecl SND_RestoreLengthNotifyInfo(MemoryFile *memFile, sndLengthNotifyInf
             }
             else
             {
-                MemFile_ReadData(memFile, 4, (uint8_t *)&v3);
+                MemFile_ReadData(memFile, sizeof(v3), (uint8_t *)&v3);
                 info->data[i] = v3;
             }
         }

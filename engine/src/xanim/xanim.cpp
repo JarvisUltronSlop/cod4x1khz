@@ -188,7 +188,7 @@ XAnimParts *__cdecl XAnimClone(XAnimParts *fromParts, void *(__cdecl *Alloc)(int
     __int16 notifyInfoIndex; // [esp+18h] [ebp-8h]
     uint16_t *boneNames; // [esp+1Ch] [ebp-4h]
 
-    toParts = (XAnimParts*)Alloc(88);
+    toParts = (XAnimParts*)Alloc(sizeof(*toParts));
     qmemcpy(toParts, fromParts, sizeof(XAnimParts));
     boneNames = toParts->names;
     size = toParts->boneCount[9];
@@ -321,7 +321,7 @@ XAnim_s* __cdecl XAnimCreateAnims(const char* debugName, uint32_t size, void* (_
     iassert(debugName);
     iassert(Alloc);
 
-    anims = (XAnim_s*)Alloc(8 * size + 12);
+    anims = (XAnim_s*)Alloc(offsetof(XAnim_s, entries) + sizeof(XAnimEntry) * size);
     anims->size = size;
 
     if (g_anim_developer)
@@ -335,7 +335,7 @@ XAnim_s* __cdecl XAnimCreateAnims(const char* debugName, uint32_t size, void* (_
             *v5++ = *v6++;
         } while (v4);
         anims->debugName = newDebugName;
-        anims->debugAnimNames = (const char**)Hunk_AllocDebugMem(4 * size, "XAnimCreateAnims");
+        anims->debugAnimNames = (const char**)Hunk_AllocDebugMem(sizeof(*anims->debugAnimNames) * size, "XAnimCreateAnims");
     }
 
     if (Hunk_DataOnHunk((unsigned char*)anims))

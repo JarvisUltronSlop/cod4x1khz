@@ -164,7 +164,7 @@ def main(archive_name, result_name, publish=False):
     record('Plugin_SteamIDToString', 'sdk_export', selected_contract,
            [implementation(host, 'Plugin_SteamIDToString'), implementation(admin, 'KHZ_AdminInit'),
             implementation(helper, 'Selected'), implementation(helper, 'Steam3'), implementation(helper, 'Steam64'),
-            implementation('engine/src/khz/khz_controls.h', 'KHZ_DvarScope'), implementation('engine/src/khz/khz_controls.cpp', 'KHZ_DvarEnter')],
+            implementation('engine/src/khz/khz_controls.h', 'KHZ_DvarScope'), implementation('engine/src/khz/khz_dvar_lock.cpp', 'KHZ_DvarEnter')],
            selected_cases + [supplement()], adaptations=adaptations)
     record('Plugin_SteamIDTo64String', 'sdk_export', explicit_contract,
            [implementation(host, 'Plugin_SteamIDTo64String'), implementation(helper, 'Steam64')],

@@ -703,7 +703,11 @@ bool KHZ_StartLocalHost(int localClientNum, const char* map, const char* gametyp
         fail("The project runtime path is unavailable."); return false;
     }
     wchar_t executable[300];
+#ifdef _WIN64
+    std::swprintf(executable, ARRAY_COUNT(executable), L"%ls\\x64\\cod4x1khz_server.exe", runtime);
+#else
     std::swprintf(executable, ARRAY_COUNT(executable), L"%ls\\cod4x1khz_server.exe", runtime);
+#endif
     if (GetFileAttributesW(executable) == INVALID_FILE_ATTRIBUTES) { fail("Build the project server before starting a local match."); return false; }
     wchar_t command[1024];
     const int commandLength = std::swprintf(command, ARRAY_COUNT(command),

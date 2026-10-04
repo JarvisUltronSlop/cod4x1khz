@@ -5,11 +5,31 @@
 void KHZ_DvarEnter();
 void KHZ_DvarLeave();
 void KHZ_ControlsErrorUnwind();
+void KHZ_DvarLocksErrorUnwind();
+unsigned KHZ_DvarLockDepth();
 class KHZ_DvarScope {
 public:
     KHZ_DvarScope() { KHZ_DvarEnter(); }
     ~KHZ_DvarScope() { KHZ_DvarLeave(); }
     KHZ_DvarScope(const KHZ_DvarScope&) = delete;
+};
+// Name/hash metadata has a separate reader/writer lifetime. Looking up an
+// immutable dvar record does not wait for the whole prediction tick.
+void KHZ_DvarLookupEnter();
+void KHZ_DvarLookupLeave();
+void KHZ_DvarRegistryEnter();
+void KHZ_DvarRegistryLeave();
+class KHZ_DvarLookupScope {
+public:
+    KHZ_DvarLookupScope() { KHZ_DvarLookupEnter(); }
+    ~KHZ_DvarLookupScope() { KHZ_DvarLookupLeave(); }
+    KHZ_DvarLookupScope(const KHZ_DvarLookupScope&) = delete;
+};
+class KHZ_DvarRegistryScope {
+public:
+    KHZ_DvarRegistryScope() { KHZ_DvarRegistryEnter(); }
+    ~KHZ_DvarRegistryScope() { KHZ_DvarRegistryLeave(); }
+    KHZ_DvarRegistryScope(const KHZ_DvarRegistryScope&) = delete;
 };
 void KHZ_CommandControlBegin();
 void KHZ_CommandControlEnd();

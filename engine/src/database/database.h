@@ -201,7 +201,7 @@ void __cdecl DB_AllocXZoneMemory(
 
 
 // db_stream
-void __cdecl DB_InitStreams(XZoneMemory *zoneMem);
+void __cdecl DB_InitStreams(XZoneMemory *zoneMem, const uint32_t *wireBlockSizes);
 void __cdecl DB_PushStreamPos(uint32_t index);
 void __cdecl DB_PopStreamPos();
 uint8_t *__cdecl DB_GetStreamPos();
@@ -212,8 +212,8 @@ const void **__cdecl DB_InsertPointer();
 // db_stream_load
 void __cdecl Load_Stream(bool atStreamStart, uint8_t *ptr, int32_t size);
 void __cdecl Load_DelayStream();
-void __cdecl DB_ConvertOffsetToAlias(uint32_t *data);
-void __cdecl DB_ConvertOffsetToPointer(uint32_t *data);
+void __cdecl DB_ConvertOffsetToAlias(uintptr_t *data);
+void __cdecl DB_ConvertOffsetToPointer(uintptr_t *data);
 void __cdecl Load_XStringCustom(char **str);
 void __cdecl Load_TempStringCustom(char **str);
 

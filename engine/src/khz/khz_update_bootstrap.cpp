@@ -40,9 +40,9 @@ bool read(const std::filesystem::path& path,std::string* text,unsigned maximum=2
     std::ifstream stream(path,std::ios::binary);text->resize(std::size_t(size));return bool(stream.read(text->data(),std::streamsize(size)));
 }
 bool number(std::string_view text,std::uint64_t* value){if(text.empty()||text.size()>20||(text.size()>1&&text.front()=='0'))return false;const auto p=std::from_chars(text.data(),text.data()+text.size(),*value);return p.ec==std::errc{}&&p.ptr==text.data()+text.size();}
-bool journalHash(const std::filesystem::path& root,content::Digest* hash){std::filesystem::path path;return content::ConfinedPath(root,"updates/transaction.txt",&path)&&content::HashFile(path,hash);}
+bool journalHash(const std::filesystem::path& root,content::Digest* hash){std::filesystem::path path;return content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/transaction.txt",&path)&&content::HashFile(path,hash);}
 bool consumeTicket(const std::filesystem::path& root) {
-    std::filesystem::path file;if(!content::ConfinedPath(root,"updates/launch-ticket.txt",&file))return false;
+    std::filesystem::path file;if(!content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/launch-ticket.txt",&file))return false;
     std::string text;if(!read(file,&text))return false;std::string_view view(text);std::array<std::string_view,6> lines{};
     for(auto& line:lines){const auto end=view.find('\n');if(end==view.npos)return false;line=view.substr(0,end);view.remove_prefix(end+1);}
     if(!view.empty()||lines[0]!="KHZ_UPDATE_LAUNCH_1")return false;
@@ -56,7 +56,11 @@ bool consumeTicket(const std::filesystem::path& root) {
 }
 }
 std::filesystem::path CurrentExecutable(){std::wstring value(32768,L'\0');const DWORD length=GetModuleFileNameW(nullptr,value.data(),DWORD(value.size()));if(!length||length>=value.size())return {};value.resize(length);return value;}
-bool IsInstalledExecutable(const std::filesystem::path& root,const std::filesystem::path& image){const auto actual=normalized(image);if(actual.empty())return false;for(const auto* path:InstalledPaths)if(actual==normalized(root/path))return true;return false;}
+bool IsInstalledExecutable(const std::filesystem::path& root,const std::filesystem::path& image){const auto actual=normalized(image);if(actual.empty())return false;for(const auto* path:InstalledPaths)if(actual==normalized(root/path))return true;
+#ifdef _WIN64
+    for(const auto* path:{"bin/x64/Release/cod4x1khz.exe","bin/x64/Release/cod4x1khz_server.exe"})if(actual==normalized(root/path))return true;
+#endif
+    return false;}
 std::wstring QuoteArgument(std::wstring_view argument) {
     std::wstring result=L"\"";unsigned slashes=0;
     for(wchar_t c:argument){if(c==L'\\'){++slashes;continue;}if(c==L'\"'){result.append(slashes*2+1,L'\\');result+=c;}else{result.append(slashes,L'\\');result+=c;}slashes=0;}
@@ -83,7 +87,7 @@ bool SpawnHelper(const std::filesystem::path& root,const char* action,std::uint6
     if(!action||(std::string_view(action)!="recover"&&std::string_view(action)!="apply"&&std::string_view(action)!="rollback"))return fail(reason,"Invalid update action");
     if(std::string_view(action)=="apply"&&(!version||!expectedManifest))return fail(reason,"Apply requires the checked signed manifest digest and version");
     const auto image=CurrentExecutable();std::filesystem::path helper;
-    if(!IsInstalledExecutable(root,image)||!content::ConfinedPath(root,"runtime/cod4x1khz_update.exe",&helper)||!VerifyBinary(helper))return fail(reason,"Verified project update helper is unavailable");
+    if(!IsInstalledExecutable(root,image)||!content::ConfinedPath(root,HelperPath,&helper)||!VerifyBinary(helper))return fail(reason,"Verified project update helper is unavailable");
     std::wstring command=QuoteArgument(helper.wstring())+L" --action "+std::wstring(action,action+std::strlen(action))+L" --owner-pid "+std::to_wstring(GetCurrentProcessId());
     if(version)command+=L" --expected-version "+std::to_wstring(version);
     if(expectedManifest){const auto value=hex(*expectedManifest);command+=L" --expected-manifest "+std::wstring(value.begin(),value.end());}
@@ -96,7 +100,7 @@ bool SpawnHelper(const std::filesystem::path& root,const char* action,std::uint6
 bool VerifiedRelaunch(const std::filesystem::path& root,const std::filesystem::path& image,const std::wstring& original,std::string* reason) {
     if(!IsInstalledExecutable(root,image)||!VerifyBinary(image)||original.empty()||original.size()>=32767)return fail(reason,"Relaunch image or command line is invalid");
     content::Digest imageHash{},transactionHash{};std::filesystem::path ticket;
-    if(!content::HashFile(image,&imageHash)||!journalHash(root,&transactionHash)||!content::ConfinedPath(root,"updates/launch-ticket.txt",&ticket,true))return fail(reason,"Cannot prepare verified relaunch ticket");
+    if(!content::HashFile(image,&imageHash)||!journalHash(root,&transactionHash)||!content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/launch-ticket.txt",&ticket,true))return fail(reason,"Cannot prepare verified relaunch ticket");
     auto command=original;STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION process{};
     if(!CreateProcessW(image.c_str(),command.data(),nullptr,nullptr,FALSE,CREATE_SUSPENDED,nullptr,root.c_str(),&startup,&process))return fail(reason,"Cannot create verified game restart");
     std::uint64_t made=0;const bool ready=creation(process.hProcess,&made);const auto text="KHZ_UPDATE_LAUNCH_1\n"+std::to_string(process.dwProcessId)+"\n"+std::to_string(made)+"\n"+std::to_string(now()+600000000ull)+"\n"+hex(imageHash)+"\n"+hex(transactionHash)+"\n";
@@ -109,9 +113,9 @@ BootstrapResult Bootstrap(const std::filesystem::path& root,std::string* reason)
     if(consumeTicket(root))return BootstrapResult::Proceed;
     HANDLE mutex=AcquireProjectMutex(root,0);if(!mutex){fail(reason,"Project updater is active; exiting this newly started image");return BootstrapResult::ExitForHelper;}ReleaseMutex(mutex);CloseHandle(mutex);
     std::filesystem::path probe;if(!content::ConfinedPath(root,".khz-bootstrap-root-check",&probe)){fail(reason,"Project root is invalid");return BootstrapResult::Refused;}
-    const auto directory=root/L"updates";const DWORD flags=GetFileAttributesW(directory.c_str());
+    const auto directory=root/StorageDirectory;const DWORD flags=GetFileAttributesW(directory.c_str());
     if(flags==INVALID_FILE_ATTRIBUTES){const auto error=GetLastError();if(error==ERROR_FILE_NOT_FOUND||error==ERROR_PATH_NOT_FOUND)return BootstrapResult::Proceed;fail(reason,"Cannot inspect update directory");return BootstrapResult::Refused;}
-    if(!content::ConfinedPath(root,"updates/transaction.txt",&probe)){fail(reason,"Update journal is outside confined project storage");return BootstrapResult::Refused;}
+    if(!content::ConfinedPath(root,KHZ_UPDATE_DIRECTORY "/transaction.txt",&probe)){fail(reason,"Update journal is outside confined project storage");return BootstrapResult::Refused;}
     if(GetFileAttributesW(probe.c_str())==INVALID_FILE_ATTRIBUTES){const auto error=GetLastError();if(error==ERROR_FILE_NOT_FOUND)return BootstrapResult::Proceed;fail(reason,"Cannot inspect update journal");return BootstrapResult::Refused;}
     Policy policy;
     if(!LoadPolicy(root,false,&policy,reason)||!Configured(policy)){if(reason&&reason->empty())*reason="Update journal exists but trusted production policy is unavailable";return BootstrapResult::Refused;}

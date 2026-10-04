@@ -1,4 +1,5 @@
-#include <qcommon/msg_mp.h>
+#include <qcommon/msg_buffer.h>
+#include <universal/assertive.h>
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -10,7 +11,7 @@
 #include <vector>
 
 void MyAssertHandler(const char*, int, int, const char*, ...) { std::abort(); }
-static_assert(sizeof(msg_t) == 40, "Compile the actual Win32 native message layout");
+static_assert(sizeof(msg_t) == (sizeof(void*) == 8 ? 48 : 40), "Compile the production native message layout");
 
 // Compile both the production source-owned definitions and the pinned fallback
 // with the real native msg_t, rather than a reduced mock message layout.
@@ -148,7 +149,8 @@ int main(int argc, char** argv) {
     const auto refRead = measure<false>(true, a), fastRead = measure<true>(true, b); assert(a == b);
     if (argc > 1) {
         std::ofstream output(argv[1]); assert(output);
-        output << "{\"passed\":true,\"native_msg_t\":true,\"comparisons\":" << comparisons
+        output << "{\"passed\":true,\"native_msg_t\":true,\"process_bits\":" << sizeof(void*) * 8
+               << ",\"comparisons\":" << comparisons
                << ",\"reference_write_us\":" << refWrite << ",\"packed_write_us\":" << fastWrite
                << ",\"reference_read_us\":" << refRead << ",\"packed_read_us\":" << fastRead
                << ",\"scope\":\"Exact bytes and cursor/failure compatibility; isolated microbenchmark\",\"match_timing_gate\":false}\n";

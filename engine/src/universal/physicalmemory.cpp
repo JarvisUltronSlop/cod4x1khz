@@ -2,6 +2,8 @@
 #include "physicalmemory.h"
 
 #include <Windows.h>
+#include <algorithm>
+#include <climits>
 #include "assertive.h"
 #include <qcommon/mem_track.h>
 #include "q_shared.h"
@@ -13,10 +15,19 @@ int g_overAllocatedSize;
 
 void __cdecl PMem_Init()
 {
-    uint8_t *memory; // [esp+0h] [ebp-4h]
-
-    memory = (uint8_t *)VirtualAlloc(0, 0x8000000u, 0x1000u, 4u);
-    PMem_InitPhysicalMemory(&g_mem, memory, 0x8000000u);
+#if defined(_WIN64)
+    // Native fastfile records need more room than the original fixed 128 MiB
+    // arena. Reserve address space now and commit only actual allocations.
+    constexpr uint32_t capacity = 0x40000000u;
+    auto* memory = static_cast<uint8_t*>(VirtualAlloc(nullptr, capacity,
+        MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE));
+#else
+    constexpr uint32_t capacity = 0x08000000u;
+    auto* memory = static_cast<uint8_t*>(VirtualAlloc(nullptr, capacity,
+        MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+#endif
+    if (!memory) Sys_OutOfMemErrorInternal(__FILE__, __LINE__);
+    PMem_InitPhysicalMemory(&g_mem, memory, capacity);
 }
 
 void __cdecl PMem_DumpMemStats()
@@ -112,7 +123,7 @@ void __cdecl PMem_EndAllocInPrim(PhysicalMemoryPrim *prim, const char *name)
     prim->allocName = 0;
     if (!prim->allocListCount)
         MyAssertHandler(".\\universal\\physicalmemory.cpp", 368, 0, "%s", "prim->allocListCount > 0");
-    v2 = prim->pos - *(&prim->pos + 2 * prim->allocListCount);
+    v2 = prim->pos - prim->allocList[prim->allocListCount - 1].pos;
     //track_physical_alloc((HIunsigned int(v2) ^ v2) - HIunsigned int(v2), name, 10);
 }
 
@@ -169,7 +180,7 @@ void __cdecl PMem_FreeIndex(PhysicalMemoryPrim *prim, uint32_t allocIndex)
                 MyAssertHandler(".\\universal\\physicalmemory.cpp", 424, 0, "%s", "prim->allocListCount");
             if (!--prim->allocListCount)
                 break;
-            allocEntry = (PhysicalMemoryAllocation *)(&prim->allocListCount + 2 * prim->allocListCount);
+            allocEntry = &prim->allocList[prim->allocListCount - 1];
         } while (!allocEntry->name);
     }
     else
@@ -191,46 +202,45 @@ int __cdecl PMem_GetOverAllocatedSize()
     return g_overAllocatedSize;
 }
 
-uint8_t *__cdecl PMem_Alloc(
-    uint32_t size,
-    uint32_t alignment,
-    uint32_t type,
-    uint32_t allocType)
+uint8_t *__cdecl PMem_Alloc(uint32_t size, uint32_t alignment, uint32_t type, uint32_t allocType)
 {
-    PhysicalMemoryPrim *prim; // [esp+10h] [ebp-Ch]
-    uint32_t lowPos; // [esp+14h] [ebp-8h]
-    uint32_t alignmenta; // [esp+28h] [ebp+Ch]
-
-    prim = &g_mem.prim[allocType];
-    if (!prim->allocName)
-        MyAssertHandler(".\\universal\\physicalmemory.cpp", 536, 0, "%s", "prim->allocName");
-    if (!size)
-        MyAssertHandler(".\\universal\\physicalmemory.cpp", 537, 0, "%s", "size");
-    if (!alignment)
-        MyAssertHandler(".\\universal\\physicalmemory.cpp", 539, 0, "%s", "alignment");
-    alignmenta = alignment - 1;
-    if (allocType)
-    {
-        if (allocType != 1)
-            MyAssertHandler(".\\universal\\physicalmemory.cpp", 633, 0, "%s", "allocType == PHYS_ALLOC_HIGH");
-        lowPos = ~alignmenta & (g_mem.prim[allocType].pos - size);
-        g_overAllocatedSize = g_mem.prim[0].pos - lowPos;
-        if (g_overAllocatedSize > 0)
-            Sys_OutOfMemErrorInternal(".\\universal\\physicalmemory.cpp", 641);
-        g_mem.prim[allocType].pos = lowPos;
-    }
-    else
-    {
-        lowPos = ~alignmenta & (alignmenta + prim->pos);
-        g_overAllocatedSize = size + lowPos - g_mem.prim[1].pos;
-        if (g_overAllocatedSize > 0)
-        {
-            Com_PrintError(CON_CHANNEL_SYSTEM, "Need %i more bytes of ram for alloc to succeed\n", g_overAllocatedSize);
-            Sys_OutOfMemErrorInternal(".\\universal\\physicalmemory.cpp", 608);
+    iassert(allocType < ARRAY_COUNT(g_mem.prim));
+    iassert(size && alignment && !(alignment & (alignment - 1)));
+    auto* prim = &g_mem.prim[allocType];
+    iassert(prim->allocName);
+    const uint64_t mask = static_cast<uint64_t>(alignment) - 1;
+    uint64_t lowPos{}, endPos{};
+    bool fits = true;
+    if (allocType == 1) {
+        fits = size <= prim->pos;
+        if (fits) {
+            lowPos = (static_cast<uint64_t>(prim->pos) - size) & ~mask;
+            endPos = lowPos + size;
+            fits = lowPos >= g_mem.prim[0].pos;
         }
-        g_mem.prim[allocType].pos = size + lowPos;
+    } else {
+        lowPos = (static_cast<uint64_t>(prim->pos) + mask) & ~mask;
+        endPos = lowPos + size;
+        fits = endPos <= g_mem.prim[1].pos;
     }
-    return &g_mem.buf[lowPos];
+    if (!fits) {
+        const uint64_t deficit = allocType == 1 ?
+            (size > prim->pos ? uint64_t(size) - prim->pos : uint64_t(g_mem.prim[0].pos) - lowPos) :
+            endPos - g_mem.prim[1].pos;
+        g_overAllocatedSize = static_cast<int>(std::min<uint64_t>(deficit, INT_MAX));
+        Com_PrintError(CON_CHANNEL_SYSTEM, "Need %i more bytes of ram for alloc to succeed\n", g_overAllocatedSize);
+        Sys_OutOfMemErrorInternal(__FILE__, __LINE__);
+        return nullptr;
+    }
+#if defined(_WIN64)
+    if (!VirtualAlloc(g_mem.buf + lowPos, size, MEM_COMMIT, PAGE_READWRITE)) {
+        Sys_OutOfMemErrorInternal(__FILE__, __LINE__);
+        return nullptr;
+    }
+#endif
+    g_overAllocatedSize = 0;
+    prim->pos = static_cast<uint32_t>(allocType == 1 ? lowPos : endPos);
+    return g_mem.buf + lowPos;
 }
 
 uint32_t __cdecl PMem_GetFreeAmount()

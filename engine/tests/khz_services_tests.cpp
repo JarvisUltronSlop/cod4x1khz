@@ -39,9 +39,9 @@ std::vector<unsigned char> image(unsigned variant, bool custom = true) {
     auto u16 = [&](std::size_t at, std::uint16_t value) { std::memcpy(bytes.data()+at, &value, 2); };
     auto u32 = [&](std::size_t at, std::uint32_t value) { std::memcpy(bytes.data()+at, &value, 4); };
     bytes[0] = 'M'; bytes[1] = 'Z'; u32(60,128); std::memcpy(bytes.data()+128, "PE\0\0",4);
-    u16(132,0x14c); u16(134,1); u16(148,224); u16(150,0x102);
-    const unsigned optional = 152, section = optional+224;
-    u16(optional,0x10b); u32(optional+16,4096); u32(optional+56,8192); u32(optional+60,512); u16(optional+68,3);
+    u16(132,khz::update::BinaryMachine); u16(134,1); u16(148,khz::update::OptionalBytes); u16(150,0x102);
+    const unsigned optional = 152, section = optional+khz::update::OptionalBytes;
+    u16(optional,khz::update::OptionalMagic); u32(optional+16,4096); u32(optional+56,8192); u32(optional+60,512); u16(optional+68,3);
     std::memcpy(bytes.data()+section,".text",5); u32(section+8,512); u32(section+12,4096); u32(section+16,512); u32(section+20,512); u32(section+36,0x60000020);
     bytes[512] = 0xc3; bytes[513] = static_cast<unsigned char>(variant);
     if (custom) std::memcpy(bytes.data()+600, khz::update::BinaryIdentity(), std::strlen(khz::update::BinaryIdentity()));
@@ -170,13 +170,13 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
         std::strcpy(production.manifestUrl,"https://other.example/manifest.txt");
         check(!update::FormatPolicy(production,&encoded),"production manifest cannot escape configured origin");
         const auto fresh=root/"policy-fixture";std::filesystem::create_directory(fresh);std::uint64_t version=999;
-        check(update::ReadInstalledVersion(fresh,&version)&&version==0&&!std::filesystem::exists(fresh/"updates"),"fresh version read stays disabled and creates no update directory");
+        check(update::ReadInstalledVersion(fresh,&version)&&version==0&&!std::filesystem::exists(fresh/update::StorageDirectory),"fresh version read stays disabled and creates no update directory");
         std::filesystem::create_directories(fresh/"config");
         check(content::AtomicWrite(fresh/"config/update-policy.txt",empty.data(),empty.size())&&update::LoadPolicy(fresh,false,&parsed),"confined canonical policy loads");
-        std::filesystem::create_directory(fresh/"updates");const std::string badVersion="01\n";
-        check(content::AtomicWrite(fresh/"updates/version.txt",badVersion.data(),badVersion.size())&&!update::ReadInstalledVersion(fresh,&version),"noncanonical installed version rejected");
+        std::filesystem::create_directories(fresh/update::StorageDirectory);const std::string badVersion="01\n";
+        check(content::AtomicWrite(fresh/KHZ_UPDATE_DIRECTORY "/version.txt",badVersion.data(),badVersion.size())&&!update::ReadInstalledVersion(fresh,&version),"noncanonical installed version rejected");
         const std::string goodVersion="42\n";
-        check(content::AtomicWrite(fresh/"updates/version.txt",goodVersion.data(),goodVersion.size())&&update::ReadInstalledVersion(fresh,&version)&&version==42,"canonical installed version loads");
+        check(content::AtomicWrite(fresh/KHZ_UPDATE_DIRECTORY "/version.txt",goodVersion.data(),goodVersion.size())&&update::ReadInstalledVersion(fresh,&version)&&version==42,"canonical installed version loads");
         check(update::QuoteArgument(L"a b")==L"\"a b\""&&update::QuoteArgument(L"a\\")==L"\"a\\\\\""
             &&update::QuoteArgument(L"a\"b")==L"\"a\\\"b\"","Windows restart argument quoting preserves spaces, trailing slash and quotes");
         HANDLE first=update::AcquireProjectMutex(fresh,0);
@@ -186,8 +186,9 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
     update::Manifest manifest; manifest.version=1;
     std::array<std::filesystem::path,2> sources{};
     std::filesystem::create_directories(root/"runtime");
-    std::array<content::Digest,4> oldHashes{};
+    std::array<content::Digest,update::InstalledPaths.size()> oldHashes{};
     for(unsigned i=0;i<update::InstalledPaths.size();++i) {
+        std::filesystem::create_directories((root/update::InstalledPaths[i]).parent_path());
         const auto old=image(i);
         check(write(root/update::InstalledPaths[i],old),"old root/runtime fixture PE creation");
         content::Sha256(old.data(),old.size(),&oldHashes[i]);
@@ -215,7 +216,7 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
     check(!update::CanonicalBody(wrongLayout,&wrongBody),"root-level server package rejected");
     check(update::VerifyBinary(sources[0]),"custom x86 PE identity");
     check(write(root/"upstream.exe",image(99,false)) && !update::VerifyBinary(root/"upstream.exe"),"renamed upstream PE without custom identity denied");
-    auto invalid=image(99); invalid[132]=0x64; invalid[133]=0x86;
+    auto invalid=image(99); const unsigned wrongMachine = update::BinaryMachine == 0x14c ? 0x8664 : 0x14c; invalid[132]=wrongMachine & 255; invalid[133]=wrongMachine >> 8;
     check(write(root/"x64.exe",invalid) && !update::VerifyBinary(root/"x64.exe"),"wrong architecture rejected");
     if(!fixtureData.empty()) {
         check(content::AtomicWrite(fixtureData/"manifest.txt",text.data(),text.size()),"signed HTTP manifest fixture publish");
@@ -235,7 +236,7 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
         }
         return true;
     };
-    check(update::InspectRecordedState(root,policy)==update::RecordedState::None&&!std::filesystem::exists(root/"updates"),"read-only inspection preserves fresh root without a journal");
+    check(update::InspectRecordedState(root,policy)==update::RecordedState::None&&!std::filesystem::exists(root/update::StorageDirectory),"read-only inspection preserves fresh root without a journal");
     for(unsigned step=1;step<=update::InstalledPaths.size();++step) {
         const auto result=update::Apply(root,manifest,policy,sources,0,step);
         check(!result.applied&&result.rolledBack,"failure after any replacement rolls back entire four-path set");
@@ -248,7 +249,7 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
     check(newSetMatches(),"client mirrors contain verified client bytes and server stays runtime");
     check(update::InspectRecordedState(root,policy)==update::RecordedState::Healthy,"healthy committed journal permits managed child startup without stopping parent");
     const std::string wrongVersion="2\n";
-    check(content::AtomicWrite(root/"updates/version.txt",wrongVersion.data(),wrongVersion.size())
+    check(content::AtomicWrite(root/KHZ_UPDATE_DIRECTORY "/version.txt",wrongVersion.data(),wrongVersion.size())
         &&update::InspectRecordedState(root,policy)==update::RecordedState::RecoveryRequired,"altered version requires stopped recovery");
     check(update::Recover(root,policy).applied,"startup committed transaction verification");
     const auto altered=image(99);
@@ -260,13 +261,14 @@ void updates(const std::filesystem::path& root, const std::string& origin, const
     check(oldSetMatches(),"explicit rollback restores all four original binaries");
     check(update::Recover(root,policy).rolledBack,"startup rolled-back transaction verification");
     check(update::InspectRecordedState(root,policy)==update::RecordedState::Healthy,"restored complete rolled-back state verified without writes");
-    check(DeleteFileW((root/update::InstalledPaths[2]).c_str())&&DeleteFileW((root/update::InstalledPaths[3]).c_str()),"fixture starts without optional runtime mirrors");
-    result=update::Apply(root,manifest,policy,sources,0,4);
-    check(result.rolledBack&&!std::filesystem::exists(root/update::InstalledPaths[2])&&!std::filesystem::exists(root/update::InstalledPaths[3]),"failure restores optional mirrors to absent state");
+    for(unsigned i=2;i<update::InstalledPaths.size();++i) check(DeleteFileW((root/update::InstalledPaths[i]).c_str()),"fixture starts without optional runtime mirrors");
+    const auto mirrorsAbsent = [&] {for(unsigned i=2;i<update::InstalledPaths.size();++i)if(std::filesystem::exists(root/update::InstalledPaths[i]))return false;return true;};
+    result=update::Apply(root,manifest,policy,sources,0,update::InstalledPaths.size());
+    check(result.rolledBack&&mirrorsAbsent(),"failure restores optional mirrors to absent state");
     check(update::Recover(root,policy).rolledBack,"startup verifies absent mirrors after rollback");
     result=update::Apply(root,manifest,policy,sources,0);
     check(result.applied&&newSetMatches(),"successful update creates missing authorized mirrors from client bytes");
-    check(update::Rollback(root,policy).rolledBack&&!std::filesystem::exists(root/update::InstalledPaths[2])&&!std::filesystem::exists(root/update::InstalledPaths[3]),"explicit rollback removes only newly created verified mirrors");
+    check(update::Rollback(root,policy).rolledBack&&mirrorsAbsent(),"explicit rollback removes only newly created verified mirrors");
 }
 void network(const std::filesystem::path& root,const std::string& origin,const char* udpEndpoint) {
     using namespace khz;
@@ -353,6 +355,7 @@ void network(const std::filesystem::path& root,const std::string& origin,const c
 }
 }
 int main(int argc,char** argv) {
+    std::setvbuf(stdout,nullptr,_IONBF,0);
     const bool fixtures=argc==5&&std::strcmp(argv[1],"--fixture")==0;
     if(argc!=1&&!fixtures) { std::fprintf(stderr,"Usage: khz_services_tests [--fixture HTTP_ORIGIN UDP_ENDPOINT DATA_DIR]\n"); return 2; }
     const auto root=std::filesystem::current_path()/L"service-test-results"/(std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64()));

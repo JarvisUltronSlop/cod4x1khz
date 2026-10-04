@@ -1,5 +1,6 @@
 #include <universal/q_shared.h>
 #include "r_bsp.h"
+#include "r_add_staticmodel.h"
 #include "r_rendercmds.h"
 #include "r_drawsurf.h"
 
@@ -108,3 +109,20 @@ void __cdecl R_WritePrimDrawSurfData(GfxDelayedCmdBuf *delayedCmdBuf, uint8_t *d
     delayedCmdBuf->primDrawSurfPos += count;
 }
 
+
+void __cdecl R_WritePrimDrawSurfPointer(GfxDelayedCmdBuf *delayedCmdBuf, const void *value)
+{
+    // Commands remain packed as 32-bit words; a native address occupies one or two.
+    R_WritePrimDrawSurfData(delayedCmdBuf, reinterpret_cast<uint8_t *>(&value), R_PRIM_DRAW_SURF_POINTER_WORDS);
+}
+
+void __cdecl R_AddDelayedStaticModelDrawSurf(
+    GfxDelayedCmdBuf *delayedCmdBuf,
+    XSurface *xsurf,
+    uint8_t *list,
+    uint32_t count)
+{
+    R_WritePrimDrawSurfInt(delayedCmdBuf, count);
+    R_WritePrimDrawSurfPointer(delayedCmdBuf, xsurf);
+    R_WritePrimDrawSurfData(delayedCmdBuf, list, (count + 1) >> 1);
+}

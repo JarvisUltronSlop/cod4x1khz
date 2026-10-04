@@ -220,11 +220,11 @@ struct scr_anim_s // sizeof=0x4
 {   
     scr_anim_s()
     {
-        linkPointer = NULL;
+        handle = 0;
     }
     scr_anim_s(int i)
     {
-        linkPointer = (const char *)i; // KISAKHACK
+        handle = i;
     }
     // ...
     //$76411D3CC105A18E6E4A61D5A929E310 ___u0; // ...
@@ -235,10 +235,10 @@ struct scr_anim_s // sizeof=0x4
             uint16_t index;
             uint16_t tree;
         };
-        const char* linkPointer;
+        int32_t handle;
     };
 };
-static_assert(sizeof(struct scr_anim_s) == 0x4);
+static_assert(sizeof(struct scr_anim_s) == 4);
 
 struct loadAnim_t // sizeof=0x48
 {
@@ -246,7 +246,7 @@ struct loadAnim_t // sizeof=0x48
     int32_t iNameHash;
     char szAnimName[64];
 };
-static_assert((sizeof(struct loadAnim_t) * 512) == 36864);
+static_assert(sizeof(loadAnim_t) == 72);
 
 struct pml_t // sizeof=0x80
 {                                       // ...
@@ -263,14 +263,14 @@ struct pml_t // sizeof=0x80
     float previous_origin[3];           // ...
     float previous_velocity[3];         // ...
 };
-static_assert(sizeof(pml_t) == 0x80);
+static_assert(sizeof(pml_t) == (sizeof(void*) == 8 ? 136 : 128));
 
 struct animStringItem_t // sizeof=0x8
 {                                       // ...
     const char *string;                 // ...
     int32_t hash;                           // ...
 };
-static_assert(sizeof(animStringItem_t) == 0x8);
+static_assert(sizeof(animStringItem_t) == (sizeof(void*) == 8 ? 16 : 8));
 
 struct controller_info_t // sizeof=0x60
 {                                       // ...
@@ -285,7 +285,7 @@ struct animConditionTable_t // sizeof=0x8
     animScriptConditionTypes_t type;    // ...
     animStringItem_t *values;           // ...
 };
-static_assert(sizeof(animConditionTable_t) == 0x8);
+static_assert(sizeof(animConditionTable_t) == (sizeof(void*) == 8 ? 16 : 8));
 
 struct viewDamage_t // sizeof=0xC
 {                                       // ...
@@ -377,7 +377,7 @@ struct shellshock_t // sizeof=0x20
     float viewDelta[2];
     int32_t hasSavedScreen;
 };
-static_assert(sizeof(shellshock_t) == 0x20);
+static_assert(sizeof(shellshock_t) == (sizeof(void*) == 8 ? 40 : 32));
 
 struct __declspec(align(8)) animation_s // sizeof=0x68
 {                                       // ...
@@ -415,7 +415,7 @@ struct animScriptCommand_t // sizeof=0x10
     int16_t animDuration[2];
     snd_alias_list_t* soundAlias;
 };
-static_assert(sizeof(animScriptCommand_t) == 0x10);
+static_assert(sizeof(animScriptCommand_t) == (sizeof(void*) == 8 ? 24 : 16));
 
 enum animScriptParseMode_t : __int32
 {                                       // ...
@@ -434,14 +434,14 @@ struct animScriptItem_t // sizeof=0x100
     int32_t numCommands;
     animScriptCommand_t commands[8];
 };
-static_assert(sizeof(animScriptItem_t) == 0x100);
+static_assert(sizeof(animScriptItem_t) == (sizeof(void*) == 8 ? 320 : 256));
 
 struct animScript_t // sizeof=0x204
 {                                       // ...
     int32_t numItems;
     animScriptItem_t* items[128];
 };
-static_assert(sizeof(animScript_t) == 0x204);
+static_assert(sizeof(animScript_t) == (sizeof(void*) == 8 ? 1032 : 516));
 
 struct scr_animtree_t // sizeof=0x4
 {                                       // ...
@@ -451,7 +451,7 @@ struct scr_animtree_t // sizeof=0x4
     }
     XAnim_s* anims;                     // ...
 };
-static_assert(sizeof(scr_animtree_t) == 0x4);
+static_assert(sizeof(scr_animtree_t) == (sizeof(void*) == 8 ? 8 : 4));
 
 struct __declspec(align(8)) animScriptData_t // sizeof=0x9A9D0
 {                                       // ...
@@ -476,7 +476,7 @@ struct __declspec(align(8)) animScriptData_t // sizeof=0x9A9D0
     // padding byte
     // padding byte
 };
-static_assert(sizeof(animScriptData_t) == 0x9A9D0);
+static_assert(sizeof(animScriptData_t) == (sizeof(void*) == 8 ? 820112 : 633296));
 
 struct lerpFrame_t // sizeof=0x30
 {                                       // ...
@@ -491,7 +491,7 @@ struct lerpFrame_t // sizeof=0x30
     float animSpeedScale;
     int32_t oldFrameSnapshotTime;
 };
-static_assert(sizeof(lerpFrame_t) == 0x30);
+static_assert(sizeof(lerpFrame_t) == (sizeof(void*) == 8 ? 56 : 48));
 
 struct clientControllers_t // sizeof=0x60
 {                                       // ...
@@ -547,7 +547,7 @@ struct clientInfo_t // sizeof=0x4CC
     // padding byte
     // padding byte
 };
-static_assert(sizeof(clientInfo_t) == 0x4CC);
+static_assert(sizeof(clientInfo_t) == (sizeof(void*) == 8 ? 1256 : 1228));
 
 struct bgs_t_human // sizeof=0x10
 {                                       // ...
@@ -556,7 +556,7 @@ struct bgs_t_human // sizeof=0x10
     scr_anim_s legs;
     scr_anim_s turning;
 };
-static_assert(sizeof(bgs_t_human) == 0x10);
+static_assert(sizeof(bgs_t_human) == (sizeof(void*) == 8 ? 24 : 16));
 
 struct bgs_t // sizeof=0xADD08
 {                                       // ...
@@ -574,7 +574,7 @@ struct bgs_t // sizeof=0xADD08
     void* (__cdecl* AllocXAnim)(int32_t);   // ...
     clientInfo_t clientinfo[64];        // ...
 };
-static_assert(sizeof(bgs_t) == 0xADD08);
+static_assert(sizeof(bgs_t) == (sizeof(void*) == 8 ? 900584 : 711944));
 #endif
 
 struct hudElemSoundInfo_t // sizeof=0x4
@@ -1161,7 +1161,7 @@ struct CEntPlayerInfo // sizeof=0xC
     // padding byte
     // padding byte
 };
-static_assert(sizeof(CEntPlayerInfo) == 0xC);
+static_assert(sizeof(CEntPlayerInfo) == (sizeof(void*) == 8 ? 16 : 12));
 
 struct CEntTurretAngles // sizeof=0x8
 {                                       // ...
@@ -1231,7 +1231,7 @@ struct CEntFx // sizeof=0x8  (SP/MP Same)
     int32_t triggerTime;
     FxEffect* effect;
 };
-static_assert(sizeof(CEntFx) == 0x8);
+static_assert(sizeof(CEntFx) == (sizeof(void*) == 8 ? 16 : 8));
 
 #if defined(KISAK_MP) || defined(KISAK_RADIANT) // radiant: for cpose_t
 struct GfxSkinCacheEntry // sizeof=0xC
@@ -1252,7 +1252,7 @@ struct cpose_t // sizeof=0x64
     uint8_t isRagdoll;
     int32_t ragdollHandle;
     int32_t killcamRagdollHandle;
-    int32_t physObjId;
+    intptr_t physObjId;
     float origin[3];
     float angles[3];
     GfxSkinCacheEntry skinCacheEntry;
@@ -1264,7 +1264,7 @@ struct cpose_t // sizeof=0x64
         CEntFx fx;
     };
 };
-static_assert(sizeof(cpose_t) == 0x64);
+static_assert(sizeof(cpose_t) == (sizeof(void*) == 8 ? 112 : 100));
 #elif KISAK_SP
 struct CEntActorInfo
 {
@@ -2233,7 +2233,7 @@ struct BulletTraceResults // sizeof=0x44
     // padding byte
     int32_t depthSurfaceType;               // ...
 };
-static_assert(sizeof(BulletTraceResults) == 0x44);
+static_assert(sizeof(BulletTraceResults) == (sizeof(void*) == 8 ? 80 : 68));
 
 struct viewState_t // sizeof=0x24
 {                                       // ...
@@ -2247,7 +2247,7 @@ struct viewState_t // sizeof=0x24
     float fLastIdleFactor;              // ...
     int32_t*weapIdleTime;                  // ...
 };
-static_assert(sizeof(viewState_t) == 0x24);
+static_assert(sizeof(viewState_t) == (sizeof(void*) == 8 ? 48 : 36));
 
 struct weaponState_t // sizeof=0x54
 {                                       // ...
@@ -2265,7 +2265,7 @@ struct weaponState_t // sizeof=0x54
     float swayAngles[3];                // ...
     int32_t*weapIdleTime;                  // ...
 };
-static_assert(sizeof(weaponState_t) == 0x54);
+static_assert(sizeof(weaponState_t) == (sizeof(void*) == 8 ? 96 : 84));
 
 void __cdecl TRACK_bg_weapons();
 void __cdecl BG_LoadPenetrationDepthTable();

@@ -1189,10 +1189,11 @@ void __cdecl AimAssist_DrawTargets(int64_t localClientNum, const float *color)
     //if (!HIDWORD(localClientNum))
     //    MyAssertHandler(".\\aim_assist\\aim_assist.cpp", 1627, 0, "%s", "ps");
     // TODO: Check that these are equivalent
-    iassert(HIDWORD(localClientNum));
+    const playerState_s *ps = &CG_GetLocalClientGlobals(static_cast<int>(localClientNum))->predictedPlayerState;
+    iassert(ps);
     iassert(color);
 
-    int32_t weapIndex = AimAssist_GetWeaponIndex(localClientNum, (const playerState_s *)HIDWORD(localClientNum)); // [esp+78h] [ebp-1Ch]
+    int32_t weapIndex = AimAssist_GetWeaponIndex(static_cast<int>(localClientNum), ps); // [esp+78h] [ebp-1Ch]
     if (weapIndex)
     {
         weapDef = BG_GetWeaponDef(weapIndex);

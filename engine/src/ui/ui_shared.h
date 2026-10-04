@@ -394,14 +394,16 @@ union operandInternalDataUnion // sizeof=0x4
 {                                       // ...
     operandInternalDataUnion()
     {
-        intVal = 0;
+        string = nullptr;
     }
     operandInternalDataUnion(int i)
     {
+        string = nullptr;
         intVal = i;
     }
     operandInternalDataUnion(float f)
     {
+        string = nullptr;
         floatVal = f;
     }
     operandInternalDataUnion(const char *str)
@@ -547,14 +549,16 @@ union UILocalVar_u // sizeof=0x4
 {                                       // ...
     UILocalVar_u()
     {
-        integer = 0;
+        string = nullptr;
     }
     UILocalVar_u(int i)
     {
+        string = nullptr;
         integer = i;
     }
     UILocalVar_u(float f)
     {
+        string = nullptr;
         value = f;
     }
     UILocalVar_u(const char *str)

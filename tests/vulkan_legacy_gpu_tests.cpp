@@ -9,9 +9,21 @@
 #include <iostream>
 #include <thread>
 #include <exception>
+#include <atomic>
 #include <vector>
 
 namespace {
+IDirect3DQuery9* pollingEvent=nullptr;
+unsigned contendedPolls=0;
+void recordingWithFencePoll(void (*task)(void*,unsigned),void* data,unsigned count){
+    assert(pollingEvent);
+    std::atomic<bool> returned=false;
+    std::thread poller([&]{DWORD value=0;assert(pollingEvent->GetData(&value,4,D3DGETDATA_FLUSH)==S_FALSE);returned.store(true);});
+    const auto deadline=GetTickCount64()+1000;
+    while(!returned.load()){assert(GetTickCount64()<deadline);SwitchToThread();}
+    poller.join();++contendedPolls;
+    for(unsigned worker=0;worker<count;++worker)task(data,worker);
+}
 void check(HRESULT value){if(FAILED(value))throw std::runtime_error("Legacy GPU HRESULT "+std::to_string(unsigned(value)));}
 template<class T> void release(T*& value){if(value)value->Release();value=nullptr;}
 std::vector<DWORD> compile(const char* source,const char* profile){ID3DBlob *code=nullptr,*error=nullptr;const auto result=D3DCompile(source,std::strlen(source),"legacy fixture",nullptr,nullptr,"main",profile,D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,&error);if(error){std::cerr<<static_cast<const char*>(error->GetBufferPointer());error->Release();}check(result);std::vector<DWORD> out(code->GetBufferSize()/4);std::memcpy(out.data(),code->GetBufferPointer(),code->GetBufferSize());code->Release();return out;}
@@ -22,12 +34,12 @@ struct Fixture {
     IDirect3DVertexBuffer9* vertices=nullptr;IDirect3DIndexBuffer9* indices=nullptr;
     IDirect3DVertexDeclaration9* declaration=nullptr;IDirect3DVertexShader9* vertex=nullptr;IDirect3DPixelShader9* pixel=nullptr;
     IDirect3DTexture9 *image=nullptr,*target=nullptr;IDirect3DSurface9 *surface=nullptr,*readback=nullptr;IDirect3DQuery9* event=nullptr;
-    explicit Fixture(HWND window,bool vulkan,bool timings=false):native(vulkan){
-        if(vulkan){gfx::Config config;config.validation=true;config.compareD3D9=true;config.recordFrameTimings=timings;factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
+    explicit Fixture(HWND window,bool vulkan,bool timings=false,bool contention=false):native(vulkan){
+        if(vulkan){gfx::Config config;config.validation=true;config.compareD3D9=true;config.recordFrameTimings=timings;if(contention){config.recordingWorkers=2;config.dispatchRecording=recordingWithFencePoll;}factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
         if(!factory)throw std::runtime_error("Legacy factory unavailable");
         D3DPRESENT_PARAMETERS p{};p.BackBufferWidth=p.BackBufferHeight=64;p.BackBufferFormat=D3DFMT_A8R8G8B8;p.BackBufferCount=1;p.SwapEffect=D3DSWAPEFFECT_DISCARD;p.hDeviceWindow=window;p.Windowed=TRUE;p.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         check(factory->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_FPU_PRESERVE,&p,&device));
-        check(device->CreateQuery(D3DQUERYTYPE_EVENT,&event));DWORD data=0x5a5a5a5a;
+        check(device->CreateQuery(D3DQUERYTYPE_EVENT,&event));if(contention)pollingEvent=event;DWORD data=0x5a5a5a5a;
         const auto idle=event->GetData(&data,4,D3DGETDATA_FLUSH);
         std::cout<<(vulkan?"Vulkan":"D3D9")<<" unissued event: "<<std::hex<<unsigned(idle)<<std::dec<<" value="<<data<<std::endl;
         // Idle-event output bytes are undefined on the actual D3D9 driver;
@@ -62,6 +74,7 @@ struct Fixture {
         check(device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
         check(device->BeginScene());check(device->Clear(0,nullptr,D3DCLEAR_TARGET,0xff102030,1,0));
         const float tint[]={1,1,1,1},changed[]={0,0,0,0};check(device->SetPixelShaderConstantF(0,tint,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+        if(transfer==-4)for(unsigned draw=1;draw<128;++draw)check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
         if(transfer==-2){
             // Distinct immutable register versions and repeated unchanged
             // versions coexist in one queued submission.
@@ -88,6 +101,18 @@ struct Fixture {
         // completed issue must not make this one appear complete.
         if(native)assert(event->GetData(&value,4,0)==S_FALSE);
         check(device->GetRenderTargetData(surface,readback));D3DLOCKED_RECT lock{};check(readback->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<BYTE> pixels(64*64*4);for(unsigned y=0;y<64;++y)std::memcpy(pixels.data()+y*64*4,static_cast<BYTE*>(lock.pBits)+y*lock.Pitch,64*4);check(readback->UnlockRect());return pixels;
+    }
+    void completedQueryKeepsLaterPacketsQueued(){
+        auto submissions=[](){const auto* field=std::strstr(gfx::legacy::frameTelemetry(), "\"submissions\":");assert(field);return std::stoull(field+14);};
+        const auto before=submissions();
+        check(device->BeginScene());check(device->Clear(0,nullptr,D3DCLEAR_TARGET,0xff405060,1,0));
+        DWORD value=0;assert(event->GetData(&value,4,D3DGETDATA_FLUSH)==S_OK);assert(value==1);
+        assert(submissions()==before);
+        check(device->EndScene());check(event->Issue(D3DISSUE_END));
+        assert(event->GetData(&value,4,0)==S_FALSE);
+        const auto deadline=GetTickCount64()+5000;
+        while(event->GetData(&value,4,D3DGETDATA_FLUSH)==S_FALSE){assert(GetTickCount64()<deadline);SwitchToThread();}
+        assert(submissions()==before+1);
     }
     void frontendTransfers(){
         // The renderer owns the GPU submission; a later frontend upload must
@@ -116,7 +141,15 @@ struct Fixture {
 }
 int main(int argc,char** argv){try{
     const char* timings=nullptr;if(argc==3&&std::strcmp(argv[1],"--timings")==0)timings=argv[2];else if(argc!=1)return 2;
-    Window window;for(int transfer:{-3,-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);if(transfer==-3)f.frontendTransfers();reference=f.run(transfer);}{Fixture f(window.handle,true);if(transfer==-3)f.frontendTransfers();candidate=f.run(transfer);assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}
+    Window window;
+    { Fixture native(window.handle,true), foreign(window.handle,false);
+      gfx::legacy::nameResource(foreign.vertex,"foreign-dx9-vertex");
+      gfx::legacy::nameResource(foreign.pixel,"foreign-dx9-pixel");
+      assert(gfx::legacy::validationErrors(foreign.device)==UINT32_MAX);
+      assert(!gfx::legacy::writeFrameTimings(foreign.device,"foreign-dx9-unused.csv"));
+    }
+    for(int transfer:{-4,-3,-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);if(transfer==-3)f.frontendTransfers();reference=f.run(transfer);}{Fixture f(window.handle,true,false,transfer==-4);if(transfer==-3)f.frontendTransfers();candidate=f.run(transfer);f.completedQueryKeepsLaterPacketsQueued();assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}
+    assert(contendedPolls>0);pollingEvent=nullptr;
     if(timings){Fixture f(window.handle,true,true);for(unsigned n=0;n<24;++n){f.run();check(f.device->Present(nullptr,nullptr,nullptr,nullptr));}assert(gfx::legacy::writeFrameTimings(f.device,timings));assert(gfx::legacy::validationErrors(f.device)==0);}
     std::cout<<"Legacy resource/constant/query, frontend upload and 2D/cube/volume transfer parity passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

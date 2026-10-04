@@ -3,6 +3,7 @@
 #include "snd_public.h"
 #include <universal/com_files.h>
 #include <universal/com_memory.h>
+#include <limits>
 
 #ifdef KISAK_OPENAL
 // Single-header decoders (public domain / MIT-0), vendored in deps/dr_libs. This is the
@@ -18,7 +19,11 @@
 #endif
 
 #ifdef KISAK_DEDICATED
+#ifdef KISAK_OPENAL
+LoadedSound* __cdecl SND_LoadFromBuffer(void* buffer, uint32_t bufferSize, const char* soundName)
+#else
 LoadedSound* __cdecl SND_LoadFromBuffer(void* buffer, const char* soundName)
+#endif
 {
     return NULL;
 }
@@ -36,7 +41,7 @@ LoadedSound *__cdecl SND_LoadFromBuffer(void *buffer, const char *soundName)
     {
         if (info.data_len)
         {
-            loadSnd = (LoadedSound*)Hunk_Alloc(0x2Cu, "SND_LoadFromBuffer", 15);
+            loadSnd = (LoadedSound*)Hunk_Alloc(sizeof(LoadedSound), "SND_LoadFromBuffer", 15);
             loadSnd->name = soundName;
             qmemcpy(&loadSnd->sound, &info, 0x24u);
             SND_SetData(&loadSnd->sound, (void*)info.data_ptr);
@@ -81,6 +86,13 @@ LoadedSound *__cdecl SND_LoadFromBuffer(void *buffer, uint32_t bufferSize, const
     // source formats; dr_wav decodes both of those (and everything else it supports) to
     // plain PCM for us, so we always end up with 16-bit PCM regardless of the source
     // format/bit depth - no ADPCM-vs-PCM branching needed on this side at all.
+    if ((wav.channels != 1 && wav.channels != 2) || wav.sampleRate == 0 ||
+        wav.totalPCMFrameCount > static_cast<uint64_t>(std::numeric_limits<int>::max()) / (wav.channels * sizeof(drwav_int16)))
+    {
+        drwav_uninit(&wav);
+        Com_PrintError(CON_CHANNEL_ERROR, "ERROR: Sound file '%s' has unsupported channel count or size\n", soundName);
+        return nullptr;
+    }
     uint32_t channels = wav.channels;
     uint32_t sampleRate = wav.sampleRate;
     uint32_t frameCount = (uint32_t)wav.totalPCMFrameCount;
@@ -89,8 +101,14 @@ LoadedSound *__cdecl SND_LoadFromBuffer(void *buffer, uint32_t bufferSize, const
     drwav_int16 *pcm = (drwav_int16 *)Z_Malloc(dataLen, "SND_LoadFromBuffer_temp", 15);
     drwav_uint64 framesRead = drwav_read_pcm_frames_s16(&wav, frameCount, pcm);
     drwav_uninit(&wav);
+    if (framesRead != frameCount)
+    {
+        Z_Free(pcm, 15);
+        Com_PrintError(CON_CHANNEL_ERROR, "ERROR: Sound file '%s' has truncated PCM data\n", soundName);
+        return nullptr;
+    }
 
-    LoadedSound *loadSnd = (LoadedSound *)Hunk_Alloc(0x2Cu, "SND_LoadFromBuffer", 15);
+    LoadedSound *loadSnd = (LoadedSound *)Hunk_Alloc(sizeof(LoadedSound), "SND_LoadFromBuffer", 15);
     loadSnd->name = soundName;
     loadSnd->sound.info.format = 1; // PCM
     loadSnd->sound.info.data_ptr = NULL; // filled in by SND_SetData below

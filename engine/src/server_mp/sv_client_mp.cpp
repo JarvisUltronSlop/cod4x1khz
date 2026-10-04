@@ -95,7 +95,7 @@ void __cdecl SV_AuthorizeRequest(netadr_t from, int challenge, const char *cdkey
         v8 = Dvar_RegisterString("fs_game", "", DVAR_SERVERINFO | DVAR_SYSTEMINFO | DVAR_INIT, "File sysytem base game name");
         if (v8 && v8->current.integer)
         {
-            integer = (char*)v8->current.integer;
+            integer = (char*)v8->current.string;
             v6 = game;
             do
             {
@@ -287,7 +287,7 @@ void __cdecl SV_GetChallenge(netadr_t from)
     //if (!svs.authorizeAddress.ip[0] && svs.authorizeAddress.type != NA_BAD)
     //{
     //    Com_Printf(CON_CHANNEL_SERVER, "Resolving %s\n", com_authServerName->current.string);
-    //    if (!NET_StringToAdr((char *)com_authServerName->current.integer, &svs.authorizeAddress))
+    //    if (!NET_StringToAdr((char *)com_authServerName->current.string, &svs.authorizeAddress))
     //    {
     //        Com_Printf(CON_CHANNEL_SERVER, "Couldn't resolve address\n");
     //        return;

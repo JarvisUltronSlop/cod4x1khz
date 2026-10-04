@@ -3138,8 +3138,8 @@ void __cdecl R_EnumDisplayModes(uint32_t adapterIndex)
             &dx.displayModes[dx.displayModeCount]);
         if (hr >= 0)
         {
-            if (!dx.resolutionNameTable[4 * dx.displayModeCount - 1022])
-                dx.resolutionNameTable[4 * dx.displayModeCount - 1022] = (const char *)60;
+            if (!dx.displayModes[dx.displayModeCount].RefreshRate)
+                dx.displayModes[dx.displayModeCount].RefreshRate = 60;
             ++dx.displayModeCount;
         }
     }
@@ -3150,11 +3150,11 @@ void __cdecl R_EnumDisplayModes(uint32_t adapterIndex)
     {
         resolutionCount = R_AddValidResolution(
             dx.displayModes[modeIndex].Width,
-            (int)dx.resolutionNameTable[4 * modeIndex - 1023],
+            dx.displayModes[modeIndex].Height,
             resolutionCount,
             availableResolutions);
         refreshRateCount = R_AddValidRefreshRate(
-            (int)dx.resolutionNameTable[4 * modeIndex - 1022],
+            dx.displayModes[modeIndex].RefreshRate,
             refreshRateCount,
             availableRefreshRates);
     }
@@ -3509,15 +3509,16 @@ struct GfxEnumMonitors // sizeof=0x8
     HMONITOR__ *foundMonitor;           // ...
 };
 
-int __stdcall R_MonitorEnumCallback(HMONITOR__ *monitorHandle, HDC__ *hdc, tagRECT *rect, _DWORD *userData)
+BOOL CALLBACK R_MonitorEnumCallback(HMONITOR monitorHandle, HDC hdc, LPRECT rect, LPARAM userData)
 {
-    if (--*userData)
+    auto *enumeration = reinterpret_cast<GfxEnumMonitors *>(userData);
+    if (--enumeration->monitorIndex)
     {
         return 1;
     }
     else
     {
-        userData[1] = (DWORD)monitorHandle;
+        enumeration->foundMonitor = monitorHandle;
         return 0;
     }
 }
@@ -3531,7 +3532,7 @@ HMONITOR__ *__cdecl R_ChooseMonitor()
     {
         enumData.monitorIndex = r_monitor->current.integer;
         enumData.foundMonitor = 0;
-        EnumDisplayMonitors(0, 0, (MONITORENUMPROC)R_MonitorEnumCallback, (LPARAM)&enumData);
+        EnumDisplayMonitors(0, 0, R_MonitorEnumCallback, (LPARAM)&enumData);
         if (enumData.foundMonitor)
             return enumData.foundMonitor;
     }
@@ -4126,60 +4127,21 @@ bool __cdecl R_SetCustomResolution(GfxWindowParms *wndParms)
         || wndParms->displayWidth <= monitorWidth && wndParms->displayHeight <= monitorHeight;
 }
 
-const char *__cdecl R_ClosestRefreshRateForMode(uint32_t width, uint32_t height, int refreshRate)
+uint32_t __cdecl R_ClosestRefreshRateForMode(uint32_t width, uint32_t height, int refreshRate)
 {
-    const char *v4; // eax
-    int top; // [esp+0h] [ebp-10h]
-    int bot; // [esp+4h] [ebp-Ch]
-    const char *comparison; // [esp+8h] [ebp-8h]
-    int mid; // [esp+Ch] [ebp-4h]
-
-    bot = 0;
-    top = dx.displayModeCount - 1;
-    while (bot <= top)
+    uint32_t lowest = UINT32_MAX;
+    uint32_t below = 0;
+    for (int i = 0; i < dx.displayModeCount; ++i)
     {
-        mid = (bot + top) / 2;
-        comparison = (const char *)(dx.displayModes[mid].Width - width);
-        if (!comparison)
-        {
-            comparison = &dx.resolutionNameTable[4 * mid - 1023][-(int)height];
-            if (!comparison)
-            {
-                comparison = &dx.resolutionNameTable[4 * mid - 1022][-refreshRate];
-                if (!comparison)
-                    return (const char *)refreshRate;
-            }
-        }
-        if ((int)comparison >= 0)
-            top = mid - 1;
-        else
-            bot = mid + 1;
+        const D3DDISPLAYMODE &mode = dx.displayModes[i];
+        if (mode.Width != width || mode.Height != height)
+            continue;
+        lowest = (std::min)(lowest, mode.RefreshRate);
+        if (static_cast<int64_t>(mode.RefreshRate) <= refreshRate)
+            below = (std::max)(below, mode.RefreshRate);
     }
-    iassert( (top >= 0) );
-    iassert( top == bot - 1 );
-    if (dx.displayModes[top].Width == width && dx.resolutionNameTable[4 * top - 1023] == (const char *)height)
-        return dx.resolutionNameTable[4 * top - 1022];
-    if (dx.displayModes[bot].Width != width || dx.resolutionNameTable[4 * bot - 1023] != (const char *)height)
-    {
-        v4 = va(
-            "%i = (%i %i), %i = (%i %i), want (%i %i)",
-            top,
-            dx.displayModes[top].Width,
-            dx.resolutionNameTable[4 * bot - 1023],
-            bot,
-            dx.displayModes[bot].Width,
-            dx.resolutionNameTable[4 * bot - 1023],
-            width,
-            height);
-        MyAssertHandler(
-            ".\\r_init.cpp",
-            1706,
-            0,
-            "%s\n\t%s",
-            "dx.displayModes[bot].Width == width && dx.displayModes[bot].Height == height",
-            v4);
-    }
-    return dx.resolutionNameTable[4 * bot - 1022];
+    iassert(lowest != UINT32_MAX);
+    return below ? below : (lowest == UINT32_MAX ? 60 : lowest);
 }
 
 void __cdecl R_SetWndParms(GfxWindowParms *wndParms)

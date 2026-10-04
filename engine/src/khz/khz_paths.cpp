@@ -64,7 +64,25 @@ bool KHZ_BootstrapPaths(const char* commandLine) {
         if (!std::filesystem::is_directory(runtime / "zone") ||
             !std::filesystem::is_directory(runtime / "main")) runtime /= "runtime";
         if (!std::filesystem::is_directory(runtime / "zone") ||
-            !std::filesystem::is_directory(runtime / "main")) return false;
+            !std::filesystem::is_directory(runtime / "main")) {
+            // Isolated architecture builds live below build/. Locate the same
+            // project runtime without copying into deployed executable paths.
+            auto ancestor = directory.parent_path();
+            bool found = false;
+            while (!ancestor.empty()) {
+                const auto candidate = ancestor / "runtime";
+                if (std::filesystem::is_directory(candidate / "zone") &&
+                    std::filesystem::is_directory(candidate / "main")) {
+                    runtime = candidate;
+                    found = true;
+                    break;
+                }
+                const auto parent = ancestor.parent_path();
+                if (parent == ancestor) break;
+                ancestor = parent;
+            }
+            if (!found) return false;
+        }
         const auto project = runtime.parent_path();
         benchmarkHome = _stricmp(executable.filename().string().c_str(), "cod4x1khz_bench.exe") == 0;
         unsigned port = 28962;

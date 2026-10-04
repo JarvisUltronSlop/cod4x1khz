@@ -1164,7 +1164,7 @@ struct SpawnVar // sizeof=0xA0C
     int32_t numSpawnVarChars;
     char spawnVarChars[2048];
 };
-static_assert(sizeof(SpawnVar) == 0xA0C);
+static_assert(sizeof(SpawnVar) == (sizeof(void*) == 8 ? 3088 : 2572));
 
 void __cdecl CM_LoadMapData_LoadObj(const char *name);
 struct cplane_s *__cdecl CM_GetPlanes();
@@ -1606,7 +1606,7 @@ inline T Buf_Read(unsigned char **pos)
 // IDA shows inline `fistp` with no nearby `_ftol2_sse` call.
 inline int SnapFloatToInt(float x)
 {
-#if defined(KISAK_PURE) && defined(_WIN32)
+#if defined(KISAK_PURE) && defined(_M_IX86)
     int i;
     __asm fld x;
     __asm fistp i;
@@ -1615,7 +1615,7 @@ inline int SnapFloatToInt(float x)
 
     int retval = _mm_cvtss_si32(_mm_set_ss(x));
 
-#if defined(_DEBUG) && defined(_WIN32)
+#if defined(_DEBUG) && defined(_M_IX86)
     const float input = x;
     int32_t output{};
 

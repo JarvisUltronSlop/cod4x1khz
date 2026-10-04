@@ -111,6 +111,7 @@ void SteamCallbackHandler::Callback_BeginAuthResponse(ValidateAuthTicketResponse
 
 void Steam_CheckClients()
 {
+    if (!steamApiActive) return;
 #ifdef KISAK_MP
 	SteamAPI_RunCallbacks();
 
@@ -270,6 +271,7 @@ bool Steam_CheckClientTicket(const void* pAuthTicket, uint32 authTicketLen, uint
 
 void Steam_OnClientDropped(uint64_t steamID64)
 {
+    if (!g_steamInitialized) return;
 	iassert(steamID64);
 
 	CSteamID sid;

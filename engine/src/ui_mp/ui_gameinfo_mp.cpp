@@ -89,22 +89,22 @@ void __cdecl UI_LoadArenas()
     for (n = 0; n < ui_numArenas; ++n)
     {
         v0 = Info_ValueForKey(ui_arenaInfos[n], "map");
-        sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5119] = (Material *)String_Alloc(v0);
+        sharedUiInfo.mapList[sharedUiInfo.mapCount].mapLoadName = String_Alloc(v0);
         v1 = Info_ValueForKey(ui_arenaInfos[n], "longname");
         sharedUiInfo.mapList[sharedUiInfo.mapCount].mapName = String_Alloc(v1);
-        sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5082] = 0;
-        v2 = va("loadscreen_%s", (const char *)sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5119]);
-        sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5118] = (Material *)String_Alloc(v2);
-        sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5082] = Material_RegisterHandle(
-            (char *)sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5118],
+        sharedUiInfo.mapList[sharedUiInfo.mapCount].levelShot = 0;
+        v2 = va("loadscreen_%s", (const char *)sharedUiInfo.mapList[sharedUiInfo.mapCount].mapLoadName);
+        sharedUiInfo.mapList[sharedUiInfo.mapCount].imageName = String_Alloc(v2);
+        sharedUiInfo.mapList[sharedUiInfo.mapCount].levelShot = Material_RegisterHandle(
+            (char *)sharedUiInfo.mapList[sharedUiInfo.mapCount].imageName,
             IMAGE_TRACK_UI);
         pszGameTypes = Info_ValueForKey(ui_arenaInfos[n], "gametype");
         if (!pszGameTypes)
             goto LABEL_15;
         if (*pszGameTypes)
         {
-            sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5115] = 0;
-            v3 = va(".arena files : %s", (const char *)sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5119]);
+            sharedUiInfo.mapList[sharedUiInfo.mapCount].typeBits = 0;
+            v3 = va(".arena files : %s", (const char *)sharedUiInfo.mapList[sharedUiInfo.mapCount].mapLoadName);
             Com_BeginParseSession(v3);
             pszText = pszGameTypes;
             while (1)
@@ -115,7 +115,7 @@ void __cdecl UI_LoadArenas()
                 for (i = 0; i < sharedUiInfo.numGameTypes; ++i)
                 {
                     if (!I_stricmp(pszToken, sharedUiInfo.gameTypes[i].gameType))
-                        sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5115] = (Material *)((int)sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5115]
+                        sharedUiInfo.mapList[sharedUiInfo.mapCount].typeBits = (sharedUiInfo.mapList[sharedUiInfo.mapCount].typeBits
                             | (1 << i));
                 }
             }
@@ -124,7 +124,7 @@ void __cdecl UI_LoadArenas()
         else
         {
         LABEL_15:
-            sharedUiInfo.serverHardwareIconList[40 * sharedUiInfo.mapCount - 5115] = (Material *)-1;
+            sharedUiInfo.mapList[sharedUiInfo.mapCount].typeBits = -1;
         }
         if (++sharedUiInfo.mapCount >= 128)
             break;

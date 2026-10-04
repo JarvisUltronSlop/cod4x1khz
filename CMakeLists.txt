@@ -5,21 +5,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 option(COD4X1KHZ_BUILD_ENGINE "Build the multiplayer client and dedicated server" ON)
 option(COD4X1KHZ_INSTRUMENT "Enable Tracy engine instrumentation" OFF)
+include(cmake/architecture.cmake)
 include(CTest)
 option(COD4X1KHZ_BUILD_VULKAN "Build the project-local native Vulkan renderer and probes" ON)
 if(COD4X1KHZ_BUILD_VULKAN)
   include(cmake/vulkan.cmake)
 endif()
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 add_executable(khz_inspect native/inspect.cpp)
 target_link_libraries(khz_inspect PRIVATE dbghelp)
 target_compile_definitions(khz_inspect PRIVATE KISAK_MP COD4X1KHZ=1)
 target_include_directories(khz_inspect PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
   "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
   "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+endif()
 add_executable(khz_launch_probe EXCLUDE_FROM_ALL native/launch_probe.cpp)
 target_link_libraries(khz_launch_probe PRIVATE dbghelp)
 add_executable(khz_thread_probe EXCLUDE_FROM_ALL native/thread_probe.cpp)
 target_link_libraries(khz_thread_probe PRIVATE dbghelp psapi)
+add_executable(khz_asset_layout_catalog EXCLUDE_FROM_ALL native/asset_layout_catalog.cpp)
+target_include_directories(khz_asset_layout_catalog PRIVATE "${CMAKE_GENERATOR_INSTANCE}/DIA SDK/include")
+target_link_libraries(khz_asset_layout_catalog PRIVATE dbghelp)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 add_executable(khz_audio_probe EXCLUDE_FROM_ALL native/audio_probe.cpp)
 target_sources(khz_audio_probe PRIVATE native/archive_io_bridge.cpp engine/src/qcommon/unzip.cpp
   engine/deps/zlib/adler32.c engine/deps/zlib/crc32.c engine/deps/zlib/infblock.c
@@ -31,10 +38,121 @@ target_link_libraries(khz_audio_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engin
 set_target_properties(khz_audio_probe PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/tools")
 add_custom_command(TARGET khz_audio_probe POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
   "${CMAKE_CURRENT_SOURCE_DIR}/runtime/mss32.dll" "$<TARGET_FILE_DIR:khz_audio_probe>/mss32.dll")
+endif()
 add_library(khz_core STATIC native/clock.cpp)
 target_include_directories(khz_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native")
 target_compile_options(khz_core PRIVATE /W4 /fp:precise)
 if(BUILD_TESTING)
+  add_executable(khz_ui_values_native_tests tests/ui_values_native_tests.cpp
+    engine/src/ui/ui_memory.cpp engine/src/ui/ui_expression_entries.cpp engine/src/ui/ui_operand_stack.cpp engine/src/ui/ui_string_pool.cpp
+    engine/src/ui/ui_localvars.cpp engine/src/ui/ui_expressions_logicfunctions.cpp)
+  add_executable(khz_render_commands_native_tests tests/render_commands_native_tests.cpp
+    engine/src/gfx_d3d/r_add_cmdbuf.cpp engine/src/gfx_d3d/r_read_cmdbuf.cpp
+    engine/src/gfx_d3d/r_assetlists.cpp engine/src/gfx_d3d/r_staticmodelcache_allocator.cpp
+    engine/src/gfx_d3d/r_command_buffer.cpp engine/src/gfx_d3d/r_draw_textcmds.cpp)
+  foreach(fixture khz_ui_values_native_tests khz_render_commands_native_tests)
+    target_include_directories(${fixture} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+      "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps"
+      "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+    target_compile_definitions(${fixture} PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  endforeach()
+  target_compile_options(khz_render_commands_native_tests PRIVATE /Gy)
+  target_link_options(khz_render_commands_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_ui_values_native COMMAND khz_ui_values_native_tests)
+  add_test(NAME khz_render_commands_native COMMAND khz_render_commands_native_tests)
+  add_executable(khz_fx_archive_native_tests tests/fx_archive_native_tests.cpp
+    engine/src/EffectsCore/fx_archive.cpp engine/src/EffectsCore/fx_system_storage.cpp)
+  target_include_directories(khz_fx_archive_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_fx_archive_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_fx_archive_native COMMAND khz_fx_archive_native_tests)
+  add_executable(khz_scoreboard_native_tests tests/scoreboard_native_tests.cpp engine/src/cgame_mp/cg_scoreboard_lookup_mp.cpp)
+  target_include_directories(khz_scoreboard_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_scoreboard_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_scoreboard_native COMMAND khz_scoreboard_native_tests)
+  add_executable(khz_filesystem_native_tests tests/filesystem_native_tests.cpp engine/src/qcommon/files.cpp)
+  target_include_directories(khz_filesystem_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_filesystem_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_filesystem_native_tests PRIVATE /Gy)
+  target_link_options(khz_filesystem_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_filesystem_native COMMAND khz_filesystem_native_tests)
+  add_executable(khz_collision_lifetime_native_tests tests/collision_lifetime_native_tests.cpp
+    engine/src/qcommon/cm_shutdown.cpp engine/src/DynEntity/DynEntity_archive.cpp)
+  target_include_directories(khz_collision_lifetime_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_collision_lifetime_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_collision_lifetime_native COMMAND khz_collision_lifetime_native_tests)
+  add_executable(khz_player_use_native_tests tests/player_use_native_tests.cpp)
+  target_include_directories(khz_player_use_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src")
+  add_test(NAME khz_player_use_native COMMAND khz_player_use_native_tests)
+  add_executable(khz_dvar_values_native_tests tests/dvar_values_native_tests.cpp engine/src/universal/dvar_values.cpp
+    engine/src/khz/khz_dvar_lock.cpp)
+  target_include_directories(khz_dvar_values_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/native")
+  target_compile_definitions(khz_dvar_values_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_dvar_values_native_tests PRIVATE /Gy)
+  target_link_options(khz_dvar_values_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_dvar_values_native COMMAND khz_dvar_values_native_tests)
+  add_executable(khz_script_value_native_tests tests/script_value_native_tests.cpp
+    engine/src/script/scr_emit_operands.cpp engine/src/script/scr_parse_nodes.cpp
+    engine/src/script/scr_animation_fixups.cpp)
+  target_include_directories(khz_script_value_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_script_value_native_tests PRIVATE KISAK_MP=1)
+  add_test(NAME khz_script_value_native COMMAND khz_script_value_native_tests)
+  add_library(khz_plugin_sdk_c_smoke OBJECT sdk/tests/header_smoke.c)
+  target_include_directories(khz_plugin_sdk_c_smoke PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")
+  add_executable(khz_plugin_sdk_native_tests tests/plugin_sdk_native_tests.cpp)
+  target_include_directories(khz_plugin_sdk_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")
+  add_dependencies(khz_plugin_sdk_native_tests khz_plugin_sdk_c_smoke)
+  add_test(NAME khz_plugin_sdk_native COMMAND khz_plugin_sdk_native_tests)
+  add_executable(khz_physical_memory_native_tests tests/physical_memory_native_tests.cpp
+    engine/src/universal/physicalmemory.cpp)
+  target_include_directories(khz_physical_memory_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_physical_memory_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_physical_memory_native_tests PRIVATE /Gy)
+  target_link_options(khz_physical_memory_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_physical_memory_native COMMAND khz_physical_memory_native_tests)
+  add_executable(khz_hunk_memory_native_tests tests/hunk_memory_native_tests.cpp engine/src/universal/com_memory.cpp)
+  target_include_directories(khz_hunk_memory_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_hunk_memory_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_hunk_memory_native_tests PRIVATE /Gy)
+  target_link_options(khz_hunk_memory_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_hunk_memory_native COMMAND khz_hunk_memory_native_tests)
+  add_executable(khz_model_skin_native_tests tests/model_skin_native_tests.cpp engine/src/gfx_d3d/r_model_skin_sse.cpp)
+  target_include_directories(khz_model_skin_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_model_skin_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_model_skin_native_tests PRIVATE /fp:precise)
+  add_test(NAME khz_model_skin_native COMMAND khz_model_skin_native_tests)
+  add_executable(khz_asset_stream_native_tests tests/asset_stream_native_tests.cpp
+    engine/src/database/db_stream.cpp engine/src/database/db_stream_load.cpp
+    engine/src/database/db_assetnames.cpp)
+  target_include_directories(khz_asset_stream_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_asset_stream_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_asset_stream_native COMMAND khz_asset_stream_native_tests)
+  add_executable(khz_asset_wire_tests tests/asset_wire_tests.cpp)
+  target_include_directories(khz_asset_wire_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/native")
+  add_test(NAME khz_asset_wire COMMAND khz_asset_wire_tests)
+  add_executable(khz_pool_allocator_native_tests tests/pool_allocator_native_tests.cpp
+    engine/src/universal/pool_allocator.cpp)
+  target_include_directories(khz_pool_allocator_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src")
+  add_test(NAME khz_pool_allocator_native COMMAND khz_pool_allocator_native_tests)
+  add_executable(khz_debug_context_tests tests/debug_context_tests.cpp)
+  target_include_directories(khz_debug_context_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
+  add_test(NAME khz_debug_context COMMAND khz_debug_context_tests)
   add_executable(khz_tests tests/core_tests.cpp)
   target_link_libraries(khz_tests PRIVATE khz_core)
   add_test(NAME khz_core COMMAND khz_tests)
@@ -57,7 +175,12 @@ if(BUILD_TESTING)
   target_include_directories(khz_msg_bits_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native" "${CMAKE_CURRENT_SOURCE_DIR}/engine/src")
   target_compile_definitions(khz_msg_bits_native_tests PRIVATE KISAK_MP=1)
   target_compile_options(khz_msg_bits_native_tests PRIVATE /UNDEBUG /W4)
-  add_test(NAME khz_msg_bits_native COMMAND khz_msg_bits_native_tests "${CMAKE_CURRENT_SOURCE_DIR}/results/msg-bits-native-evidence.json")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(KHZ_MSG_BITS_EVIDENCE "${CMAKE_CURRENT_SOURCE_DIR}/results/msg-bits-native-evidence-x64.json")
+  else()
+    set(KHZ_MSG_BITS_EVIDENCE "${CMAKE_CURRENT_SOURCE_DIR}/results/msg-bits-native-evidence.json")
+  endif()
+  add_test(NAME khz_msg_bits_native COMMAND khz_msg_bits_native_tests "${KHZ_MSG_BITS_EVIDENCE}")
   add_executable(khz_park_wait_tests tests/park_wait_tests.cpp)
   target_include_directories(khz_park_wait_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
   target_compile_options(khz_park_wait_tests PRIVATE /UNDEBUG /W4)
@@ -184,7 +307,10 @@ if(BUILD_TESTING)
   add_test(NAME khz_content_server_policy COMMAND khz_content_server_policy_tests)
   add_executable(khz_fp_environment_tests tests/fp_environment_tests.cpp)
   target_include_directories(khz_fp_environment_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
-  target_compile_options(khz_fp_environment_tests PRIVATE /W4 /fp:strict /arch:SSE2)
+  target_compile_options(khz_fp_environment_tests PRIVATE /W4 /fp:strict)
+  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    target_compile_options(khz_fp_environment_tests PRIVATE /arch:SSE2)
+  endif()
   add_test(NAME khz_fp_environment COMMAND khz_fp_environment_tests)
   add_executable(khz_asset_paths_tests tests/asset_paths_tests.cpp
     engine/src/khz/khz_asset_paths.cpp engine/src/khz/khz_content.cpp)
@@ -210,6 +336,12 @@ if(COD4X1KHZ_BUILD_ENGINE)
   set(DXSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native")
   if(NOT EXISTS "${DXSDK_DIR}/include/d3dx9.h")
     message(FATAL_ERROR "Run prepare.ps1 to obtain the pinned project-local DirectX dependency")
+  endif()
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(KHZ_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(KISAK_OPENAL ON CACHE BOOL "Native audio backend" FORCE)
+    include(engine/scripts/extern/openal.cmake)
+    include(cmake/native-video.cmake)
   endif()
   set(CICD 1)
   set(TRACY_ENABLE ${COD4X1KHZ_INSTRUMENT} CACHE BOOL "" FORCE)
@@ -270,6 +402,7 @@ if(COD4X1KHZ_BUILD_ENGINE)
       "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_collision.cpp")
     target_sources(${engine_target} PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_controls.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_dvar_lock.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_client_owner.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_client_pose.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_client_projectile.cpp"
@@ -280,8 +413,13 @@ if(COD4X1KHZ_BUILD_ENGINE)
     target_compile_definitions(${engine_target} PRIVATE COD4X1KHZ=1)
     target_include_directories(${engine_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")
     target_compile_options(${engine_target} PRIVATE /fp:precise)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set(engine_output "${CMAKE_CURRENT_SOURCE_DIR}/bin/x64/$<CONFIG>")
+    else()
+      set(engine_output "${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>")
+    endif()
     set_target_properties(${engine_target} PROPERTIES OUTPUT_NAME ${output_name}
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/$<CONFIG>")
+      RUNTIME_OUTPUT_DIRECTORY "${engine_output}")
   endforeach()
   target_sources(KisakCOD-mp PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_render_profile.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/engine/src/khz/khz_frontend_upload.cpp"
@@ -299,12 +437,33 @@ if(COD4X1KHZ_BUILD_ENGINE)
   add_library(khz_regression SHARED sdk/tests/regression_plugin.c)
   target_include_directories(khz_regression PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/sdk/include")
   target_link_libraries(khz_regression PRIVATE KisakCOD-dedi)
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(regression_output "${CMAKE_CURRENT_SOURCE_DIR}/runtime/plugins/x64")
+  else()
+    set(regression_output "${CMAKE_CURRENT_SOURCE_DIR}/runtime/plugins")
+  endif()
   set_target_properties(khz_regression PROPERTIES OUTPUT_NAME khz_regression
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/runtime/plugins")
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${regression_output}")
   add_executable(cod4x1khz_update native/update_helper.cpp
     engine/src/khz/khz_content.cpp engine/src/khz/khz_update.cpp
     engine/src/khz/khz_update_policy.cpp engine/src/khz/khz_update_bootstrap.cpp)
   target_include_directories(cod4x1khz_update PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set_target_properties(cod4x1khz_update PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin/x64/$<CONFIG>")
+    add_custom_target(khz_runtime
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:KisakCOD-mp>" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/cod4x1khz.exe"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:KisakCOD-mp>" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/cod4x1khz_bench.exe"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:KisakCOD-dedi>" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/cod4x1khz_server.exe"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:cod4x1khz_update>" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/cod4x1khz_update.exe"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KHZ_D3DX9_RUNTIME}" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/D3DX9_43.dll"
+      DEPENDS KisakCOD-mp KisakCOD-dedi khz_regression cod4x1khz_update)
+    foreach(dll avcodec-62 avformat-62 avutil-60 swresample-6 swscale-9)
+      add_custom_command(TARGET khz_runtime POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${KHZ_FFMPEG_ROOT}/bin/${dll}.dll" "${CMAKE_CURRENT_SOURCE_DIR}/runtime/x64/${dll}.dll")
+    endforeach()
+  else()
   set_target_properties(cod4x1khz_update PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_SOURCE_DIR}/runtime")
   add_custom_target(khz_runtime
@@ -321,4 +480,5 @@ if(COD4X1KHZ_BUILD_ENGINE)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/runtime/binkw32.dll" "${CMAKE_CURRENT_SOURCE_DIR}/binkw32.dll"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/runtime/steam_api.dll" "${CMAKE_CURRENT_SOURCE_DIR}/steam_api.dll"
     DEPENDS KisakCOD-mp KisakCOD-dedi khz_regression cod4x1khz_update)
+  endif()
 endif()

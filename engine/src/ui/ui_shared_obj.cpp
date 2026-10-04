@@ -1,5 +1,6 @@
 #include <universal/q_shared.h>
 #include "ui_shared.h"
+#include "ui_memory.h"
 #include <universal/com_files.h>
 #include <universal/q_parse.h>
 #include <universal/com_sndalias.h>
@@ -199,48 +200,13 @@ void __cdecl PC_PushScript(source_s *source, script_s *script)
     source->scriptstack = script;
 }
 
-uint32_t *__cdecl GetMemory(uint32_t size)
-{
-    uint32_t *ptr; // [esp+4h] [ebp-4h]
 
-    ptr = (uint32_t *)Z_Malloc(size + 4, "GetMemory", 10);
-    if (!ptr)
-        return 0;
-    *ptr = 0x12345678;
-    return ptr + 1;
-}
 
-void __cdecl FreeMemory(char *ptr)
-{
-    if (*((_DWORD *)ptr - 1) == 0x12345678)
-        Z_Free(ptr - 4, 10);
-}
 
-int numtokens;
-token_s *__cdecl PC_CopyToken(token_s *token)
-{
-    uint32_t *t; // [esp+8h] [ebp-4h]
 
-    t = GetMemory(0x430u);
-    if (t)
-    {
-        memcpy(t, token, 0x430u);
-        t[266] = 0;
-        ++numtokens;
-        return (token_s *)t;
-    }
-    else
-    {
-        Com_Error(ERR_FATAL, "EXE_ERR_OUT_OF_MEMORY");
-        return 0;
-    }
-}
 
-void __cdecl PC_FreeToken(token_s *token)
-{
-    FreeMemory(token->string);
-    --numtokens;
-}
+
+
 
 int __cdecl PS_ReadWhiteSpace(script_s *script)
 {
@@ -1314,14 +1280,7 @@ void __cdecl StripDoubleQuotes(char *string)
         string[strlen(string) - 1] = 0;
 }
 
-uint8_t *__cdecl GetClearedMemory(uint32_t size)
-{
-    uint8_t *ptr; // [esp+0h] [ebp-4h]
 
-    ptr = (uint8_t *)GetMemory(size);
-    memset(ptr, 0, size);
-    return ptr;
-}
 
 void __cdecl PS_CreatePunctuationTable(script_s *script, punctuation_s *punctuations)
 {
@@ -1331,8 +1290,8 @@ void __cdecl PS_CreatePunctuationTable(script_s *script, punctuation_s *punctuat
     punctuation_s *p; // [esp+2Ch] [ebp-4h]
 
     if (!script->punctuationtable)
-        script->punctuationtable = (punctuation_s **)GetMemory(0x400u);
-    memset((uint8_t *)script->punctuationtable, 0, 0x400u);
+        script->punctuationtable = (punctuation_s **)GetMemory(256 * sizeof(punctuation_s *));
+    memset(script->punctuationtable, 0, 256 * sizeof(punctuation_s *));
     for (i = 0; punctuations[i].p; ++i)
     {
         newp = &punctuations[i];
@@ -1649,7 +1608,7 @@ int __cdecl PC_Directive_define(source_s *source)
             return 0;
         PC_FindHashedDefine(source->definehash, token.string);
     }
-    definea = (define_s *)GetMemory(&token.string[strlen(token.string) + 1] - &token.string[1] + 33);
+    definea = (define_s *)GetMemory(sizeof(define_s) + strlen(token.string) + 1);
     definea->name = 0;
     definea->flags = 0;
     definea->builtin = 0;
@@ -1785,7 +1744,7 @@ define_s *__cdecl PC_DefineFromString(char *string)
     memset((uint8_t *)&src, 0, sizeof(src));
     strncpy(src.filename, "*extern", 0x40u);
     src.scriptstack = script;
-    src.definehash = (define_s **)GetClearedMemory(0x1000u);
+    src.definehash = (define_s **)GetClearedMemory(1024 * sizeof(define_s *));
     res = PC_Directive_define(&src);
     for (t = src.tokens; t; t = src.tokens)
     {
@@ -1821,59 +1780,7 @@ int __cdecl PC_AddDefine(source_s *source, char *string)
     return 1;
 }
 
-define_s *__cdecl PC_CopyDefine(source_s *source, define_s *define)
-{
-    char v2; // dl
-    _BYTE *v4; // [esp+8h] [ebp-28h]
-    char *name; // [esp+Ch] [ebp-24h]
-    uint32_t *newdefine; // [esp+20h] [ebp-10h]
-    token_s *newtoken; // [esp+24h] [ebp-Ch]
-    token_s *newtokena; // [esp+24h] [ebp-Ch]
-    token_s *token; // [esp+28h] [ebp-8h]
-    token_s *tokena; // [esp+28h] [ebp-8h]
-    token_s *lasttoken; // [esp+2Ch] [ebp-4h]
-    token_s *lasttokena; // [esp+2Ch] [ebp-4h]
 
-    newdefine = GetMemory(strlen(define->name) + 33);
-    *newdefine = (uint32_t)(newdefine + 8);
-    name = define->name;
-    v4 = (_BYTE *)*newdefine;
-    do
-    {
-        v2 = *name;
-        *v4++ = *name++;
-    } while (v2);
-    newdefine[1] = define->flags;
-    newdefine[2] = define->builtin;
-    newdefine[3] = define->numparms;
-    newdefine[6] = 0;
-    newdefine[7] = 0;
-    newdefine[5] = 0;
-    lasttoken = 0;
-    for (token = define->tokens; token; token = token->next)
-    {
-        newtoken = PC_CopyToken(token);
-        newtoken->next = 0;
-        if (lasttoken)
-            lasttoken->next = newtoken;
-        else
-            newdefine[5] = (uint32_t)newtoken;
-        lasttoken = newtoken;
-    }
-    newdefine[4] = 0;
-    lasttokena = 0;
-    for (tokena = define->parms; tokena; tokena = tokena->next)
-    {
-        newtokena = PC_CopyToken(tokena);
-        newtokena->next = 0;
-        if (lasttokena)
-            lasttokena->next = newtokena;
-        else
-            newdefine[4] = (uint32_t)newtokena;
-        lasttokena = newtokena;
-    }
-    return (define_s *)newdefine;
-}
 
 define_s *globaldefines;
 void __cdecl PC_AddGlobalDefinesToSource(source_s *source)
@@ -1919,7 +1826,7 @@ void __cdecl PC_PushIndent(source_s *source, int type, parseSkip_t skip)
 {
     indent_s *indent; // [esp+0h] [ebp-4h]
 
-    indent = (indent_s *)GetMemory(0x10u);
+    indent = (indent_s *)GetMemory(sizeof(indent_s));
     indent->type = type;
     indent->script = source->scriptstack;
     indent->skip = skip;
@@ -3062,7 +2969,7 @@ source_s *__cdecl LoadSourceFile(char *filename)
     if (!script)
         return 0;
     script->next = 0;
-    source = (source_s *)GetMemory(0x4D0u);
+    source = (source_s *)GetMemory(sizeof(source_s));
     memset(source, 0, sizeof(source_s));
     strncpy(source->filename, filename, 0x40u);
     source->scriptstack = script;
@@ -3070,7 +2977,7 @@ source_s *__cdecl LoadSourceFile(char *filename)
     source->defines = 0;
     source->indentstack = 0;
     source->skip = 0;
-    source->definehash = (define_s **)GetClearedMemory(0x1000u);
+    source->definehash = (define_s **)GetClearedMemory(1024 * sizeof(define_s *));
     PC_AddGlobalDefinesToSource(source);
     return source;
 }
@@ -4423,26 +4330,7 @@ int __cdecl MenuParse_rect(menuDef_t *menu, int handle)
     return PC_Rect_Parse(handle, &menu->window.rect);
 }
 
-void __cdecl free_expression(statement_s *statement)
-{
-    expressionEntry *entry; // [esp+0h] [ebp-8h]
-    int entryNum; // [esp+4h] [ebp-4h]
 
-    if (statement->numEntries)
-    {
-        for (entryNum = 0; entryNum < statement->numEntries; ++entryNum)
-        {
-            entry = statement->entries[entryNum];
-            if (entry->type == 1 && entry->data.op == OP_MULTIPLY)
-                Z_Free((char *)entry->data.operand.internals.intVal, 34);
-            Z_Free((char *)entry, 34);
-            statement->entries[entryNum] = 0;
-        }
-        Z_Free((char *)statement->entries, 34);
-        statement->entries = 0;
-        statement->numEntries = 0;
-    }
-}
 
 int __cdecl parse_operatorToken(const char *token)
 {
@@ -4491,54 +4379,15 @@ char *__cdecl GetValueAsString(Operand operand)
     return result;
 }
 
-void __cdecl Statement_AddEntry(statement_s *statement, expressionEntry *entry)
-{
-    statement->entries[statement->numEntries++] = entry;
-}
 
-void __cdecl Statement_AddOperator(statement_s *statement, operationEnum op)
-{
-    uint32_t *v2; // eax
 
-    v2 = (uint32_t*)Z_Malloc(12, "Statement_AddOperator", 34);
-    *v2 = 0;
-    v2[1] = op;
-    Statement_AddEntry(statement, (expressionEntry *)v2);
-}
 
-void __cdecl Statement_AddIntOperand(statement_s *statement, int val)
-{
-    uint32_t *v2; // eax
 
-    v2 = (uint32_t*)Z_Malloc(12, "Statement_AddIntOperand", 34);
-    *v2 = 1;
-    v2[1] = 0;
-    v2[2] = val;
-    Statement_AddEntry(statement, (expressionEntry *)v2);
-}
 
-void __cdecl Statement_AddFloatOperand(statement_s *statement, float val)
-{
-    uint32_t *v2; // eax
 
-    v2 = (uint32_t*)Z_Malloc(12, "Statement_AddFloatOperand", 34);
-    *v2 = 1;
-    v2[1] = 1;
-    *((float *)v2 + 2) = val;
-    Statement_AddEntry(statement, (expressionEntry *)v2);
-}
 
-void __cdecl Statement_AddStringOperand(statement_s *statement, char *str)
-{
-    expressionEntry *entry; // [esp+20h] [ebp-4h]
 
-    entry = (expressionEntry *)Z_Malloc(12, "Statement_AddStringOperand", 34);
-    entry->type = 1;
-    entry->data.op = OP_MULTIPLY;
-    entry->data.operand.internals.intVal = (int)Z_Malloc(strlen(str) + 1, "Statement_AddStringOperand", 34);
-    I_strncpyz((char *)entry->data.operand.internals.intVal, str, strlen(str) + 1);
-    Statement_AddEntry(statement, entry);
-}
+
 
 char __cdecl parse_expression_internal(int handle, statement_s *statement, int maxEntries)
 {
@@ -4654,7 +4503,7 @@ int __cdecl MenuParse_visible(menuDef_t *menu, int handle)
     {
         flags = menu->window.dynamicFlags[0];
         Window_SetDynamicFlags(0, &menu->window, flags | 4);
-        menu->visibleExp.entries = (expressionEntry **)Z_Malloc(2400, "Statement_AddOperator", 34);
+        menu->visibleExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "Statement_AddOperator", 34);
         if (parse_expression(handle, &menu->visibleExp, 200))
             return 1;
     }
@@ -4705,13 +4554,13 @@ int __cdecl MenuParse_execExp(menuDef_t *menu, int handle)
                     Com_PrintError(CON_CHANNEL_SYSTEM, "ERROR: Expected 'X' or 'Y' after \"exp rect\" but found \"%s\"\n", token.string);
                     return 0;
                 }
-                menu->rectYExp.entries = (expressionEntry **)Z_Malloc(2400, "MenuParse_execExp", 34);
+                menu->rectYExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "MenuParse_execExp", 34);
                 if (parse_expression(handle, &menu->rectYExp, 200))
                     return 1;
             }
             else
             {
-                menu->rectXExp.entries = (expressionEntry **)Z_Malloc(2400, "MenuParse_execExp", 34);
+                menu->rectXExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "MenuParse_execExp", 34);
                 if (parse_expression(handle, &menu->rectXExp, 200))
                     return 1;
             }
@@ -4731,7 +4580,7 @@ int __cdecl MenuParse_execExp(menuDef_t *menu, int handle)
         }
         flags = menu->window.dynamicFlags[0];
         Window_SetDynamicFlags(0, &menu->window, flags | 4);
-        menu->visibleExp.entries = (expressionEntry **)Z_Malloc(2400, "MenuParse_execExp", 34);
+        menu->visibleExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "MenuParse_execExp", 34);
         if (parse_expression(handle, &menu->visibleExp, 200))
             return 1;
     }
@@ -5363,7 +5212,7 @@ int __cdecl ItemParse_visible(itemDef_s *item, int handle)
     {
         flags = item->window.dynamicFlags[0];
         Window_SetDynamicFlags(0, &item->window, flags | 4);
-        item->visibleExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_visible", 34);
+        item->visibleExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_visible", 34);
         if (parse_expression(handle, &item->visibleExp, 200))
             return 1;
     }
@@ -5818,7 +5667,7 @@ int __cdecl ItemParse_execExp(itemDef_s *item, int handle)
                             Com_PrintError(CON_CHANNEL_SYSTEM, "ERROR: Expected 'A' after \"exp forecolor\" but found \"%s\"\n", expressionType);
                             return 0;
                         }
-                        item->forecolorAExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                        item->forecolorAExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                         if (parse_expression(handle, &item->forecolorAExp, 200))
                             return 1;
                     }
@@ -5834,14 +5683,14 @@ int __cdecl ItemParse_execExp(itemDef_s *item, int handle)
                     {
                         if (!I_stricmp(expressionType, "Y"))
                         {
-                            item->rectYExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                            item->rectYExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                             if (parse_expression(handle, &item->rectYExp, 200))
                                 return 1;
                         }
                     }
                     else
                     {
-                        item->rectXExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                        item->rectXExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                         if (parse_expression(handle, &item->rectXExp, 200))
                             return 1;
                     }
@@ -5855,13 +5704,13 @@ int __cdecl ItemParse_execExp(itemDef_s *item, int handle)
                                 expressionType);
                             return 0;
                         }
-                        item->rectHExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                        item->rectHExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                         if (parse_expression(handle, &item->rectHExp, 200))
                             return 1;
                     }
                     else
                     {
-                        item->rectWExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                        item->rectWExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                         if (parse_expression(handle, &item->rectWExp, 200))
                             return 1;
                     }
@@ -5869,14 +5718,14 @@ int __cdecl ItemParse_execExp(itemDef_s *item, int handle)
             }
             else
             {
-                item->materialExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+                item->materialExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
                 if (parse_expression(handle, &item->materialExp, 200))
                     return 1;
             }
         }
         else
         {
-            item->textExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+            item->textExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
             if (parse_expression(handle, &item->textExp, 200))
                 return 1;
         }
@@ -5885,7 +5734,7 @@ int __cdecl ItemParse_execExp(itemDef_s *item, int handle)
     {
         flags = item->window.dynamicFlags[0];
         Window_SetDynamicFlags(0, &item->window, flags | 4);
-        item->visibleExp.entries = (expressionEntry **)Z_Malloc(2400, "ItemParse_execExp", 34);
+        item->visibleExp.entries = (expressionEntry **)Z_Malloc(600 * sizeof(expressionEntry *), "ItemParse_execExp", 34);
         if (parse_expression(handle, &item->visibleExp, 200))
             return 1;
     }

@@ -227,7 +227,7 @@ void __cdecl R_AddDObjToScene(
                 sceneModel->obj = obj;
                 sceneModel->entnum = entnum;
                 scene.dpvs.sceneXModelIndex[entnum] = sceneEntIndex;
-                sceneModel->cachedLightingHandle = (uint16_t *)LongNoSwap((uint32_t)pose);
+                sceneModel->cachedLightingHandle = const_cast<uint16_t *>(&pose->lightingHandle);
                 radius = XModelGetRadius(model);
                 CG_GetPoseOrigin(pose, sceneModel->placement.base.origin);
                 CG_GetPoseAngles(pose, angles);
@@ -510,7 +510,7 @@ const XSurface *__cdecl R_GetXSurface(uint32_t *modelSurf, surfaceType_t surfTyp
 {
     iassert( modelSurf );
     iassert( R_IsModelSurfaceType( surfType ) );
-    return (const XSurface *)modelSurf[1];
+    return reinterpret_cast<const GfxModelSkinnedSurface *>(modelSurf)->xsurf;
 }
 
 void __cdecl R_AddXModelSurfacesCamera(
@@ -560,8 +560,8 @@ void __cdecl R_AddXModelSurfacesCamera(
         skinnedCachedOffset = modelSurf->surf.skinnedCachedOffset;
         if (modelSurf->surf.skinnedCachedOffset == -3)
         {
-            ++surfId;
-            modelSurf = (GfxModelRigidSurface*)((char*)modelSurf + 4);
+            surfId += R_MODEL_SURF_SKIP_BYTES / sizeof(uint32_t);
+            modelSurf = (GfxModelRigidSurface*)((char*)modelSurf + R_MODEL_SURF_SKIP_BYTES);
         }
         else
         {
@@ -696,8 +696,8 @@ GfxDrawSurf *__cdecl R_AddXModelSurfaces(
         skinnedCachedOffset = modelSurf->surf.skinnedCachedOffset;
         if (modelSurf->surf.skinnedCachedOffset == -3)
         {
-            ++surfId;
-            modelSurf = (GfxModelRigidSurface *)((char *)modelSurf + 4);
+            surfId += R_MODEL_SURF_SKIP_BYTES / sizeof(uint32_t);
+            modelSurf = (GfxModelRigidSurface *)((char *)modelSurf + R_MODEL_SURF_SKIP_BYTES);
         }
         else
         {
@@ -829,17 +829,17 @@ LABEL_15:
             if (*(uint32_t *)modelSurf == -2)
             {
                 surfType = SF_BEGIN_XMODEL;
-                surfSize = 56;
+                surfSize = sizeof(GfxModelRigidSurface);
             }
             else
             {
                 if (*(uint32_t *)modelSurf == -3)
                 {
-                    surfSize = 4;
+                    surfSize = R_MODEL_SURF_SKIP_BYTES;
                     goto LABEL_22;
                 }
                 surfType = SF_XMODEL_SKINNED;
-                surfSize = 24;
+                surfSize = sizeof(GfxModelSkinnedSurface);
             }
             iassert(*material);
             iassert(rgp.sortedMaterials[(*material)->info.drawSurf.fields.materialSortedIndex] == *material);
@@ -851,8 +851,8 @@ LABEL_15:
                     R_WarnOncePerFrame(R_WARN_MAX_SCENE_DRAWSURFS, "R_AddDObjSurfacesCamera");
                     goto LABEL_45;
                 }
-                *((_WORD *)modelSurf + 7) = gfxEntIndex;
-                *((_WORD *)modelSurf + 8) = lightingHandle;
+                reinterpret_cast<GfxModelSkinnedSurface *>(modelSurf)->info.gfxEntIndex = gfxEntIndex;
+                reinterpret_cast<GfxModelSkinnedSurface *>(modelSurf)->info.lightingHandle = lightingHandle;
                 surfId = modelSurf - (char *)frontEndDataOut;
                 iassert( !(surfId & 3) );
                 surfId = surfId >> 2;
@@ -958,13 +958,13 @@ GfxDrawSurf *__cdecl R_AddDObjSurfaces(
             if (*(uint32_t *)modelSurf == -2)
             {
                 surfType = SF_XMODEL_RIGID;
-                surfSize = 56;
+                surfSize = sizeof(GfxModelRigidSurface);
             }
             else
             {
                 if (*(uint32_t *)modelSurf == -3)
                 {
-                    surfSize = 4;
+                    surfSize = R_MODEL_SURF_SKIP_BYTES;
                 LABEL_17:
                     ++subMatIndex;
                     ++material;
@@ -972,7 +972,7 @@ GfxDrawSurf *__cdecl R_AddDObjSurfaces(
                     goto LABEL_18;
                 }
                 surfType = SF_XMODEL_SKINNED;
-                surfSize = 24;
+                surfSize = sizeof(GfxModelSkinnedSurface);
             }
             iassert(*material);
             iassert(rgp.sortedMaterials[(*material)->info.drawSurf.fields.materialSortedIndex] == *material);
@@ -1456,7 +1456,7 @@ void __cdecl R_GenerateSortedDrawSurfs(
     MaterialTechniqueType EmissiveTechnique; // eax
     char DoesDrawSurfListInfoNeedFloatz; // al
     float *viewOrigin; // [esp+BCh] [ebp-BCh]
-    uint32_t data[20]; // [esp+C4h] [ebp-B4h] BYREF
+    ShadowCookieCmd shadowCookieCmd{}; // [esp+C4h] [ebp-B4h] BYREF
     float bestError; // [esp+120h] [ebp-58h]
     uint32_t bestNum; // [esp+124h] [ebp-54h]
     float error; // [esp+128h] [ebp-50h]
@@ -1687,11 +1687,11 @@ void __cdecl R_GenerateSortedDrawSurfs(
         }
         else if (dynamicShadowType == SHADOW_COOKIE)
         {
-            data[0] = (uint32_t)viewParmsDpvs;
-            data[1] = (uint32_t)viewParmsDraw;
-            data[2] = (uint32_t)&viewInfo->shadowCookieList;
-            data[3] = viewInfo->localClientNum;
-            R_AddWorkerCmd(WRKCMD_SHADOW_COOKIE, (uint8_t *)data);
+            shadowCookieCmd.viewParmsDpvs = viewParmsDpvs;
+            shadowCookieCmd.viewParmsDraw = viewParmsDraw;
+            shadowCookieCmd.shadowCookieList = &viewInfo->shadowCookieList;
+            shadowCookieCmd.localClientNum = viewInfo->localClientNum;
+            R_AddWorkerCmd(WRKCMD_SHADOW_COOKIE, reinterpret_cast<uint8_t *>(&shadowCookieCmd));
         }
     }
     R_SetAllStaticModelLighting();
@@ -2056,7 +2056,7 @@ void R_GenerateMarkVertsForDynamicModels()
         entnum = sceneEntity->entnum;
         if (entnum < gfxCfg.entnumOrdinaryEnd && (scene.sceneDObjVisData[0][dobjIndex] & 1) != 0)
         {
-            lightHandle = *(_WORD *)LongNoSwap((uint32_t)sceneEntity->info.pose);
+            lightHandle = sceneEntity->info.pose->lightingHandle;
             FX_GenerateMarkVertsForEntDObj(
                 scene.dpvs.localClientNum,
                 entnum,

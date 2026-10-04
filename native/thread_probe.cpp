@@ -6,6 +6,7 @@
 #include <Psapi.h>
 #include <cstdio>
 #include <cwchar>
+#include "debug_context.hpp"
 
 // Inspect only the explicitly named owned fixture. Each thread is resumed
 // before moving to the next; no process-wide debugger or persistent hook stays.
@@ -22,9 +23,9 @@ int wmain(int argc,wchar_t** argv){
         if(entry.th32OwnerProcessID!=pid)continue;
         HANDLE thread=OpenThread(THREAD_GET_CONTEXT|THREAD_SUSPEND_RESUME|THREAD_QUERY_INFORMATION,FALSE,entry.th32ThreadID);if(!thread)continue;
         if(SuspendThread(thread)==DWORD(-1)){CloseHandle(thread);continue;}
-        std::printf("Thread %lu\n",entry.th32ThreadID);CONTEXT context{};context.ContextFlags=CONTEXT_FULL;
-        if(GetThreadContext(thread,&context)){
-            STACKFRAME64 frame{};frame.AddrPC={context.Eip,0,AddrModeFlat};frame.AddrFrame={context.Ebp,0,AddrModeFlat};frame.AddrStack={context.Esp,0,AddrModeFlat};
+        std::printf("Thread %lu\n",entry.th32ThreadID);khz::DebugContext context;
+        if(context.capture(process,thread)){
+            auto& frame=context.frame;
             for(unsigned n=0;n<32&&frame.AddrPC.Offset;++n){
                 alignas(SYMBOL_INFO) char buffer[sizeof(SYMBOL_INFO)+1024]{};auto* symbol=reinterpret_cast<SYMBOL_INFO*>(buffer);symbol->SizeOfStruct=sizeof(SYMBOL_INFO);symbol->MaxNameLen=1023;
                 DWORD64 offset=0;IMAGEHLP_LINE64 line{};line.SizeOfStruct=sizeof(line);DWORD displacement=0;
@@ -32,7 +33,7 @@ int wmain(int argc,wchar_t** argv){
                     std::printf("  %s + %llu",symbol->Name,offset);
                     if(SymGetLineFromAddr64(process,frame.AddrPC.Offset,&displacement,&line))std::printf(" (%s:%lu)",line.FileName,line.LineNumber);std::puts("");
                 }else std::printf("  %llx\n",frame.AddrPC.Offset);
-                if(!StackWalk64(IMAGE_FILE_MACHINE_I386,process,thread,&frame,&context,nullptr,SymFunctionTableAccess64,SymGetModuleBase64,nullptr))break;
+                if(!StackWalk64(context.machine,process,thread,&frame,context.registers(),nullptr,SymFunctionTableAccess64,SymGetModuleBase64,nullptr))break;
             }
         }
         ResumeThread(thread);CloseHandle(thread);

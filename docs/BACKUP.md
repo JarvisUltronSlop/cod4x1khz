@@ -2,7 +2,8 @@
 
 Repository: `JarvisUltronSlop/cod4x1khz`. The initial source checkpoint is on
 `main`, tagged **v0.1**. `vulkan-testing` starts at the same source commit and is
-the target for ongoing backups. The renderer remains Direct3D 9.
+the target for ongoing backups. Release 0.1 and the accepted root executable
+retain Direct3D 9; the branch's [native Vulkan work](VULKAN.md) is experimental.
 
 ## What is saved
 

@@ -12,4 +12,5 @@ unsigned validationErrors(IDirect3DDevice9* device);
 // recording, presentation, or a device lifetime barrier.
 const char* frameTelemetry();
 void nameResource(IUnknown* resource,const char* name);
+bool writeFrameTimings(IDirect3DDevice9* device,const char* path);
 }

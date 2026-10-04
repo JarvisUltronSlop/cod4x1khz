@@ -375,6 +375,7 @@ const char* KHZ_UIProbe(const char* action) {
         bool allowed = false;
         if (khz::admin::ValidateCommand(action + 8, commandName, sizeof(commandName))) {
             if (equal(commandName, "khz_scene") && Dvar_GetBool("khz_benchmark")) allowed = true;
+              if (equal(commandName, "r_vkWriteProfile") && Dvar_GetBool("khz_benchmark")) allowed = true;
             for (const char* candidate : {"fovscale", "cg_fovScale", "com_maxfps", "r_vsync", "restoreunlocks", "khz_profile_selftest", "khz_test_ads", "khz_stall", "khz_dump_scripts", "screenshot", "vid_restart", "snd_restart"})
                 if (equal(commandName, candidate)) allowed = true;
         }

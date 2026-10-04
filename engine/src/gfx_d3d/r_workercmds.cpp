@@ -24,6 +24,25 @@
 
 #include <setjmp.h>
 
+namespace {
+struct VulkanWork {void (*task)(void*,unsigned);void* data;unsigned remaining=0;SRWLOCK lock=SRWLOCK_INIT;CONDITION_VARIABLE completed=CONDITION_VARIABLE_INIT;};
+struct VulkanRecordCmd {VulkanWork* work;unsigned index;};
+VulkanRecordCmd g_vulkanRecordBuf[4];
+}
+void R_DispatchVulkanRecording(void (*task)(void*,unsigned),void* data,unsigned count){
+    iassert(count>=1&&count<=4);
+    bool enabled=false;
+    if(r_smp_worker->current.enabled&&sys_smp_allowed->current.enabled)
+        for(unsigned n=0;n<R_RENDER_WORKER_LIMIT;++n)enabled|=r_smp_worker_thread[n]->current.enabled;
+    if(!enabled){for(unsigned n=0;n<count;++n)task(data,n);return;}
+    VulkanWork work{task,data,count-1};
+    for(unsigned n=1;n<count;++n){VulkanRecordCmd cmd{&work,n};R_AddWorkerCmd(WRKCMD_VULKAN_RECORD,reinterpret_cast<uint8_t*>(&cmd));}
+    task(data,0);
+    AcquireSRWLockExclusive(&work.lock);
+    while(work.remaining)SleepConditionVariableSRW(&work.completed,&work.lock,INFINITE,0);
+    ReleaseSRWLockExclusive(&work.lock);
+}
+
 void(__cdecl *g_cmdExecFailed[WRKCMD_COUNT])();
 volatile WorkerCmdType g_waitTypeMainThread;
 
@@ -364,6 +383,14 @@ void __cdecl R_ProcessWorkerCmdInternal(WorkerCmdType type, void *data)
     case WRKCMD_SKIN_XMODEL:
         R_SkinXModelCmd((WORD*)data);
         break;
+    case WRKCMD_VULKAN_RECORD:{
+        auto& cmd=*static_cast<VulkanRecordCmd*>(data);cmd.work->task(cmd.work->data,cmd.index);
+        // Completion and notification stay under the same lock. The caller
+        // cannot retire its stack record while a worker still notifies it.
+        AcquireSRWLockExclusive(&cmd.work->lock);--cmd.work->remaining;
+        WakeConditionVariable(&cmd.work->completed);ReleaseSRWLockExclusive(&cmd.work->lock);
+        break;
+    }
     default:
         if (!alwaysfails)
         {
@@ -382,7 +409,7 @@ void R_InitWorkerThreads()
     if (sys_smp_allowed->current.enabled)
     {
         R_InitWorkerCmds();
-        for (workerThreadIndexa = 0; workerThreadIndexa < 2; ++workerThreadIndexa)
+        for (workerThreadIndexa = 0; workerThreadIndexa < R_RENDER_WORKER_LIMIT; ++workerThreadIndexa)
         {
             if (!Sys_SpawnWorkerThread((void(__cdecl *)(uint32_t))R_WorkerThread, workerThreadIndexa))
                 Com_Error(ERR_FATAL, "Failed to create thread");
@@ -392,6 +419,9 @@ void R_InitWorkerThreads()
 
 int R_InitWorkerCmds()
 {
+    g_workerCmds[WRKCMD_VULKAN_RECORD].buf=reinterpret_cast<uint8_t*>(g_vulkanRecordBuf);
+    g_workerCmds[WRKCMD_VULKAN_RECORD].bufSize=sizeof(g_vulkanRecordBuf);
+    g_workerCmds[WRKCMD_VULKAN_RECORD].dataSize=sizeof(VulkanRecordCmd);
     g_workerCmds[WRKCMD_UPDATE_FX_SPOT_LIGHT].buf = (uint8_t *)g_UpdateFxSpotLightBuf;
     g_workerCmds[WRKCMD_UPDATE_FX_SPOT_LIGHT].bufSize = 12;
     g_workerCmds[WRKCMD_UPDATE_FX_SPOT_LIGHT].dataSize = 12;
@@ -573,7 +603,7 @@ void __cdecl R_UpdateActiveWorkerThreads()
     uint32_t workerIter; // [esp+8h] [ebp-4h]
 
     iassert( Sys_IsMainThread() );
-    for (i = 0; i < 2; ++i)
+    for (i = 0; i < R_RENDER_WORKER_LIMIT; ++i)
     {
         if (r_smp_worker_thread[i]->modified)
         {
@@ -586,15 +616,15 @@ LABEL_9:
     if (v0)
     {
         Com_SyncThreads();
-        for (workerIter = 0; workerIter < 2; ++workerIter)
+        for (workerIter = 0; workerIter < R_RENDER_WORKER_LIMIT; ++workerIter)
         {
             if (r_smp_worker_thread[workerIter]->modified)
             {
                 Dvar_ClearModified((dvar_s*)r_smp_worker_thread[workerIter]);
                 if (r_smp_worker_thread[workerIter]->current.enabled)
-                    Sys_ResumeThread((ThreadContext_t)(workerIter + 2));
+                    Sys_ResumeThread(Sys_WorkerContext(workerIter));
                 else
-                    Sys_SuspendThread((ThreadContext_t)(workerIter + 2));
+                    Sys_SuspendThread(Sys_WorkerContext(workerIter));
             }
         }
         R_ReleaseThreadOwnership();

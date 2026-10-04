@@ -2,8 +2,9 @@
 
 **Release 0.1 is an experimental Direct3D 9 development checkpoint (Build 86).**
 It preserves the current playable multiplayer build and its evidence; the complete
-public CoD4x feature and gameplay acceptance gates remain open. Vulkan has not
-been implemented. The `vulkan-testing` branch starts from this checkpoint.
+public CoD4x feature and gameplay acceptance gates remain open. The `vulkan-testing`
+branch contains an experimental native Vulkan 1.3 renderer; the accepted root
+executable and release 0.1 retain DX9. Vulkan is not yet performance-qualified.
 
 Experimental Windows Win32 client/server built from KisakCOD at
 `8aadf94cc82795d6829ca06052996a5ec79001c3`. CoD4x Server at
@@ -19,7 +20,7 @@ repository's release archives preserve the owner's local workspace, including
 owned retail data; they are personal backups, not redistributable game packages.
 
 See [Windows build instructions](docs/BUILD.md), [release 0.1 state](docs/RELEASE-0.1.md),
-[backup and restoration](docs/BACKUP.md), and [the deferred Vulkan work](docs/VULKAN.md).
+[backup and restoration](docs/BACKUP.md), and [Vulkan development status](docs/VULKAN.md).
 
 ## Build and run
 

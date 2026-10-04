@@ -3218,6 +3218,10 @@ char __cdecl R_PreCreateWindow()
             config.validation=Dvar_GetBool("r_vkValidation");
             config.compareD3D9=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkCompare");
             config.cacheBindings=Dvar_GetBool("r_vkStateCache");
+            config.cacheDescriptors=Dvar_GetBool("r_vkDescriptorCache");
+            config.recordingWorkers=Dvar_GetInt("r_vkRecordingWorkers");
+            config.dispatchRecording=R_DispatchVulkanRecording;
+            config.recordFrameTimings=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkProfile");
             dx.d3d9=gfx::legacy::createVulkanInterface(config);
             Com_Printf(CON_CHANNEL_GFX,"Native Vulkan selected (experimental)\n");
         } else
@@ -3780,12 +3784,12 @@ char __cdecl R_InitHardware(const GfxWindowParms *wndParms)
     R_InitSystems();
     KISAK_NULLSUB();
     R_FinishAttachingToWindow(wndParms);
-    for (workerIndex = 0; workerIndex < 2; ++workerIndex)
+    for (workerIndex = 0; workerIndex < R_RENDER_WORKER_LIMIT; ++workerIndex)
     {
         iassert( r_smp_worker_thread[workerIndex] );
         Dvar_ClearModified((dvar_s*)r_smp_worker_thread[workerIndex]);
         if (r_smp_worker_thread[workerIndex]->current.enabled)
-            Sys_ResumeThread((ThreadContext_t)(workerIndex + 2));
+            Sys_ResumeThread(Sys_WorkerContext(workerIndex));
     }
     return 1;
 }

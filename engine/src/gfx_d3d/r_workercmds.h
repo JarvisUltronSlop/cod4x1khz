@@ -23,7 +23,8 @@ enum WorkerCmdType : __int32
     WRKCMD_GENERATE_MARK_VERTS = 0xE,
     WRKCMD_SKIN_CACHED_STATICMODEL = 0xF,
     WRKCMD_SKIN_XMODEL = 0x10,
-    WRKCMD_COUNT = 0x11,
+    WRKCMD_VULKAN_RECORD = 0x11,
+    WRKCMD_COUNT = 0x12,
 };
 inline WorkerCmdType &operator++(WorkerCmdType &e) {
     e = static_cast<WorkerCmdType>(static_cast<int>(e) + 1);
@@ -66,12 +67,13 @@ int R_InitWorkerCmdsPos();
 void __cdecl  R_WorkerThread();
 void __cdecl R_AddWorkerCmd(WorkerCmdType type, uint8_t *data);
 void __cdecl R_UpdateActiveWorkerThreads();
+void R_DispatchVulkanRecording(void (*task)(void*,unsigned),void* data,unsigned count);
 void __cdecl R_WaitFrontendWorkerCmds();
 int __cdecl R_FinishedWorkerCmds();
 void __cdecl R_WaitWorkerCmds();
 void __cdecl R_ProcessWorkerCmdsWithTimeout(int(__cdecl *timeout)(), int forever);
 
-static int(__cdecl *g_cmdOutputBusy[17])(void *) =
+static int(__cdecl *g_cmdOutputBusy[WRKCMD_COUNT])(void *) =
 {
   NULL,
   NULL,
@@ -89,5 +91,6 @@ static int(__cdecl *g_cmdOutputBusy[17])(void *) =
   &R_EndFenceBusy,
   &R_EndFenceBusy,
   &R_EndFenceBusy,
-  &R_EndFenceBusy
+  &R_EndFenceBusy,
+  NULL
 }; // idb

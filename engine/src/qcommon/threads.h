@@ -11,6 +11,8 @@ enum ThreadOwner : __int32
 };
 
 uint32_t __cdecl Sys_GetCpuCount();
+uint32_t Sys_GetAvailableCpuCount();
+ThreadContext_t Sys_WorkerContext(unsigned index);
 void __cdecl Sys_InitMainThread();
 uint32_t __cdecl Sys_GetCurrentThreadId();
 void __cdecl Sys_InitThread(ThreadContext_t threadContext);

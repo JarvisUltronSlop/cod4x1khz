@@ -82,6 +82,10 @@ static const char* s_threadNames[THREAD_CONTEXT_COUNT] =
     "Database",
 #ifdef COD4X1KHZ
     "ClientSimulation",
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    "Worker2",
+    "Worker3",
+#endif
 #endif
 };
 #elif KISAK_SP
@@ -105,6 +109,18 @@ static const char *s_threadNames[THREAD_CONTEXT_COUNT] =
 uint32_t __cdecl Sys_GetCpuCount()
 {
     return s_cpuCount;
+}
+uint32_t Sys_GetAvailableCpuCount(){
+    DWORD_PTR process=0,system=0;
+    if(!GetProcessAffinityMask(GetCurrentProcess(),&process,&system))return Sys_GetCpuCount();
+    unsigned count=0;while(process){count+=unsigned(process&1);process>>=1;}return count;
+}
+ThreadContext_t Sys_WorkerContext(unsigned index){
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && defined(KISAK_MP)
+    iassert(index<4);
+    if(index>=2)return index==2?THREAD_CONTEXT_WORKER2:THREAD_CONTEXT_WORKER3;
+#endif
+    return static_cast<ThreadContext_t>(index+2);
 }
 
 void __cdecl Sys_EndLoadThreadPriorities()
@@ -342,8 +358,8 @@ bool __cdecl Sys_SpawnWorkerThread(void(__cdecl* function)(uint32_t), uint32_t t
 {
     ThreadContext_t threadContext; // [esp+0h] [ebp-4h]
 
-    threadContext = (ThreadContext_t)(threadIndex + 2);
-    if (threadHandle[threadIndex + 2])
+    threadContext = Sys_WorkerContext(threadIndex);
+    if (threadHandle[threadContext])
         MyAssertHandler(
             ".\\qcommon\\threads.cpp",
             1113,

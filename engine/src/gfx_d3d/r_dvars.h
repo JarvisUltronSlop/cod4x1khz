@@ -23,7 +23,12 @@ char __cdecl R_CheckDvarModified(const dvar_s *dvar);
 //extern const dvar_t **prof_probe;
 extern const dvar_t *prof_probe[5];
 //extern const dvar_t **r_smp_worker_thread;
-extern const dvar_t *r_smp_worker_thread[2];
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && defined(KISAK_MP)
+constexpr unsigned R_RENDER_WORKER_LIMIT=4;
+#else
+constexpr unsigned R_RENDER_WORKER_LIMIT=2;
+#endif
+extern const dvar_t *r_smp_worker_thread[R_RENDER_WORKER_LIMIT];
 extern const dvar_t *r_envMapMaxIntensity;
 extern const dvar_t *r_portalMinRecurseDepth;
 extern const dvar_t *r_dof_nearEnd;

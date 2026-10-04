@@ -19,6 +19,16 @@
 #include "r_staticmodelcache.h"
 
 #include <algorithm>
+#include <string>
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+#include <gfx/legacy_factory.h>
+static cmd_function_s vkProfileCommand;
+static void R_WriteVulkanProfile(){
+    if(Cmd_Argc()!=1||!Dvar_GetBool("khz_benchmark")||!Dvar_GetBool("khz_test_controls"))return;
+    const std::string path=std::string(Dvar_GetString("fs_homepath"))+"/vulkan/diagnostics/frame-timings.csv";
+    Com_Printf(CON_CHANNEL_GFX,"Vulkan profile export: %s\n",gfx::legacy::writeFrameTimings(dx.device,path.c_str())?"written":gfx::legacy::lastError());
+}
+#endif
 
 void __cdecl R_Cmd_ScreenshotJpeg()
 {
@@ -49,6 +59,9 @@ cmd_function_s R_StaticModelCacheFlush_f_VAR;
 
 void __cdecl R_RegisterCmds()
 {
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    Cmd_AddCommandInternal("r_vkWriteProfile",R_WriteVulkanProfile,&vkProfileCommand);
+#endif
 	Cmd_AddCommandInternal("screenshot", R_Cmd_Screenshot, &R_Cmd_Screenshot_VAR);
 	Cmd_AddCommandInternal("screenshotJpeg", R_Cmd_ScreenshotJpeg, &R_Cmd_ScreenshotJpeg_VAR);
 	Cmd_AddCommandInternal("imagelist", R_ImageList_f, &R_ImageList_f_VAR);
@@ -65,6 +78,9 @@ void __cdecl R_RegisterCmds()
 
 void __cdecl R_UnregisterCmds()
 {
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    Cmd_RemoveCommand("r_vkWriteProfile");
+#endif
 	Cmd_RemoveCommand("r_applyPicmip");
 	Cmd_RemoveCommand("screenshot");
 	Cmd_RemoveCommand("screenshotJpeg");

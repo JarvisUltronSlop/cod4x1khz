@@ -33,6 +33,7 @@
 
 
 bool g_steamInitialized = false;
+static bool steamApiActive = false;
 uint64_t g_steamID = 0;
 char g_steamName[64]{ 0 };
 
@@ -173,6 +174,7 @@ static void CreateAppIdFile()
 
 void Steam_Init()
 {
+    if (steamApiActive) return;
 	CreateAppIdFile();
 	SetEnvironmentVariableA("SteamAppId", APPID_STR);
 	SetEnvironmentVariableA("SteamGameId", APPID_STR);
@@ -183,10 +185,12 @@ void Steam_Init()
 		Com_Printf(CON_CHANNEL_DONT_FILTER, "[Kisak] SteamAPI_Init() failed. Is the Steam Client Running? Do you own COD4?");
 		return;
 	}
+    steamApiActive = true;
 
 	if (!SteamUser()->BLoggedOn())
 	{
 		Com_Printf(CON_CHANNEL_DONT_FILTER, "[Kisak] Steam User isn't Logged On.");
+        Steam_Shutdown();
 		return;
 	}
 
@@ -200,12 +204,20 @@ void Steam_Init()
 	callbackHandler = new SteamCallbackHandler();
 }
 
-// (Currently Unused)
 void Steam_Shutdown()
 {
-	SteamAPI_Shutdown();
-
-	delete callbackHandler;
+    if (!steamApiActive) return;
+    // Unregister callbacks and cancel the outstanding ticket while their API
+    // context is still alive. Call only after client/server owners have stopped.
+    Steam_CancelClientTicket();
+    SteamClient()->SetWarningMessageHook(nullptr);
+    delete callbackHandler;
+    callbackHandler = nullptr;
+    SteamAPI_Shutdown();
+    steamApiActive = false;
+	steamClientTicketSize = 0;
+    memset(steamClientTicket, 0, sizeof(steamClientTicket));
+    { std::lock_guard<std::mutex> guard(kickPlayerMutex); steamIDsToKick.clear(); }
 
 	g_steamInitialized = false;
 	memset(g_steamName, 0, 64);

@@ -9,6 +9,8 @@
 #include <win32/win_local.h>
 #include "com_bsp.h"
 #include <gfx_d3d/rb_backend.h>
+#include <qcommon/threads.h>
+#include <gfx_d3d/r_dvars.h>
 
 //Line 53199 : 0006 : 006e75b8       struct clipMap_t cm        82e975b8     cm_load.obj
 clipMap_t cm;
@@ -37,8 +39,8 @@ static void CM_InitAllThreadData()
     CM_InitThreadData(THREAD_CONTEXT_BACKEND);
 
     // r_smp_worker threads
-    for (workerIndex = 0; workerIndex < 2; ++workerIndex)
-        CM_InitThreadData(workerIndex + 2);
+    for (workerIndex = 0; workerIndex < R_RENDER_WORKER_LIMIT; ++workerIndex)
+        CM_InitThreadData(Sys_WorkerContext(workerIndex));
 
 #if defined(COD4X1KHZ) && defined(KISAK_MP)
     // Called during the parked map load, before the simulation owner starts.
@@ -79,7 +81,11 @@ void __cdecl CM_InitThreadData(uint32_t threadContext)
     TraceThreadInfo *traceThreadInfo; // [esp+8h] [ebp-4h]
 
 #if defined(COD4X1KHZ) && defined(KISAK_MP)
-    iassert(threadContext < THREAD_CONTEXT_TRACE_COUNT || threadContext == THREAD_CONTEXT_CLIENT_SIM);
+    iassert(threadContext < THREAD_CONTEXT_TRACE_COUNT || threadContext == THREAD_CONTEXT_CLIENT_SIM
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+        || threadContext == THREAD_CONTEXT_WORKER2 || threadContext == THREAD_CONTEXT_WORKER3
+#endif
+    );
 #else
     bcassert(threadContext, THREAD_CONTEXT_TRACE_COUNT);
 #endif

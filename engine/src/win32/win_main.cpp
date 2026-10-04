@@ -412,6 +412,7 @@ void __cdecl  Sys_Quit()
 #ifdef COD4X1KHZ
     KHZ_ShutdownHost();
 #endif
+    Steam_Shutdown();
 	Sys_EnterCriticalSection(CRITSECT_COM_ERROR);
 	timeEndPeriod(1);
 	Sys_SpawnQuitProcess();

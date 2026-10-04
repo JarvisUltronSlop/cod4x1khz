@@ -32,7 +32,7 @@ changes do not establish that all gameplay or public CoD4x acceptance gates pass
   dynamic geometry lifetimes, queries, presentation gamma, copies, scaled
   blits, normalized depth bias and hardware shadow comparisons (including
   projection and filtered edges), R32F channel defaults, packed particle
-  inputs and divergent alpha-discard/slope-bias interaction. Latest **102 matched image pairs** have SSIM
+  inputs, order-sensitive parallel recording and divergent alpha-discard/slope-bias interaction. Latest **108 matched image pairs** have SSIM
   **1.0**, zero differing color channels and zero
   validation/synchronization errors on the RX 9070 XT.
 - An actual stock-interface GPU regression exercises native resource locks,
@@ -60,6 +60,22 @@ changes do not establish that all gameplay or public CoD4x acceptance gates pass
 - Read-only GPU query polling uses the facade's lifetime/submission mutex and
   does not transfer submission ownership or wait for unrelated work. Resource
   mutations and submissions retain their acknowledged owner barriers.
+- Pipeline and descriptor lookups use bounded indexes with full key/generation
+  comparisons. Per-flight descriptor pools persist across completed frames;
+  stale shader/image generations are pruned after GPU completion. Existing-asset
+  frontend uploads join immutable submissions without transferring GPU ownership;
+  owner-thread zone uploads remain immediate to avoid accumulating whole maps.
+- The existing renderer worker pool now supports up to four workers with separate
+  TLS/collision scratch. Large prepared draw batches use independent per-flight
+  secondary command pools; small batches and queries remain inline. The submission
+  owner prepares resources and preserves draw order. Parallel resource/material
+  preparation remains pending; four recording workers alone did not improve the
+  checked view's throughput beyond run variability.
+- Benchmark-only timing storage records individual presentations and every
+  ordered upload/draw/readback submission. GPU timestamps join to their original
+  serials. Export drains the last one/two timestamp pairs at an explicit diagnostic
+  barrier; ordinary frames do not wait for this export. The real-GPU regression
+  retains all 24 displayed frames and 97 submissions with complete GPU coverage.
 - The loaded-world particle defect was traced to slope derivatives evaluated
   after divergent `texkill`. A GPU checker-mask regression failed before the
   fix (178 maximum channel error) and passes afterward. Rasterizer bias is now
@@ -70,6 +86,10 @@ changes do not establish that all gameplay or public CoD4x acceptance gates pass
   Captures are under `results/vulkan-world-20261004-044755` and
   `results/vulkan-world-20261004-045038`. Remaining differences were small edge
   and rounding differences; this does not qualify other maps/effects/options.
+  With four recording workers, a later checked Killhouse capture
+  (`results/vulkan-world-20261004-053243`) reached SSIM **0.99998354** and zero
+  validation errors. Comparison mirroring has substantial overhead and cannot
+  serve as a throughput measurement.
 
 Archived settings are `r_graphicsApi auto|vulkan|d3d9`, `r_vkDevice -1` or an
 explicit device index, and `r_vkFramesInFlight 1|2` (default 2). `auto` selects DX9
@@ -78,8 +98,15 @@ uncapped, `com_maxfps 1000` caps rendering, and `r_vsync` retains its stock role
 `r_vkValidation` is a development diagnostic. Unsupported operations report
 explicit errors; they are not accepted as implemented features.
 `r_vkCompare` is an isolated benchmark-only image comparison, with substantial
-overhead. `r_vkStateCache` is a development A/B control, not an archived stock
-setting. Disable validation and comparison for throughput measurements.
+overhead. `r_vkStateCache`, `r_vkDescriptorCache` and `r_vkRecordingWorkers 1..4`
+are development A/B controls, not archived stock settings. `r_vkProfile` enables
+bounded timing capture only in isolated benchmark/test profiles; `r_vkWriteProfile`
+exports it outside measurement. Disable validation and comparison for throughput
+measurements. The world probe always checks camera clearance and position; its
+`--capture` option adds a lossless image after measurement.
+It also retains pre-launch/post-start/post-quit system and Steam memory snapshots,
+plus client/server CPU, private memory and WDDM GPU engine samples. GPU busy time
+is reported as a diagnostic and is not equated to shader throughput.
 
 ## Development builds and diagnostics
 
@@ -94,6 +121,8 @@ cmake --build build/Release --config Release --target KisakCOD-mp khz_launch_pro
 python ./scripts/native_vulkan_startup_probe.py
 python ./scripts/native_vulkan_world_probe.py --no-validation --compare --capture --samples 2 --map mp_crash --resolution 720p
 python ./scripts/compare_native_world.py ./results/vulkan-world-<capture-id>
+python ./scripts/native_vulkan_world_probe.py --no-validation --samples 8 --cap 0 --recording-workers 4
+python ./scripts/memory_snapshot.py --output ./results/memory-before-game.json
 python ./scripts/native_render_scene_probe.py --experimental --api vulkan --map mp_killhouse --resolution 480p --timing-seconds 60
 ```
 
@@ -106,8 +135,8 @@ separate profile/home and restores the original runtime binary. Ordinary
 ## Remaining delivery gates
 
 Loaded-world material/effect coverage, stock options, cinematics, restarts and
-map lifetimes still need native validation. Worker-pool extension and parallel
-command recording remain open. Stock image comparison must reach SSIM 0.995
+map lifetimes still need native validation. Parallel preparation and matched
+performance improvement remain open. Stock image comparison must reach SSIM 0.995
 without missing geometry or effects; fixture parity cannot substitute for it.
 Earlier match-start failures exposed idle event-query behavior, dynamic upload
 capacity, dirty volume transfers, depth bias and shadow image-view/comparison
@@ -130,11 +159,37 @@ Short, camera-checked uncapped Killhouse measurements rose from about 59 FPS
 before scope batching to 127 FPS after batching, about 199 FPS after packet
 capture changes, and 263--272 FPS after binding/constant reuse and query polling.
 These are diagnostic progress measurements, not alternating warmed acceptance.
-The latest short run (`results/vulkan-world-20261004-050223`) recorded about
+The earlier short run (`results/vulkan-world-20261004-050223`) recorded about
 1.68 ms of Vulkan recording, 0.35 ms of GPU work, 0.42 ms of resource recycling
 and 0.09 ms of owner-handoff wait per displayed frame. CPU recording and frontend
 work remain bottlenecks; GPU occupancy cannot be improved by removing FPS caps
-alone. Frame p50/p95/p99 profiling and parallel recording remain open.
+alone.
+
+Camera-checked fixed-view diagnostics with one and four recording workers reached
+about **282.5/281.9 FPS**, respectively (`053552`/`054020`). Four workers reduced
+command recording, but serial preparation remained about **1.39 ms** per display.
+The four-worker frame-time p50/p95/p99 was **3.49/3.95/4.37 ms**. Its old GPU
+coverage was incomplete because immediate texture uploads were omitted; that
+result is retained with its limitation. Complete upload/readback/export capture
+now passes the native GPU regression, but needs another live game run. Persistent
+descriptors and queued frontend uploads have passed native validation and exact
+DX9 parity; their in-game throughput benefit has **not yet been measured**.
+Earlier `052217`/`053357` uncapped probes did not place a checked camera and must
+not be compared with checked-view FPS. The probe now requires camera checks even
+without screenshots.
+
+All **41** current native suites pass (`results/vulkan-continuation-native-tests.log`).
+The GPU presentation regression passes one/two frames in flight, minimize/restore
+and resize with zero validation errors and 108 exact image pairs. These fixtures
+do not substitute for actual stock option/restart/map tests.
+
+Steam held the excess resident memory observed during testing. Closing it restored
+about 22 GiB of available system RAM; no game/test process remained. Native GPU
+tests afterward left memory stable. The experimental client now calls the previously
+unused Steam API shutdown path after stopping its owners and unregisters callbacks
+before shutdown. This inherited cleanup bug is fixed in source and compiles, but
+is not a proven cause of Steam's shared-memory accumulation and still needs live
+launch/quit validation. See [the memory observation](memory-observation-20261004.md).
 
 The 60-second walking run
 `results/native-render-scene86-mp_killhouse-480p-20261004-050742-966300`

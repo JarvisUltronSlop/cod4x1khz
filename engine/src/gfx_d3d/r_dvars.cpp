@@ -14,7 +14,7 @@ const dvar_t *r_vkFramesInFlight;
  //const dvar_t **prof_probe;
  const dvar_t *prof_probe[5];
  //const dvar_t **r_smp_worker_thread;
- const dvar_t *r_smp_worker_thread[2];
+ const dvar_t *r_smp_worker_thread[R_RENDER_WORKER_LIMIT];
  const dvar_t *r_envMapMaxIntensity;
  const dvar_t *r_portalMinRecurseDepth;
  const dvar_t *r_dof_nearEnd;
@@ -876,6 +876,10 @@ const dvar_t *r_vkFramesInFlight;
      r_smp_worker = Dvar_RegisterBool("r_smp_worker", true, DVAR_NOFLAG, "Process renderer front end in a separate thread");
      r_smp_worker_thread[0] = R_RegisterWorkerThreadDvar("r_smp_worker_thread0", 0);
      r_smp_worker_thread[1] = R_RegisterWorkerThreadDvar("r_smp_worker_thread1", 1u);
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && defined(KISAK_MP)
+     r_smp_worker_thread[2] = R_RegisterWorkerThreadDvar("r_smp_worker_thread2", 2u);
+     r_smp_worker_thread[3] = R_RegisterWorkerThreadDvar("r_smp_worker_thread3", 3u);
+#endif
      r_aaAlpha = Dvar_RegisterEnum("r_aaAlpha", s_aaAlphaNames, 1, DVAR_ARCHIVE, "Transparency anti-aliasing method");
      r_aaSamples = Dvar_RegisterInt(
          "r_aaSamples",
@@ -1479,6 +1483,9 @@ const dvar_t *r_vkFramesInFlight;
      Dvar_RegisterBool("r_vkValidation",false,DVAR_NOFLAG,"Enable project-local Vulkan GPU and synchronization validation for development");
      Dvar_RegisterBool("r_vkCompare",false,DVAR_NOFLAG,"Benchmark-only stock draw/resource mirroring into a private DX9 visual reference");
      Dvar_RegisterBool("r_vkStateCache",true,DVAR_NOFLAG,"Development A/B control for Vulkan binding and immutable constant reuse");
+     Dvar_RegisterBool("r_vkDescriptorCache",true,DVAR_NOFLAG,"Development A/B control for generation-checked persistent Vulkan descriptors");
+     Dvar_RegisterInt("r_vkRecordingWorkers",4,1,4,DVAR_NOFLAG,"Development A/B limit for the existing renderer pool's Vulkan recording tasks");
+     Dvar_RegisterBool("r_vkProfile",true,DVAR_NOFLAG,"Capture bounded per-submission frame timings in isolated benchmarks");
      Dvar_RegisterBool("r_vkShaderInventory",false,DVAR_NOFLAG,"Capture stock shader bytecode during zone loading in this profile's private home");
 #endif
      r_rendererInUse = Dvar_RegisterEnum("r_rendererInUse", s_rendererNames, 2, DVAR_ROM, "The renderer currently used");
@@ -1542,7 +1549,11 @@ const dvar_t *r_vkFramesInFlight;
      flags = 0;
      defaultState = 1;
      helpString = "Enable worker thread";
-     if (workerIndex + 2 >= Sys_GetCpuCount() || !sys_smp_allowed->current.enabled)
+     const auto processors=workerIndex<2?Sys_GetCpuCount():Sys_GetAvailableCpuCount();
+     // Extra workers leave four hardware contexts for presentation, gameplay,
+     // an owned server and other system work. Preserve stock affinity policy.
+     const auto required=workerIndex<2?workerIndex+3:workerIndex+5;
+     if (processors < required || !sys_smp_allowed->current.enabled)
      {
          flags = 64;
          defaultState = 0;

@@ -5,8 +5,13 @@ and measured evidence as a development checkpoint. It does not satisfy the
 full delivery gate. Repository setup added complete source snapshots, build and
 recovery instructions, a checked full-workspace backup and ongoing backup tooling.
 A later tooling-only fix creates `results/` for clean-clone native evidence tests;
-all forty suites pass after that directory exists. The game binaries and renderer
-remain unchanged. Vulkan implementation has not begun.
+all forty suites pass after that directory exists. The accepted root/runtime
+game binaries retain that DX9 checkpoint. Native Vulkan implementation is now
+under development on `vulkan-testing`; see [its status and remaining gates](VULKAN.md).
+The experimental Win32 client builds, 41 current native suites pass, and 108
+matched GPU image fixtures have SSIM 1.0 with zero validation errors. Checked
+stock captures pass the image threshold on two views, but Vulkan throughput
+remains below DX9 and the complete delivery gate remains open.
 
 The requested release has **not passed its delivery gate**. Build 86 is the
 current deployed client/server pair. All 40 native suites pass. Its camera-verified

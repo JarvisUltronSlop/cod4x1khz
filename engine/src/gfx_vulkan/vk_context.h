@@ -36,7 +36,7 @@ namespace gfx::vk {
  X(CreateShaderModule) X(DestroyShaderModule) X(CreateDescriptorSetLayout) X(DestroyDescriptorSetLayout) \
  X(CreatePipelineLayout) X(DestroyPipelineLayout) X(CreatePipelineCache) X(DestroyPipelineCache) \
  X(GetPipelineCacheData) X(CreateGraphicsPipelines) X(DestroyPipeline) \
- X(CreateDescriptorPool) X(DestroyDescriptorPool) X(ResetDescriptorPool) X(AllocateDescriptorSets) X(UpdateDescriptorSets) \
+ X(CreateDescriptorPool) X(DestroyDescriptorPool) X(ResetDescriptorPool) X(AllocateDescriptorSets) X(FreeDescriptorSets) X(UpdateDescriptorSets) \
  X(CreateQueryPool) X(DestroyQueryPool) X(GetQueryPoolResults) X(CmdResetQueryPool) X(CmdBeginQuery) X(CmdEndQuery) X(CmdWriteTimestamp2)
 struct Dispatch {
     PFN_vkGetInstanceProcAddr GetInstanceProcAddr = nullptr;

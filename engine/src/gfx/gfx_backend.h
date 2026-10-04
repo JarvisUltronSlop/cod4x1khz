@@ -77,6 +77,8 @@ struct FrameTiming {
     std::uint64_t serial = 0;
     std::uint64_t gpuSerial = 0;
     double gpuMs = 0, recordMs = 0, submitMs = 0, acquireMs = 0, presentMs = 0, recycleWaitMs = 0, swapchainMs = 0;
+    double prepareMs=0,commandsMs=0;
+    unsigned parallelBatches=0,parallelDraws=0;
     unsigned draws = 0;
 };
 struct Config {
@@ -84,6 +86,12 @@ struct Config {
     bool validation = false, vsync = false;
     bool compareD3D9 = false; // isolated immutable-packet visual diagnostic
     bool cacheBindings = true; // development A/B control
+    bool cacheDescriptors = true;
+    unsigned recordingWorkers = 1;
+    bool recordFrameTimings=false; // bounded isolated benchmark capture
+    // Synchronous dispatch into the engine's existing renderer worker pool.
+    // Each numbered task executes exactly once; all finish before returning.
+    void (*dispatchRecording)(void (*task)(void*,unsigned),void* data,unsigned count)=nullptr;
     std::string cacheDirectory;
 };
 struct ClearRect { int left=0,top=0,right=0,bottom=0; };

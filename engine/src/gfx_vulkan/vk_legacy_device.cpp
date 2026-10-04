@@ -12,13 +12,15 @@
 #include <chrono>
 #include <cstdio>
 #include <thread>
+#include <iomanip>
 
 namespace gfx::legacy {
 namespace {
 constexpr std::size_t packetLimit=8192,byteLimit=64*1024*1024;
-enum Metric {Frames,Draws,GpuSamples,GpuUs,WarmUs,RecordUs,SubmitUs,AcquireUs,PresentUs,RecycleUs,OwnerChanges,OwnerWaitUs,Submissions,MetricCount};
+enum Metric {Frames,Draws,GpuSamples,GpuUs,WarmUs,RecordUs,SubmitUs,AcquireUs,PresentUs,RecycleUs,OwnerChanges,OwnerWaitUs,Submissions,PrepareUs,CommandsUs,ParallelBatches,ParallelDraws,MetricCount};
 std::array<std::atomic<std::uint64_t>,MetricCount> metrics{};
 std::atomic<unsigned> publishedValidationErrors{0},activeStates{0};
+std::atomic<std::uint64_t> traceClockUs{0};
 using Timer=std::chrono::steady_clock;
 std::uint64_t microseconds(Timer::time_point start){return std::uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(Timer::now()-start).count());}
 void record(Metric metric,std::uint64_t value){metrics[metric].fetch_add(value,std::memory_order_relaxed);}
@@ -69,6 +71,14 @@ public:
 };
 class State final : public Host {
 public:
+    struct Trace {
+        double seconds=0;std::uint64_t serial=0,gpuSerial=0,display=0;
+        float frameMs=0,warmMs=0,prepareMs=0,commandsMs=0,recordMs=0,submitMs=0,acquireMs=0,presentMs=0,recycleMs=0,gpuMs=0;
+        unsigned draws=0,parallelBatches=0,parallelDraws=0,presentation=0;
+    };
+    std::vector<Trace> trace;
+    std::uint64_t traceCount=0,displayCount=0;
+    Timer::time_point previousPresent=Timer::now();
     vk::Backend backend;
     std::unique_ptr<Reference> reference;
     GammaPass gamma;
@@ -82,8 +92,20 @@ public:
     std::string failure;
     std::thread::id submissionOwner=std::this_thread::get_id();
     Config config;unsigned diagnosticPresentations=0;
-    explicit State(const Config& c):backend(c),gamma(backend),arena(byteLimit),config(c){commands.reserve(packetLimit);retainedSlots.reserve(retained.size());if(c.compareD3D9){auto compare=c;compare.device=-1;compare.compareD3D9=false;reference=std::make_unique<Reference>(compare);}activeStates.fetch_add(1,std::memory_order_relaxed);}
+    explicit State(const Config& c):backend(c),gamma(backend),arena(byteLimit),config(c){commands.reserve(packetLimit);retainedSlots.reserve(retained.size());if(c.recordFrameTimings)trace.resize(524288);if(c.compareD3D9){auto compare=c;compare.device=-1;compare.compareD3D9=false;reference=std::make_unique<Reference>(compare);}activeStates.fetch_add(1,std::memory_order_relaxed);}
     ~State(){activeStates.fetch_sub(1,std::memory_order_relaxed);}
+    void timing(const FrameTiming& timing,bool present,std::uint64_t warmUs=0){
+        record(Submissions,1);if(present)record(Frames,1);record(Draws,timing.draws);record(WarmUs,warmUs);recordMs(RecordUs,timing.recordMs);recordMs(SubmitUs,timing.submitMs);recordMs(AcquireUs,timing.acquireMs);recordMs(PresentUs,timing.presentMs);recordMs(RecycleUs,timing.recycleWaitMs);if(timing.gpuSerial){record(GpuSamples,1);recordMs(GpuUs,timing.gpuMs);}
+        recordMs(PrepareUs,timing.prepareMs);recordMs(CommandsUs,timing.commandsMs);record(ParallelBatches,timing.parallelBatches);record(ParallelDraws,timing.parallelDraws);
+        if(!trace.empty()){
+            const auto now=Timer::now();const auto seconds=std::chrono::duration<double>(now.time_since_epoch()).count();
+            auto& t=trace[traceCount++%trace.size()];t={seconds,timing.serial,timing.gpuSerial,displayCount,
+                present?float(std::chrono::duration<double,std::milli>(now-previousPresent).count()):0.f,
+                float(warmUs*.001),float(timing.prepareMs),float(timing.commandsMs),float(timing.recordMs),float(timing.submitMs),float(timing.acquireMs),float(timing.presentMs),float(timing.recycleWaitMs),float(timing.gpuMs),timing.draws,timing.parallelBatches,timing.parallelDraws,unsigned(present)};
+            traceClockUs.store(std::uint64_t(seconds*1000000.),std::memory_order_relaxed);
+            if(present){previousPresent=now;++displayCount;}
+        }
+    }
     void owner(){const auto current=std::this_thread::get_id();if(current!=submissionOwner){const auto start=Timer::now();backend.adoptOwnerAtBarrier();if(reference)reference->backend.adoptOwnerAtBarrier();submissionOwner=current;record(OwnerChanges,1);record(OwnerWaitUs,microseconds(start));}}
     ResourceId makeBuffer(unsigned bytes,bool index,bool dynamic) override {std::lock_guard guard(mutex);owner();if(!bytes||bytes>64*1024*1024)throw std::runtime_error("Invalid stock geometry size");std::vector<std::byte> zeros(bytes);const auto id=backend.createBuffer(zeros,index,dynamic);if(reference)reference->add(id,reference->backend.createBuffer(zeros,index,dynamic));if(dynamic){backend.updateBuffer(id,0,{},true);if(reference)reference->backend.updateBuffer(reference->map(id),0,{},true);}return id;}
     ResourceId makeImage(const ImageDesc& desc) override {std::lock_guard guard(mutex);owner();const auto id=backend.createImage(desc);if(reference)reference->add(id,reference->backend.createImage(desc),desc);return id;}
@@ -107,12 +129,18 @@ public:
     void retirePackets(){commands.clear();used=0;++packetEpoch;for(const auto index:retainedSlots)retained[index].reset();retainedSlots.clear();}
     void updateBuffer(const std::shared_ptr<Storage>& resource,unsigned at,std::span<const std::byte> bytes,bool discard,bool noOverwrite) override {
         const auto id=resource->id;
-        std::lock_guard guard(mutex);if(!scene){owner();backend.updateBuffer(id,at,bytes,discard,noOverwrite);if(reference)reference->backend.updateBuffer(reference->map(id),at,bytes,discard,noOverwrite);return;}
+        std::lock_guard guard(mutex);if(!scene&&commands.empty()&&std::this_thread::get_id()==submissionOwner){backend.updateBuffer(id,at,bytes,discard,noOverwrite);if(reference)reference->backend.updateBuffer(reference->map(id),at,bytes,discard,noOverwrite);return;}
         auto& c=append(Operation::Buffer);c.first=id;c.offset=at;c.discard=discard;c.noOverwrite=noOverwrite;c.bytes=copy(bytes);keep(resource);
     }
     void uploadImage(const std::shared_ptr<Storage>& resource,unsigned level,unsigned layer,std::span<const std::byte> bytes) override {
         const auto id=resource->id;
-        std::lock_guard guard(mutex);if(!scene){owner();backend.beginFrame();backend.uploadImage(id,level,layer,bytes);backend.endFrame({});if(reference)reference->backend.uploadImage(reference->map(id),level,layer,bytes);return;}
+        std::lock_guard guard(mutex);
+        // Loading on the submission owner stays immediate, so an entire zone
+        // cannot accumulate in the bounded packet arena. Frontend updates to
+        // existing assets join the next submission with immutable bytes and
+        // generation leases, without a GPU wait or an owner handoff. Preserve
+        // queue order even when a resource creation subsequently changes owner.
+        if(!scene&&commands.empty()&&std::this_thread::get_id()==submissionOwner){backend.beginFrame();backend.uploadImage(id,level,layer,bytes);timing(backend.endFrame({}),false);if(reference)reference->backend.uploadImage(reference->map(id),level,layer,bytes);return;}
         auto& c=append(Operation::Image);c.first=id;c.level=level;c.layer=layer;c.bytes=copy(bytes);keep(resource);
     }
     void flush(ResourceId present={},unsigned width=0,unsigned height=0,bool fullscreenGamma=false) {
@@ -142,14 +170,14 @@ public:
         const auto output=applyGamma?gamma.draw():present;
         const auto timing=backend.endFrame(output);
         publishedValidationErrors.store(backend.validationErrors(),std::memory_order_relaxed);
-        record(Submissions,1);if(present)record(Frames,1);record(Draws,timing.draws);record(WarmUs,warmUs);recordMs(RecordUs,timing.recordMs);recordMs(SubmitUs,timing.submitMs);recordMs(AcquireUs,timing.acquireMs);recordMs(PresentUs,timing.presentMs);recordMs(RecycleUs,timing.recycleWaitMs);if(timing.gpuSerial){record(GpuSamples,1);recordMs(GpuUs,timing.gpuMs);}
+        this->timing(timing,bool(present),warmUs);
         if(!commands.empty())submittedSequence=commands.back().sequence;retirePackets();
         if(present&&config.validation&&!config.cacheDirectory.empty()) {
             ++diagnosticPresentations;
             if(diagnosticPresentations==1||diagnosticPresentations==12||diagnosticPresentations==1250) {
                 const auto folder=std::filesystem::path(config.cacheDirectory).parent_path()/"diagnostics";std::filesystem::create_directories(folder);
                 std::ofstream(folder/"device.json")<<backend.deviceReport()<<'\n';
-                auto pixels=backend.readback(present);
+                auto pixels=backend.readback(present);this->timing(backend.latestTiming(),false);
                 // The diagnostic captures the engine's resolved BGRA surface,
                 // before any platform gamma ramp. It runs only with validation.
                 std::ofstream capture(folder/("menu-"+std::to_string(diagnosticPresentations)+".bgra"),std::ios::binary);
@@ -158,7 +186,7 @@ public:
         }
         }catch(const std::exception& error){failure=error.what();backend.cancelFrame();retirePackets();scene=false;throw;}
     }
-    void readback(ResourceId id,std::vector<std::byte>& out) override {std::lock_guard guard(mutex);flush();owner();out=backend.readback(id);
+    void readback(ResourceId id,std::vector<std::byte>& out) override {std::lock_guard guard(mutex);flush();owner();out=backend.readback(id);timing(backend.latestTiming(),false);
         if(reference&&!config.cacheDirectory.empty()){
             const auto pixels=reference->backend.readback(reference->map(id));const auto& desc=reference->image(id);
             const auto folder=std::filesystem::path(config.cacheDirectory).parent_path()/"diagnostics";std::filesystem::create_directories(folder);
@@ -166,7 +194,7 @@ public:
             write("reference-d3d9.bgra",pixels);write("reference-vulkan.bgra",out);
             reference->report(folder);
             for(const auto image:reference->floatImages()){
-                const auto dx=reference->backend.readback(reference->map(image)),vk=backend.readback(image);const auto& desc=reference->image(image);
+                const auto dx=reference->backend.readback(reference->map(image)),vk=backend.readback(image);timing(backend.latestTiming(),false);const auto& desc=reference->image(image);
                 const auto prefix="reference-floatz-"+std::to_string(image.value);
                 write((prefix+"-d3d9.bin").c_str(),dx);write((prefix+"-vulkan.bin").c_str(),vk);
                 std::ofstream(folder/(prefix+".json"))<<"{\"width\":"<<desc.width<<",\"height\":"<<desc.height<<",\"same_immutable_packets\":true}\n";
@@ -265,6 +293,23 @@ public:
     ~Device(){checked([&]{state->flush();});checked([&]{state->owner();state->backend.waitIdle();});for(auto& r:vertices)drop(r);for(auto& r:textures)drop(r);drop(indices);drop(vs);drop(ps);drop(declaration);drop(color);drop(depth);drop(swap);drop(factory);}
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel() override {return S_OK;}
     unsigned validationErrorCount() const {return state->backend.validationErrors();}
+    void writeTimings(const char* path){
+        std::lock_guard guard(state->mutex);
+        if(state->trace.empty())throw std::runtime_error("Frame timing capture was not enabled at startup");
+        state->owner();const auto completed=state->backend.completeFrameTimings();
+        const auto parent=std::filesystem::path(path).parent_path();std::filesystem::create_directories(parent);
+        const auto temporary=std::filesystem::path(path).wstring()+L".part";
+        std::ofstream out(std::filesystem::path(temporary),std::ios::trunc);if(!out)throw std::runtime_error("Cannot create frame timing export");
+        out<<"# bounded_capacity="<<state->trace.size()<<" total_records="<<state->traceCount<<" overwritten_records="<<(state->traceCount>state->trace.size()?state->traceCount-state->trace.size():0)<<"\n";
+        out<<std::setprecision(12);
+        for(const auto& gpu:completed)if(gpu.serial)out<<"# completed_gpu="<<gpu.serial<<','<<float(gpu.ms)<<'\n';
+        out<<"seconds,serial,gpu_serial,display_id,frame_ms,warm_ms,prepare_ms,commands_ms,record_ms,submit_ms,acquire_ms,present_ms,recycle_ms,gpu_ms,draws,parallel_batches,parallel_draws,presentation\n"<<std::setprecision(12);
+        const auto start=state->traceCount>state->trace.size()?state->traceCount-state->trace.size():0;
+        for(auto n=start;n<state->traceCount;++n){const auto& t=state->trace[n%state->trace.size()];
+            out<<t.seconds<<','<<t.serial<<','<<t.gpuSerial<<','<<t.display<<','<<t.frameMs<<','<<t.warmMs<<','<<t.prepareMs<<','<<t.commandsMs<<','<<t.recordMs<<','<<t.submitMs<<','<<t.acquireMs<<','<<t.presentMs<<','<<t.recycleMs<<','<<t.gpuMs<<','<<t.draws<<','<<t.parallelBatches<<','<<t.parallelDraws<<','<<t.presentation<<'\n';}
+        out.close();if(!out)throw std::runtime_error("Frame timing export failed");
+        if(!MoveFileExW(temporary.c_str(),std::filesystem::path(path).c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))throw std::runtime_error("Cannot finish frame timing export; partial capture is retained");
+    }
     void STDMETHODCALLTYPE SetGammaRamp(UINT chain,DWORD flags,const D3DGAMMARAMP* value) override {
         if(chain||flags||!value){unsupported("Invalid stock gamma ramp");return;}
         checked([&]{std::lock_guard guard(state->mutex);GammaPass::Ramp ramp;std::memcpy(ramp[0].data(),value->red,512);std::memcpy(ramp[1].data(),value->green,512);std::memcpy(ramp[2].data(),value->blue,512);state->gamma.setRamp(ramp);});
@@ -414,10 +459,11 @@ IDirect3D9* createVulkanInterface(const Config& config) {try{return new Factory(
 void nameResource(IUnknown* object,const char* name){if(!object||!name)return;if(auto* resource=dynamic_cast<Resource*>(object)){if(std::strlen(name)>256)return;resource->storage->debugName=name;if(const auto state=std::dynamic_pointer_cast<State>(resource->storage->host)){std::lock_guard guard(state->mutex);if(state->reference)state->reference->name(resource->id(),name);}}}
 const char* frameTelemetry(){
     thread_local char text[1024];
-    const char* names[]={"frames","draws","gpu_samples","gpu_us","warm_us","record_us","submit_us","acquire_us","present_us","recycle_us","owner_changes","owner_wait_us","submissions"};
+    const char* names[]={"frames","draws","gpu_samples","gpu_us","warm_us","record_us","submit_us","acquire_us","present_us","recycle_us","owner_changes","owner_wait_us","submissions","prepare_us","commands_us","parallel_batches","parallel_draws"};
     unsigned used=std::snprintf(text,sizeof(text),"{\"backend\":\"vulkan\",\"active\":%s,\"validation_errors\":%u",activeStates.load(std::memory_order_relaxed)?"true":"false",publishedValidationErrors.load(std::memory_order_relaxed));
     for(unsigned n=0;n<MetricCount;++n)used+=std::snprintf(text+used,sizeof(text)-used,",\"%s\":%llu",names[n],metrics[n].load(std::memory_order_relaxed));
-    std::snprintf(text+used,sizeof(text)-used,"}");return text;
+    std::snprintf(text+used,sizeof(text)-used,",\"trace_clock_us\":%llu}",traceClockUs.load(std::memory_order_relaxed));return text;
 }
 unsigned validationErrors(IDirect3DDevice9* device){const auto* native=dynamic_cast<Device*>(device);return native?native->validationErrorCount():UINT32_MAX;}
+bool writeFrameTimings(IDirect3DDevice9* device,const char* path){auto* native=dynamic_cast<Device*>(device);if(!native)return false;return SUCCEEDED(checked([&]{native->writeTimings(path);}));}
 }

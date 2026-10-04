@@ -9,8 +9,16 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <atomic>
 
 namespace {
+std::atomic<unsigned> recordingDispatches{0};
+void dispatchRecording(void (*task)(void*,unsigned),void* data,unsigned count){
+    assert(count>=2&&count<=4);++recordingDispatches;
+    std::array<std::thread,3> workers;
+    for(unsigned n=1;n<count;++n)workers[n-1]=std::thread([=]{task(data,n);});
+    task(data,0);for(unsigned n=1;n<count;++n)workers[n-1].join();
+}
 std::vector<std::uint32_t> compile(const char* source,const char* profile) {
     ID3DBlob *code=nullptr,*errors=nullptr;
     const auto result=D3DCompile(source,std::strlen(source),"GPU parity fixture",nullptr,nullptr,"main",profile,D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,&errors);
@@ -73,6 +81,21 @@ std::uint64_t queryCases(gfx::Backend& b,Fixture& f) {
 }
 std::vector<std::vector<std::byte>> materialCases(gfx::Backend& backend,Fixture& f) {
     std::vector<std::vector<std::byte>> captures;
+    // Order-sensitive overlapping draws with mutable register spans. The
+    // Vulkan test uses four independent secondary recording pools; each draw
+    // must keep its own constants and the original blend/clear order.
+    f.packet.state.blend=true;f.packet.state.src=gfx::Blend::SrcAlpha;f.packet.state.dst=gfx::Blend::InvSrcAlpha;
+    backend.warm(f.packet);
+    for(unsigned pass=0;pass<3;++pass){
+        backend.beginFrame();backend.clear(f.target,{}, {.1f,.2f,.3f,1},1);
+        for(unsigned n=0;n<256;++n){
+            f.pc[28]=float((n+pass)%5+1)/5;f.pc[29]=float((n+pass)%7+1)/7;f.pc[30]=float((n+pass)%3+1)/3;f.pc[31]=.2f;
+            f.vc[16]=float(int(n%7)-3)*.025f;backend.draw(f.packet);
+            if(n==127&&pass==1)backend.clear(f.target,{}, {.3f,.2f,.1f,1},1);
+        }
+        backend.endFrame({});captures.push_back(backend.readback(f.target));
+    }
+    f.packet.state.blend=false;f.pc[28]=f.pc[29]=f.pc[30]=f.pc[31]=1;f.vc[16]=0;
     // Reordering a declaration must not reorder shader input registers.
     std::swap(f.elements[0],f.elements[1]);
     f.draw(backend,false);captures.push_back(backend.readback(f.target));std::swap(f.elements[0],f.elements[1]);
@@ -304,6 +327,7 @@ int main(int argc,char** argv) {
         }
         for(unsigned flight:{1u,2u}) {
             gfx::Config config; config.window=present?window.hwnd:nullptr; config.validation=validation; config.framesInFlight=flight; config.cacheDirectory=(output/"cache").string();
+            config.recordingWorkers=4;config.dispatchRecording=dispatchRecording;
             gfx::vk::Backend backend(config); Fixture f(backend);
             for(unsigned n=0;n<32;++n) {
                 if(present) {
@@ -315,6 +339,7 @@ int main(int argc,char** argv) {
             vkPixels=backend.readback(f.target); capture(output/("vulkan-"+std::to_string(flight)+".ppm"),vkPixels);
             const auto center=(32*64+32)*4; assert(unsigned(vkPixels[center+2])==200&&unsigned(vkPixels[center+3])==255); assert(vkPixels.size()==dxPixels.size());
             const auto vkMaterials=materialCases(backend,f);
+            assert(recordingDispatches.load()>0);
             assert(queryCases(backend,f)==dxSampleCount);
             for(std::size_t m=0;m<vkMaterials.size();++m) {
                 capture(output/("d3d9-material-"+std::to_string(m)+".ppm"),dxMaterials[m]);capture(output/("vulkan-"+std::to_string(flight)+"-material-"+std::to_string(m)+".ppm"),vkMaterials[m]);

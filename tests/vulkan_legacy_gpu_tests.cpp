@@ -7,6 +7,8 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <thread>
+#include <exception>
 #include <vector>
 
 namespace {
@@ -20,8 +22,8 @@ struct Fixture {
     IDirect3DVertexBuffer9* vertices=nullptr;IDirect3DIndexBuffer9* indices=nullptr;
     IDirect3DVertexDeclaration9* declaration=nullptr;IDirect3DVertexShader9* vertex=nullptr;IDirect3DPixelShader9* pixel=nullptr;
     IDirect3DTexture9 *image=nullptr,*target=nullptr;IDirect3DSurface9 *surface=nullptr,*readback=nullptr;IDirect3DQuery9* event=nullptr;
-    explicit Fixture(HWND window,bool vulkan):native(vulkan){
-        if(vulkan){gfx::Config config;config.validation=true;config.compareD3D9=true;factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
+    explicit Fixture(HWND window,bool vulkan,bool timings=false):native(vulkan){
+        if(vulkan){gfx::Config config;config.validation=true;config.compareD3D9=true;config.recordFrameTimings=timings;factory=gfx::legacy::createVulkanInterface(config);}else factory=Direct3DCreate9(D3D_SDK_VERSION);
         if(!factory)throw std::runtime_error("Legacy factory unavailable");
         D3DPRESENT_PARAMETERS p{};p.BackBufferWidth=p.BackBufferHeight=64;p.BackBufferFormat=D3DFMT_A8R8G8B8;p.BackBufferCount=1;p.SwapEffect=D3DSWAPEFFECT_DISCARD;p.hDeviceWindow=window;p.Windowed=TRUE;p.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         check(factory->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_FPU_PRESERVE,&p,&device));
@@ -87,7 +89,34 @@ struct Fixture {
         if(native)assert(event->GetData(&value,4,0)==S_FALSE);
         check(device->GetRenderTargetData(surface,readback));D3DLOCKED_RECT lock{};check(readback->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<BYTE> pixels(64*64*4);for(unsigned y=0;y<64;++y)std::memcpy(pixels.data()+y*64*4,static_cast<BYTE*>(lock.pBits)+y*lock.Pitch,64*4);check(readback->UnlockRect());return pixels;
     }
+    void frontendTransfers(){
+        // The renderer owns the GPU submission; a later frontend upload must
+        // retain immutable bytes and its destination until the next flush.
+        IDirect3DTexture9 *source=nullptr,*next=nullptr,*retired=nullptr;
+        check(device->CreateTexture(8,8,1,0,D3DFMT_A8R8G8B8,D3DPOOL_SYSTEMMEM,&source,nullptr));
+        check(device->CreateTexture(8,8,1,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&next,nullptr));
+        check(device->CreateTexture(8,8,1,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&retired,nullptr));
+        std::exception_ptr failure;
+        std::thread renderer([&]{try{run();}catch(...){failure=std::current_exception();}});
+        renderer.join();if(failure)std::rethrow_exception(failure);
+        const float geometry[][6]={{-.8f,.8f,.5f,1,0,0},{.8f,.8f,.5f,1,1,0},{.8f,-.8f,.5f,1,1,1},{-.8f,-.8f,.5f,1,0,1}};
+        void* mapped=nullptr;check(vertices->Lock(0,sizeof(geometry),&mapped,D3DLOCK_DISCARD));std::memcpy(mapped,geometry,sizeof(geometry));check(vertices->Unlock());
+        D3DLOCKED_RECT lock{};check(source->LockRect(0,&lock,nullptr,0));
+        for(unsigned y=0;y<8;++y)for(unsigned x=0;x<8;++x)reinterpret_cast<DWORD*>(static_cast<BYTE*>(lock.pBits)+y*lock.Pitch)[x]=0xff2080c0;
+        check(source->UnlockRect(0));check(device->UpdateTexture(source,next));
+        check(source->AddDirtyRect(nullptr));check(device->UpdateTexture(source,retired));release(retired);
+        // The source can be rewritten without dirtying the destination. The
+        // already queued transfer must still contain the earlier blue pixels.
+        check(source->LockRect(0,&lock,nullptr,D3DLOCK_NO_DIRTY_UPDATE));
+        for(unsigned y=0;y<8;++y)for(unsigned x=0;x<8;++x)reinterpret_cast<DWORD*>(static_cast<BYTE*>(lock.pBits)+y*lock.Pitch)[x]=0xff00ff00;
+        check(source->UnlockRect(0));release(source);release(image);image=next;
+    }
     ~Fixture(){release(event);release(surface);release(readback);release(target);release(image);release(declaration);release(vertex);release(pixel);release(vertices);release(indices);release(device);release(factory);}
 };
 }
-int main(){try{Window window;for(int transfer:{-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);reference=f.run(transfer);}{Fixture f(window.handle,true);candidate=f.run(transfer);assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}std::cout<<"Legacy resource/constant/query and 2D/cube/volume transfer parity passed\n";return 0;}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(int argc,char** argv){try{
+    const char* timings=nullptr;if(argc==3&&std::strcmp(argv[1],"--timings")==0)timings=argv[2];else if(argc!=1)return 2;
+    Window window;for(int transfer:{-3,-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);if(transfer==-3)f.frontendTransfers();reference=f.run(transfer);}{Fixture f(window.handle,true);if(transfer==-3)f.frontendTransfers();candidate=f.run(transfer);assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}
+    if(timings){Fixture f(window.handle,true,true);for(unsigned n=0;n<24;++n){f.run();check(f.device->Present(nullptr,nullptr,nullptr,nullptr));}assert(gfx::legacy::writeFrameTimings(f.device,timings));assert(gfx::legacy::validationErrors(f.device)==0);}
+    std::cout<<"Legacy resource/constant/query, frontend upload and 2D/cube/volume transfer parity passed\n";return 0;
+}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

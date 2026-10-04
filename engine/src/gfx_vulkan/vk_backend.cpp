@@ -1,17 +1,46 @@
 #include "vk_backend.h"
 #include "vk_shader_cache.h"
 #include <algorithm>
+#include <bit>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <exception>
 #include <tuple>
 
 namespace gfx::vk {
 namespace {
 constexpr unsigned maxResources = 16384, maxDraws = 8192;
 constexpr VkDeviceSize arenaBytes = 32 * 1024 * 1024;
+// Fixed open-addressed indexes: no per-draw nodes or allocations. Full keys
+// are compared after hashing, so collisions cannot change material semantics.
+constexpr unsigned cacheSlots=maxDraws*2;
+struct KeyHash {
+    unsigned value=2166136261u;
+    void add(unsigned v){value=(value^v)*16777619u;}
+    template<class E> void enumeration(E v){add(unsigned(v));}
+    void real(float v){add(v==0.f?0u:std::bit_cast<unsigned>(v));}
+    void material(const MaterialState& s){
+        add(s.depthTest);add(s.depthWrite);add(s.blend);add(s.cull);add(s.clockwise);
+        enumeration(s.depthCompare);enumeration(s.src);enumeration(s.dst);enumeration(s.srcAlpha);enumeration(s.dstAlpha);
+        enumeration(s.blendOp);enumeration(s.alphaBlendOp);add(s.colorMask);add(s.alphaTest);add(s.stencil);add(s.wireframe);
+        enumeration(s.alphaCompare);add(s.alphaRef);
+        for(const auto* face:{&s.front,&s.back}){enumeration(face->compare);enumeration(face->fail);enumeration(face->depthFail);enumeration(face->pass);}
+        add(s.stencilRef);add(s.stencilReadMask);add(s.stencilWriteMask);real(s.depthBias);real(s.slopeDepthBias);
+    }
+    void sampler(const Sampler& s){enumeration(s.u);enumeration(s.v);enumeration(s.w);add(s.linear);add(s.mipLinear);add(s.compare);enumeration(s.comparison);add(s.minLinear);add(s.magLinear);real(s.maxAnisotropy);real(s.lodBias);real(s.minLod);real(s.maxLod);}
+};
+unsigned pipelineHash(ResourceId vs,ResourceId ps,const MaterialState& state,
+    const std::array<unsigned,16>& strides,std::span<const VertexElement> elements,VkFormat color,VkFormat depth,unsigned samples,unsigned shadowMask){
+    KeyHash h;h.add(vs.value);h.add(ps.value);h.material(state);for(auto v:strides)h.add(v);
+    h.add(unsigned(elements.size()));for(const auto& e:elements){h.add(e.stream);h.add(e.offset);h.add(e.index);h.enumeration(e.format);h.enumeration(e.semantic);}
+    h.enumeration(color);h.enumeration(depth);h.add(samples);h.add(shadowMask);return h.value;
+}
+unsigned descriptorHash(ResourceId vs,ResourceId ps,const std::array<ResourceId,16>& textures,const std::array<Sampler,16>& samplers,unsigned mask){
+    KeyHash h;h.add(vs.value);h.add(ps.value);for(unsigned slot=0;slot<16;++slot)if(mask&(1u<<slot)){h.add(textures[slot].value);h.sampler(samplers[slot]);}return h.value;
+}
 using Clock = std::chrono::steady_clock;
 double elapsed(Clock::time_point start) { return std::chrono::duration<double, std::milli>(Clock::now() - start).count(); }
 VkFormat format(ImageFormat value, bool srgb, const Context& context) {
@@ -94,12 +123,20 @@ struct Pipeline {
     std::uint64_t lastUse = 0;
 };
 struct Frame {
+    struct Recording {
+        VkCommandPool pool=VK_NULL_HANDLE;
+        std::array<VkCommandBuffer,128> commands{};
+        unsigned used=0;
+    };
+    std::array<Recording,4> workers;
     VkCommandPool pool = VK_NULL_HANDLE; VkCommandBuffer cmd = VK_NULL_HANDLE;
     VkDescriptorPool descriptors = VK_NULL_HANDLE; VkQueryPool queries = VK_NULL_HANDLE;
     VkSemaphore acquired = VK_NULL_HANDLE;
     Buffer arena; VkDeviceSize used = 0; std::uint64_t serial = 0; unsigned draws = 0;
-    struct Descriptors {ResourceId vs,ps;std::array<ResourceId,16> textures{};std::array<Sampler,16> samplers{};std::array<VkDescriptorSet,4> sets{};};
+    struct Descriptors {ResourceId vs,ps;unsigned mask=0;std::array<ResourceId,16> textures{};std::array<Sampler,16> samplers{};std::array<VkDescriptorSet,4> sets{};};
     std::vector<Descriptors> cachedDescriptors;
+    std::array<unsigned,cacheSlots> descriptorIndex{};
+    bool descriptorsDirty=false;
     struct Uniform {ResourceId shader;std::uint64_t serial=0;std::span<const float> floats;std::span<const int> integers,booleans;unsigned offset=0;};
     std::vector<Uniform> uniforms;
     struct Bindings {
@@ -111,6 +148,29 @@ struct Frame {
         unsigned stencil=0;bool viewportValid=false,scissorValid=false,stencilValid=false;
     } bindings;
 };
+struct PreparedDraw {
+    VkPipeline pipeline=VK_NULL_HANDLE;VkPipelineLayout layout=VK_NULL_HANDLE;
+    std::array<VkDescriptorSet,4> sets{};std::array<unsigned,2> offsets{};unsigned offsetCount=0;
+    std::array<VkBuffer,16> vertices{};std::array<VkDeviceSize,16> vertexOffsets{};
+    VkBuffer index=VK_NULL_HANDLE;VkDeviceSize indexOffset=0;VkIndexType indexType=VK_INDEX_TYPE_UINT16;
+    VkViewport viewport{};VkRect2D scissor{};std::array<float,3> constants{};
+    bool stencil=false,push=false;unsigned stencilRef=0,indexCount=0,firstIndex=0;int vertexBase=0;
+    VkQueryPool query=VK_NULL_HANDLE;unsigned queryIndex=0;VkQueryControlFlags queryFlags=0;
+};
+void recordDraw(Context& context,VkCommandBuffer cmd,const PreparedDraw& d,Frame::Bindings& bound,bool cacheBindings){
+    if(!cacheBindings)bound={};
+    if(d.query)context.api.CmdBeginQuery(cmd,d.query,d.queryIndex,d.queryFlags);
+    if(bound.pipeline!=d.pipeline){context.api.CmdBindPipeline(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,d.pipeline);bound.pipeline=d.pipeline;}
+    if(d.stencil&&(!bound.stencilValid||bound.stencil!=d.stencilRef)){context.api.CmdSetStencilReference(cmd,VK_STENCIL_FACE_FRONT_AND_BACK,d.stencilRef);bound.stencil=d.stencilRef;bound.stencilValid=true;}
+    if(d.push&&(bound.push!=d.layout||bound.constants!=d.constants)){context.api.CmdPushConstants(cmd,d.layout,VK_SHADER_STAGE_FRAGMENT_BIT,0,12,d.constants.data());bound.push=d.layout;bound.constants=d.constants;}
+    if(!bound.viewportValid||std::memcmp(&bound.viewport,&d.viewport,sizeof(d.viewport))){context.api.CmdSetViewport(cmd,0,1,&d.viewport);bound.viewport=d.viewport;bound.viewportValid=true;}
+    if(!bound.scissorValid||std::memcmp(&bound.scissor,&d.scissor,sizeof(d.scissor))){context.api.CmdSetScissor(cmd,0,1,&d.scissor);bound.scissor=d.scissor;bound.scissorValid=true;}
+    if(bound.descriptors!=d.layout||bound.sets!=d.sets||bound.offsetCount!=d.offsetCount||bound.offsets!=d.offsets){context.api.CmdBindDescriptorSets(cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,d.layout,0,4,d.sets.data(),d.offsetCount,d.offsets.data());bound.descriptors=d.layout;bound.sets=d.sets;bound.offsetCount=d.offsetCount;bound.offsets=d.offsets;}
+    for(unsigned s=0;s<16;++s)if(d.vertices[s]&&(bound.vertices[s]!=d.vertices[s]||bound.vertexOffsets[s]!=d.vertexOffsets[s])){context.api.CmdBindVertexBuffers(cmd,s,1,&d.vertices[s],&d.vertexOffsets[s]);bound.vertices[s]=d.vertices[s];bound.vertexOffsets[s]=d.vertexOffsets[s];}
+    if(bound.index!=d.index||bound.indexOffset!=d.indexOffset||bound.indexType!=d.indexType){context.api.CmdBindIndexBuffer(cmd,d.index,d.indexOffset,d.indexType);bound.index=d.index;bound.indexOffset=d.indexOffset;bound.indexType=d.indexType;}
+    context.api.CmdDrawIndexed(cmd,d.indexCount,1,d.firstIndex,d.vertexBase,0);
+    if(d.query)context.api.CmdEndQuery(cmd,d.query,d.queryIndex);
+}
 }
 
 struct Backend::Impl {
@@ -121,6 +181,7 @@ struct Backend::Impl {
     struct Retired { std::uint64_t serial; std::unique_ptr<Resource> resource; };
     std::vector<Retired> retired;
     std::vector<Pipeline> pipelines;
+    std::array<unsigned,cacheSlots> pipelineIndex{};
     std::vector<Pipeline> retiredPipelines;
     struct CachedSampler { Sampler desc; VkSampler sampler; };
     std::vector<CachedSampler> samplers;
@@ -141,10 +202,13 @@ struct Backend::Impl {
     Clock::time_point recording;
     ResourceId activeOcclusion;
     ResourceId renderingColor,renderingDepth;
+    std::vector<PreparedDraw> prepared;
 
     explicit Impl(const gfx::Config& c) : context({static_cast<HWND>(c.window), c.device, c.validation}), config(c) {
         if (c.framesInFlight < 1 || c.framesInFlight > 2) throw std::runtime_error("Frames in flight must be 1 or 2");
+        if(c.recordingWorkers<1||c.recordingWorkers>4)throw std::runtime_error("Recording workers must be between one and four");
         retired.reserve(maxResources); pipelines.reserve(maxDraws); retiredPipelines.reserve(maxDraws); samplers.reserve(512);
+        prepared.reserve(maxDraws);
         try {
             VkSemaphoreTypeCreateInfo type{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO}; type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
             VkSemaphoreCreateInfo sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO}; sem.pNext = &type;
@@ -157,8 +221,13 @@ struct Backend::Impl {
                 check(context.api.CreateCommandPool(context.device, &pool, nullptr, &f.pool), "create frame command pool");
                 VkCommandBufferAllocateInfo alloc{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO}; alloc.commandPool = f.pool; alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; alloc.commandBufferCount = 1;
                 check(context.api.AllocateCommandBuffers(context.device, &alloc, &f.cmd), "allocate frame command buffer");
+                if(c.dispatchRecording&&c.recordingWorkers>1)for(unsigned worker=0;worker<c.recordingWorkers;++worker){
+                    auto& r=f.workers[worker];check(context.api.CreateCommandPool(context.device,&pool,nullptr,&r.pool),"create independent worker command pool");
+                    alloc.commandPool=r.pool;alloc.level=VK_COMMAND_BUFFER_LEVEL_SECONDARY;alloc.commandBufferCount=unsigned(r.commands.size());
+                    check(context.api.AllocateCommandBuffers(context.device,&alloc,r.commands.data()),"allocate bounded worker command buffers");
+                }
                 const VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxDraws * 16}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, maxDraws * 2}};
-                VkDescriptorPoolCreateInfo descriptors{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO}; descriptors.maxSets = maxDraws * 4; descriptors.poolSizeCount = 2; descriptors.pPoolSizes = sizes;
+                VkDescriptorPoolCreateInfo descriptors{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};descriptors.flags=VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; descriptors.maxSets = maxDraws * 4; descriptors.poolSizeCount = 2; descriptors.pPoolSizes = sizes;
                 check(context.api.CreateDescriptorPool(context.device, &descriptors, nullptr, &f.descriptors), "create bounded frame descriptors");
                 VkQueryPoolCreateInfo queries{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO}; queries.queryType = VK_QUERY_TYPE_TIMESTAMP; queries.queryCount = 2;
                 check(context.api.CreateQueryPool(context.device, &queries, nullptr, &f.queries), "create frame GPU timestamps");
@@ -229,7 +298,44 @@ struct Backend::Impl {
         frame->used = offset + bytes; return offset;
     }
     void endRendering() {
-        if(renderingColor){context.api.CmdEndRendering(frame->cmd);renderingColor={};renderingDepth={};}
+        if(!renderingColor)return;
+        const auto started=Clock::now();
+        auto& color=resources.get(renderingColor).image;
+        auto* depth=renderingDepth?&resources.get(renderingDepth).image:nullptr;
+        VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};attachment.imageView=color.view;attachment.imageLayout=color.layout;attachment.loadOp=VK_ATTACHMENT_LOAD_OP_LOAD;attachment.storeOp=VK_ATTACHMENT_STORE_OP_STORE;
+        VkRenderingAttachmentInfo ds{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};if(depth){ds.imageView=depth->view;ds.imageLayout=depth->layout;ds.loadOp=VK_ATTACHMENT_LOAD_OP_LOAD;ds.storeOp=VK_ATTACHMENT_STORE_OP_STORE;}
+        VkRenderingInfo rendering{VK_STRUCTURE_TYPE_RENDERING_INFO};rendering.renderArea.extent={color.desc.width,color.desc.height};rendering.layerCount=1;rendering.colorAttachmentCount=1;rendering.pColorAttachments=&attachment;rendering.pDepthAttachment=rendering.pStencilAttachment=depth?&ds:nullptr;
+        unsigned workers=config.dispatchRecording?(std::min)(config.recordingWorkers,unsigned(prepared.size()/64)):1;
+        if(workers<2||std::any_of(prepared.begin(),prepared.end(),[](const auto& d){return d.query!=VK_NULL_HANDLE;}))workers=1;
+        if(workers>1){
+            struct Batch {
+                Impl* self;unsigned workers;VkFormat color,depth;VkSampleCountFlagBits samples;
+                std::array<VkCommandBuffer,4> commands{};std::array<std::exception_ptr,4> errors{};
+            } batch{this,workers,color.format,depth?depth->format:VK_FORMAT_UNDEFINED,VkSampleCountFlagBits(color.desc.samples)};
+            for(unsigned n=0;n<workers;++n){auto& r=frame->workers[n];if(r.used==r.commands.size())throw std::runtime_error("Bounded secondary command buffers exhausted");batch.commands[n]=r.commands[r.used++];}
+            const auto task=[](void* data,unsigned worker){auto& b=*static_cast<Batch*>(data);auto& i=*b.self;
+                try {
+                    VkCommandBufferInheritanceRenderingInfo formats{VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO};formats.colorAttachmentCount=1;formats.pColorAttachmentFormats=&b.color;formats.depthAttachmentFormat=formats.stencilAttachmentFormat=b.depth;formats.rasterizationSamples=b.samples;
+                    VkCommandBufferInheritanceInfo inherit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO};inherit.pNext=&formats;
+                    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};begin.flags=VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT|VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;begin.pInheritanceInfo=&inherit;
+                    const auto cmd=b.commands[worker];check(i.context.api.BeginCommandBuffer(cmd,&begin),"begin worker recording");
+                    Frame::Bindings bindings;
+                    const unsigned start=unsigned(i.prepared.size())*worker/b.workers,end=unsigned(i.prepared.size())*(worker+1)/b.workers;
+                    for(unsigned n=start;n<end;++n)recordDraw(i.context,cmd,i.prepared[n],bindings,i.config.cacheBindings);
+                    check(i.context.api.EndCommandBuffer(cmd),"finish worker recording");
+                }catch(...){b.errors[worker]=std::current_exception();}
+            };
+            config.dispatchRecording(task,&batch,workers);
+            for(unsigned n=0;n<workers;++n)if(batch.errors[n])std::rethrow_exception(batch.errors[n]);
+            rendering.flags=VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT;
+            context.api.CmdBeginRendering(frame->cmd,&rendering);context.api.CmdExecuteCommands(frame->cmd,workers,batch.commands.data());frame->bindings={};
+            ++timing.parallelBatches;timing.parallelDraws+=unsigned(prepared.size());
+        }else{
+            context.api.CmdBeginRendering(frame->cmd,&rendering);
+            for(const auto& d:prepared)recordDraw(context,frame->cmd,d,frame->bindings,config.cacheBindings);
+        }
+        context.api.CmdEndRendering(frame->cmd);prepared.clear();renderingColor={};renderingDepth={};
+        timing.commandsMs+=elapsed(started);
     }
     void barrier(Image& i, VkImageLayout layout) {
         if (i.layout == layout) {
@@ -339,10 +445,27 @@ struct Backend::Impl {
         return depth!=VK_FORMAT_UNDEFINED&&depth!=VK_FORMAT_D24_UNORM_S8_UINT&&
             (state.depthBias||state.slopeDepthBias)&&!context.selected.depthBiasFloat&&!context.selected.depthBiasUnorm;
     }
+    void rebuildPipelineIndex(){
+        pipelineIndex.fill(0);
+        for(unsigned n=0;n<pipelines.size();++n){const auto& p=pipelines[n];unsigned at=pipelineHash(p.vs,p.ps,p.state,p.strides,p.elements,p.color,p.depth,p.samples,p.depthSamplerMask)&(cacheSlots-1);while(pipelineIndex[at])at=(at+1)&(cacheSlots-1);pipelineIndex[at]=n+1;}
+    }
+    void retireDescriptors(Frame& f){
+        if(!f.descriptorsDirty)return;
+        for(auto it=f.cachedDescriptors.begin();it!=f.cachedDescriptors.end();){
+            bool valid=resources.find(it->vs)&&resources.find(it->ps);
+            for(unsigned slot=0;valid&&slot<16;++slot)if(it->mask&(1u<<slot))valid=resources.find(it->textures[slot])!=nullptr;
+            if(valid){++it;continue;}
+            check(context.api.FreeDescriptorSets(context.device,f.descriptors,4,it->sets.data()),"retire completed generation-stale descriptors");it=f.cachedDescriptors.erase(it);
+        }
+        f.descriptorIndex.fill(0);
+        for(unsigned n=0;n<f.cachedDescriptors.size();++n){const auto& d=f.cachedDescriptors[n];unsigned at=descriptorHash(d.vs,d.ps,d.textures,d.samplers,d.mask)&(cacheSlots-1);while(f.descriptorIndex[at])at=(at+1)&(cacheSlots-1);f.descriptorIndex[at]=n+1;}
+        f.descriptorsDirty=false;
+    }
     Pipeline& pipeline(const DrawPacket& d, Image& color, Image* depth) {
         const auto depthFmt = depth ? depth->format : VK_FORMAT_UNDEFINED;
         unsigned shadowMask=0;for(unsigned slot=0;slot<16;++slot)if(d.samplers[slot].compare)shadowMask|=1u<<slot;
-        for (auto& p : pipelines) if (p.vs == d.vertexShader && p.ps == d.pixelShader && p.state == d.state && p.strides == d.strides && p.color == color.format && p.depth == depthFmt && p.samples == color.desc.samples && p.depthSamplerMask==shadowMask && std::equal(p.elements.begin(), p.elements.end(), d.elements.begin(), d.elements.end())) return p;
+        unsigned cacheAt=pipelineHash(d.vertexShader,d.pixelShader,d.state,d.strides,d.elements,color.format,depthFmt,color.desc.samples,shadowMask)&(cacheSlots-1);
+        while(pipelineIndex[cacheAt]){auto& p=pipelines[pipelineIndex[cacheAt]-1];if(p.vs == d.vertexShader && p.ps == d.pixelShader && p.state == d.state && p.strides == d.strides && p.color == color.format && p.depth == depthFmt && p.samples == color.desc.samples && p.depthSamplerMask==shadowMask && std::equal(p.elements.begin(), p.elements.end(), d.elements.begin(), d.elements.end()))return p;cacheAt=(cacheAt+1)&(cacheSlots-1);}
         if(frame) throw std::runtime_error("Material pipeline was not warmed during asset loading");
         if (pipelines.size() >= maxDraws) throw std::runtime_error("Bounded material pipeline cache exhausted");
         if(d.state.wireframe&&!context.selected.features.fillModeNonSolid) throw std::runtime_error("Selected GPU does not support wireframe");
@@ -432,7 +555,7 @@ struct Backend::Impl {
             throw;
         }
         for (auto module : modules) context.api.DestroyShaderModule(context.device, module, nullptr);
-        pipelines.push_back(std::move(p)); return pipelines.back();
+        pipelines.push_back(std::move(p));pipelineIndex[cacheAt]=unsigned(pipelines.size());return pipelines.back();
     }
     void cleanup() noexcept {
         if (!context.device) return;
@@ -448,6 +571,7 @@ struct Backend::Impl {
         for (auto& f : frames) {
             destroy(f.arena);
             if (f.pool) context.api.DestroyCommandPool(context.device, f.pool, nullptr);
+            for(auto& r:f.workers)if(r.pool)context.api.DestroyCommandPool(context.device,r.pool,nullptr);
             if (f.descriptors) context.api.DestroyDescriptorPool(context.device, f.descriptors, nullptr);
             if (f.queries) context.api.DestroyQueryPool(context.device, f.queries, nullptr);
             if (f.acquired) context.api.DestroySemaphore(context.device, f.acquired, nullptr);
@@ -472,7 +596,7 @@ void Backend::beginQuery(ResourceId id) {
 }
 void Backend::endQuery(ResourceId id) {
     auto& i=*impl;i.requireFrame();auto& q=i.use(id).query;
-    if(q.type==QueryType::Occlusion) {if(i.activeOcclusion!=id) throw std::runtime_error("Unmatched stock occlusion query end");i.activeOcclusion={};}
+    if(q.type==QueryType::Occlusion) {if(i.activeOcclusion!=id) throw std::runtime_error("Unmatched stock occlusion query end");i.endRendering();i.activeOcclusion={};}
     else {q.selected=unsigned(i.nextSerial%3);auto& slice=q.slices[q.selected];if(q.type!=QueryType::Event&&slice.serial!=i.nextSerial) i.wait(slice.serial);slice={i.nextSerial,1};
         if(q.type==QueryType::Timestamp) {i.endRendering();i.context.api.CmdResetQueryPool(i.frame->cmd,q.pool,q.selected*64,1);i.context.api.CmdWriteTimestamp2(i.frame->cmd,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,q.pool,q.selected*64);}}
     q.issued=true;
@@ -553,14 +677,15 @@ ResourceId Backend::createShader(std::span<const std::uint32_t> bytecode, std::s
 }
 void Backend::release(ResourceId id) {
     auto& i = *impl; i.assertOwner(); auto& resource = i.resources.get(id);
+    if(resource.image.image||resource.shader)for(auto& f:i.frames)f.descriptorsDirty=true;
     if (i.retired.size() == maxResources) { i.collect(); if (i.retired.size() == maxResources) throw std::runtime_error("Bounded resource retirement queue exhausted"); }
     const auto serial = resource.lastUse;
-    if(resource.shader) for(auto it=i.pipelines.begin();it!=i.pipelines.end();) {
+    if(resource.shader) {for(auto it=i.pipelines.begin();it!=i.pipelines.end();) {
         if(it->vs==id||it->ps==id) {
             if(i.retiredPipelines.size()==maxDraws) {i.collect();if(i.retiredPipelines.size()==maxDraws) throw std::runtime_error("Bounded pipeline retirement queue exhausted");}
             i.retiredPipelines.push_back(std::move(*it));it=i.pipelines.erase(it);
         }else ++it;
-    }
+    }i.rebuildPipelineIndex();}
     i.retired.push_back({serial, i.resources.extract(id)});
 }
 void Backend::beginFrame() {
@@ -571,8 +696,10 @@ void Backend::beginFrame() {
         i.timing.gpuMs = double(stamps[1] - stamps[0]) * i.context.selected.properties.limits.timestampPeriod / 1000000.;
         i.timing.gpuSerial=f.serial;
     }
-    i.collect(); check(i.context.api.ResetCommandPool(i.context.device, f.pool, 0), "recycle completed command pool"); check(i.context.api.ResetDescriptorPool(i.context.device, f.descriptors, 0), "recycle completed descriptors");
-    f.used = 0; f.draws = 0; f.cachedDescriptors.clear();f.bindings={}; ++i.nextSerial; i.timing.serial = i.nextSerial; i.recording = Clock::now();
+    i.retireDescriptors(f);i.collect(); check(i.context.api.ResetCommandPool(i.context.device, f.pool, 0), "recycle completed command pool");
+    if(!i.config.cacheDescriptors){check(i.context.api.ResetDescriptorPool(i.context.device,f.descriptors,0),"recycle completed descriptors");f.cachedDescriptors.clear();f.descriptorIndex.fill(0);}
+    for(auto& r:f.workers)if(r.pool){check(i.context.api.ResetCommandPool(i.context.device,r.pool,0),"recycle completed worker pool");r.used=0;}
+    f.used = 0; f.draws = 0;f.bindings={}; ++i.nextSerial; i.timing.serial = i.nextSerial; i.recording = Clock::now();
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     check(i.context.api.BeginCommandBuffer(f.cmd, &begin), "begin native frame"); i.context.api.CmdResetQueryPool(f.cmd, f.queries, 0, 2); i.context.api.CmdWriteTimestamp2(f.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, f.queries, 0);
 }
@@ -609,6 +736,7 @@ void Backend::clear(ResourceId color, ResourceId depth, const std::array<float, 
 }
 void Backend::draw(const DrawPacket& d) {
     auto& i = *impl; i.requireFrame(); if (i.frame->draws >= maxDraws) throw std::runtime_error("Bounded frame draw budget exhausted");
+    const auto started=Clock::now();const auto previousCommands=i.timing.commandsMs;
     if(i.renderingColor && (i.renderingColor!=d.colorTarget || i.renderingDepth!=d.depthTarget))i.endRendering();
     auto& color = i.image(d.colorTarget); auto* depth = d.depthTarget ? &i.image(d.depthTarget) : nullptr;
     auto& vs = i.shader(d.vertexShader); auto& ps = i.shader(d.pixelShader);
@@ -616,10 +744,13 @@ void Backend::draw(const DrawPacket& d) {
     pipeline.lastUse=i.nextSerial;
     Frame::Descriptors* descriptors=nullptr;
     unsigned samplerMask=0;for(const auto* shader:{&vs,&ps})for(int n=0;n<shader->parsed->sampler_count;++n)samplerMask|=1u<<shader->parsed->samplers[n].index;
-    for(auto& cached:i.frame->cachedDescriptors) {
-        if(cached.vs!=d.vertexShader||cached.ps!=d.pixelShader)continue;
-        bool match=true;for(unsigned slot=0;slot<16;++slot)if(samplerMask&(1u<<slot))if(cached.textures[slot]!=d.textures[slot]||cached.samplers[slot]!=d.samplers[slot]){match=false;break;}
+    unsigned descriptorAt=descriptorHash(d.vertexShader,d.pixelShader,d.textures,d.samplers,samplerMask)&(cacheSlots-1);
+    while(i.frame->descriptorIndex[descriptorAt]) {
+        auto& cached=i.frame->cachedDescriptors[i.frame->descriptorIndex[descriptorAt]-1];
+        bool match=cached.vs==d.vertexShader&&cached.ps==d.pixelShader;
+        for(unsigned slot=0;match&&slot<16;++slot)if(samplerMask&(1u<<slot))if(cached.textures[slot]!=d.textures[slot]||cached.samplers[slot]!=d.samplers[slot]){match=false;break;}
         if(match){descriptors=&cached;break;}
+        descriptorAt=(descriptorAt+1)&(cacheSlots-1);
     }
     const bool writeDescriptors=!descriptors;
     if(writeDescriptors) {
@@ -627,9 +758,10 @@ void Backend::draw(const DrawPacket& d) {
         // Layouts for one shader pair are structurally identical across
         // material pipelines. Ignore unused stock bindings and reuse their
         // compatible sets instead of allocating four sets per state variant.
-        i.frame->cachedDescriptors.push_back({d.vertexShader,d.pixelShader,d.textures,d.samplers,{}});descriptors=&i.frame->cachedDescriptors.back();
+        i.frame->cachedDescriptors.push_back({d.vertexShader,d.pixelShader,samplerMask,d.textures,d.samplers,{}});descriptors=&i.frame->cachedDescriptors.back();
         VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};alloc.descriptorPool=i.frame->descriptors;alloc.descriptorSetCount=4;alloc.pSetLayouts=pipeline.sets.data();
         check(i.context.api.AllocateDescriptorSets(i.context.device,&alloc,descriptors->sets.data()),"allocate bounded draw descriptors");
+        i.frame->descriptorIndex[descriptorAt]=unsigned(i.frame->cachedDescriptors.size());
     }
     const auto& sets=descriptors->sets;
     std::array<VkWriteDescriptorSet,34> writes{};unsigned writeCount=0,imageCount=0;
@@ -666,15 +798,12 @@ void Backend::draw(const DrawPacket& d) {
     }
     if(writeCount)i.context.api.UpdateDescriptorSets(i.context.device,writeCount,writes.data(),0,nullptr);
     i.barrier(color, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    VkRenderingAttachmentInfo attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO}; attachment.imageView = color.view; attachment.imageLayout = color.layout; attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    VkRenderingAttachmentInfo ds{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
     if (depth) {
         // Stock reduced-resolution passes retain the larger scene depth
         // surface. Vulkan allows it when every attachment covers renderArea.
         if (depth->desc.samples != color.desc.samples || depth->desc.width < color.desc.width || depth->desc.height < color.desc.height) throw std::runtime_error("Stock depth target does not cover its render target or has different samples");
-        i.barrier(*depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL); ds.imageView = depth->view; ds.imageLayout = depth->layout; ds.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; ds.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        i.barrier(*depth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
-    VkRenderingInfo rendering{VK_STRUCTURE_TYPE_RENDERING_INFO}; rendering.renderArea.extent = {color.desc.width, color.desc.height}; rendering.layerCount = 1; rendering.colorAttachmentCount = 1; rendering.pColorAttachments = &attachment; rendering.pDepthAttachment = rendering.pStencilAttachment = depth ? &ds : nullptr;
     Resource::Query* occlusion=nullptr; unsigned queryIndex=0;
     if(i.activeOcclusion) {
         occlusion=&i.use(i.activeOcclusion).query;auto& slice=occlusion->slices[occlusion->selected];
@@ -694,31 +823,24 @@ void Backend::draw(const DrawPacket& d) {
     if((std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth>indexResource.buffer.bytes)throw std::runtime_error("Invalid stock draw index range");
     const auto [indexBuffer,indexOffset]=i.geometry(d.indexBuffer);
     if(!indexResource.dynamicBytes.empty()){indexResource.readBegin=(std::min)(indexResource.readBegin,std::uint64_t(d.firstIndex)*indexWidth);indexResource.readEnd=(std::max)(indexResource.readEnd,(std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth);}
-    if(!i.renderingColor){i.context.api.CmdBeginRendering(i.frame->cmd, &rendering);i.renderingColor=d.colorTarget;i.renderingDepth=d.depthTarget;}
-    if(occlusion) i.context.api.CmdBeginQuery(i.frame->cmd,occlusion->pool,queryIndex,i.context.selected.features.occlusionQueryPrecise?VK_QUERY_CONTROL_PRECISE_BIT:0);
-    auto& bound=i.frame->bindings;
-    if(!i.config.cacheBindings)bound={};
-    if(bound.pipeline!=pipeline.pipeline){i.context.api.CmdBindPipeline(i.frame->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);bound.pipeline=pipeline.pipeline;}
-    if(d.state.stencil&&(!bound.stencilValid||bound.stencil!=d.state.stencilRef)){i.context.api.CmdSetStencilReference(i.frame->cmd,VK_STENCIL_FACE_FRONT_AND_BACK,d.state.stencilRef);bound.stencil=d.state.stencilRef;bound.stencilValid=true;}
-    if(d.state.alphaTest||i.shaderBias(d.state,pipeline.depth)) {const std::array<float,3> state={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};if(bound.push!=pipeline.layout||bound.constants!=state){i.context.api.CmdPushConstants(i.frame->cmd,pipeline.layout,VK_SHADER_STAGE_FRAGMENT_BIT,0,12,state.data());bound.push=pipeline.layout;bound.constants=state;}}
+    if(!i.renderingColor){i.renderingColor=d.colorTarget;i.renderingDepth=d.depthTarget;}
+    PreparedDraw packet;packet.pipeline=pipeline.pipeline;packet.layout=pipeline.layout;packet.sets=sets;packet.offsets=offsets;packet.offsetCount=offsetCount;
+    packet.vertices=vertexBuffers;packet.vertexOffsets=vertexOffsets;packet.index=indexBuffer;packet.indexOffset=indexOffset;packet.indexType=d.index32?VK_INDEX_TYPE_UINT32:VK_INDEX_TYPE_UINT16;
+    packet.stencil=d.state.stencil;packet.stencilRef=d.state.stencilRef;packet.push=d.state.alphaTest||i.shaderBias(d.state,pipeline.depth);packet.constants={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};
     // Vulkan's negative viewport keeps stock D3D clip-space Y orientation. The
     // half-pixel offset remains a parity gate before enabling this in the game.
-    VkViewport viewport{d.x + .5f, d.y + d.height + .5f, d.width, -d.height, d.minDepth, d.maxDepth};
-    if(!bound.viewportValid||std::memcmp(&bound.viewport,&viewport,sizeof(viewport))){i.context.api.CmdSetViewport(i.frame->cmd,0,1,&viewport);bound.viewport=viewport;bound.viewportValid=true;}
+    packet.viewport={d.x + .5f, d.y + d.height + .5f, d.width, -d.height, d.minDepth, d.maxDepth};
     VkRect2D scissor{{0,0},{color.desc.width,color.desc.height}};
     if(d.scissor) {
         const auto left=std::clamp(d.scissorX,0,int(color.desc.width)),top=std::clamp(d.scissorY,0,int(color.desc.height));
         const auto right=std::clamp(std::int64_t(d.scissorX)+d.scissorWidth,std::int64_t(left),std::int64_t(color.desc.width)),bottom=std::clamp(std::int64_t(d.scissorY)+d.scissorHeight,std::int64_t(top),std::int64_t(color.desc.height));
         scissor={{left,top},{unsigned(right-left),unsigned(bottom-top)}};
     }
-    if(!bound.scissorValid||std::memcmp(&bound.scissor,&scissor,sizeof(scissor))){i.context.api.CmdSetScissor(i.frame->cmd,0,1,&scissor);bound.scissor=scissor;bound.scissorValid=true;}
-    if(bound.descriptors!=pipeline.layout||bound.sets!=sets||bound.offsetCount!=offsetCount||bound.offsets!=offsets){i.context.api.CmdBindDescriptorSets(i.frame->cmd,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline.layout,0,4,sets.data(),offsetCount,offsets.data());bound.descriptors=pipeline.layout;bound.sets=sets;bound.offsetCount=offsetCount;bound.offsets=offsets;}
-    for(unsigned s=0;s<16;++s)if(vertexBuffers[s]&&(bound.vertices[s]!=vertexBuffers[s]||bound.vertexOffsets[s]!=vertexOffsets[s])){i.context.api.CmdBindVertexBuffers(i.frame->cmd,s,1,&vertexBuffers[s],&vertexOffsets[s]);bound.vertices[s]=vertexBuffers[s];bound.vertexOffsets[s]=vertexOffsets[s];}
-    const auto indexType=d.index32?VK_INDEX_TYPE_UINT32:VK_INDEX_TYPE_UINT16;
-    if(bound.index!=indexBuffer||bound.indexOffset!=indexOffset||bound.indexType!=indexType){i.context.api.CmdBindIndexBuffer(i.frame->cmd,indexBuffer,indexOffset,indexType);bound.index=indexBuffer;bound.indexOffset=indexOffset;bound.indexType=indexType;}
-    i.context.api.CmdDrawIndexed(i.frame->cmd,d.indexCount,1,d.firstIndex,d.vertexBase,0);
-    if(occlusion) i.context.api.CmdEndQuery(i.frame->cmd,occlusion->pool,queryIndex);
+    packet.scissor=scissor;packet.indexCount=d.indexCount;packet.firstIndex=d.firstIndex;packet.vertexBase=d.vertexBase;
+    if(occlusion){packet.query=occlusion->pool;packet.queryIndex=queryIndex;packet.queryFlags=i.context.selected.features.occlusionQueryPrecise?VK_QUERY_CONTROL_PRECISE_BIT:0;}
+    i.prepared.push_back(packet);
     ++i.frame->draws;
+    i.timing.prepareMs+=(std::max)(0.,elapsed(started)-(i.timing.commandsMs-previousCommands));
 }
 void Backend::warm(const DrawPacket& d) {
     auto& i=*impl;i.assertOwner();if(i.frame) throw std::runtime_error("Pipeline warmup must run outside gameplay frame recording");
@@ -797,8 +919,16 @@ std::vector<std::byte> Backend::readback(ResourceId id) {
     } catch (...) { i.destroy(buffer); throw; }
 }
 void Backend::waitIdle() { auto& i = *impl; i.assertOwner(); if (i.frame) throw std::runtime_error("Idle barrier inside a frame"); i.wait(i.lastSubmitted); i.collect(); }
+FrameTiming Backend::latestTiming() const {impl->assertOwner();return impl->timing;}
+std::array<Backend::CompletedGpuTiming,2> Backend::completeFrameTimings(){
+    auto& i=*impl;i.assertOwner();waitIdle();std::array<CompletedGpuTiming,2> result{};
+    for(unsigned n=0;n<i.frames.size();++n){const auto& f=i.frames[n];if(!f.serial)continue;
+        std::uint64_t stamps[2];check(i.context.api.GetQueryPoolResults(i.context.device,f.queries,0,2,sizeof(stamps),stamps,8,VK_QUERY_RESULT_64_BIT),"drain final diagnostic GPU timestamps");
+        result[n]={f.serial,double(stamps[1]-stamps[0])*i.context.selected.properties.limits.timestampPeriod/1000000.};
+    }return result;
+}
 std::string Backend::deviceReport() const {
-    auto& i = *impl; auto json = i.context.json(); json.pop_back(); return json + ",\"frames_in_flight\":" + std::to_string(i.config.framesInFlight) + ",\"presentation_mode\":\"" + (i.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : i.presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo") + "\",\"pipeline_count\":" + std::to_string(i.pipelines.size()) + "}";
+    auto& i = *impl; auto json = i.context.json(); json.pop_back(); return json + ",\"frames_in_flight\":" + std::to_string(i.config.framesInFlight) + ",\"recording_workers\":" + std::to_string(i.config.dispatchRecording?i.config.recordingWorkers:1) + ",\"presentation_mode\":\"" + (i.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : i.presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo") + "\",\"pipeline_count\":" + std::to_string(i.pipelines.size()) + "}";
 }
 unsigned Backend::validationErrors() const { return impl->context.validationErrors.load(std::memory_order_relaxed); }
 std::uint64_t Backend::deviceLocalMemory() const {return impl->context.selected.localBytes;}
@@ -807,7 +937,7 @@ void Backend::cancelFrame() noexcept {
     auto& i=*impl;i.recordingFailed=true;
     if(i.frame&&i.owner==std::this_thread::get_id()){
         if(i.frame->serial!=i.nextSerial)i.context.api.ResetCommandPool(i.context.device,i.frame->pool,0);
-        i.frame=nullptr;i.activeOcclusion={};i.renderingColor={};i.renderingDepth={};
+        i.prepared.clear();i.frame=nullptr;i.activeOcclusion={};i.renderingColor={};i.renderingDepth={};
     }
 }
 }

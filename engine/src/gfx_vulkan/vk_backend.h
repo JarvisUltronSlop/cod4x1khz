@@ -38,6 +38,11 @@ public:
     // The engine's acknowledged loading/restart barrier calls this while no
     // frame is open. Existing GPU work completes before the owner changes.
     void adoptOwnerAtBarrier();
+    FrameTiming latestTiming() const;
+    struct CompletedGpuTiming {std::uint64_t serial=0;double ms=0;};
+    // Diagnostic export barrier only; drain the last one/two timestamp pairs
+    // without adding submissions or changing the ordinary frame scheduler.
+    std::array<CompletedGpuTiming,2> completeFrameTimings();
     // Fail closed after recording fails: cleanup waits only for submitted work.
     void cancelFrame() noexcept;
 private:

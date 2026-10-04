@@ -44,7 +44,13 @@ enum MaterialVertexDeclType : __int32
      // A gameplay owner has its own error/va/trace TLS. Renderer workers remain
      // free to execute concurrently; none is borrowed for client prediction.
      THREAD_CONTEXT_CLIENT_SIM   = 0x7,
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+     THREAD_CONTEXT_WORKER2      = 0x8,
+     THREAD_CONTEXT_WORKER3      = 0x9,
+     THREAD_CONTEXT_COUNT        = 0xA,
+#else
      THREAD_CONTEXT_COUNT        = 0x8,
+#endif
 #else
      THREAD_CONTEXT_COUNT        = 0x7,
 #endif

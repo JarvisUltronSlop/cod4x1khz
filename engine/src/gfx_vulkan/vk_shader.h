@@ -17,6 +17,11 @@ struct Shader {
     void packUniforms(void* destination, std::span<const float> floats,
         std::span<const int> integers, std::span<const int> booleans) const;
     unsigned inputRegister(MOJOSHADER_usage usage, unsigned index) const;
+private:
+    struct UniformCopy {MOJOSHADER_uniformType type;unsigned index,count,offset;};
+    struct UniformLiteral {unsigned offset,bytes;std::array<std::byte,16> value;};
+    std::vector<UniformCopy> uniformCopies;
+    std::vector<UniformLiteral> uniformLiterals;
 };
 struct LinkedShaders {
     std::vector<std::uint32_t> vertex, pixel;

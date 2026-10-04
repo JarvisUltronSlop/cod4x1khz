@@ -50,7 +50,22 @@ Shader::Shader(std::span<const std::uint32_t> source, std::string debugName) : b
         if (result) for (int i = 0; i < result->error_count; ++i) message += "\n" + std::string(result->errors[i].error);
         throw std::runtime_error(message);
     }
-    for (int i = 0; i < result->uniform_count; ++i) uniformBytes += std::size_t((std::max)(1, result->uniforms[i].array_count)) * 16;
+    uniformCopies.reserve(result->uniform_count);
+    for(int i=0;i<result->uniform_count;++i){
+        const auto& u=result->uniforms[i];const auto count=unsigned((std::max)(1,u.array_count));
+        if(u.index<0)throw std::runtime_error("Invalid shader constant register");
+        if(u.type!=MOJOSHADER_UNIFORM_FLOAT&&u.type!=MOJOSHADER_UNIFORM_INT&&u.type!=MOJOSHADER_UNIFORM_BOOL)throw std::runtime_error("Unsupported shader uniform type");
+        uniformCopies.push_back({u.type,unsigned(u.index),count,unsigned(uniformBytes)});
+        // DEF/DEFI/DEFB overrides are immutable shader metadata. Resolve their
+        // packed destinations once instead of scanning every literal for every
+        // uniform on every draw. Preserve original override order and bytes.
+        for(int n=0;n<result->constant_count;++n){const auto& c=result->constants[n];
+            if(c.type!=u.type||c.index<u.index||unsigned(c.index-u.index)>=count)continue;
+            UniformLiteral literal{unsigned(uniformBytes)+unsigned(c.index-u.index)*16,c.type==MOJOSHADER_UNIFORM_BOOL?4u:16u,{}};
+            std::memcpy(literal.value.data(),&c.value,literal.bytes);uniformLiterals.push_back(literal);
+        }
+        uniformBytes+=std::size_t(count)*16;
+    }
 }
 unsigned Shader::inputRegister(MOJOSHADER_usage usage, unsigned index) const {
     if(parsed->major_ver<2) {
@@ -78,29 +93,12 @@ unsigned Shader::inputRegister(MOJOSHADER_usage usage, unsigned index) const {
 void Shader::packUniforms(void* destination, std::span<const float> floats,
     std::span<const int> integers, std::span<const int> booleans) const {
     auto* output = static_cast<unsigned char*>(destination);
-    for (int i = 0; i < parsed->uniform_count; ++i) {
-        const auto& uniform = parsed->uniforms[i]; const auto count = unsigned((std::max)(1, uniform.array_count));
-        if (uniform.index < 0) throw std::runtime_error("Invalid shader constant register");
-        const auto index = unsigned(uniform.index);
-        std::memset(output, 0, count * 16);
-        if (uniform.type == MOJOSHADER_UNIFORM_FLOAT) {
-            if ((index + count) * 4 > floats.size()) throw std::runtime_error("Vertex/pixel float registers exceeded");
-            std::memcpy(output, floats.data() + index * 4, count * 16);
-        } else if (uniform.type == MOJOSHADER_UNIFORM_INT) {
-            if ((index + count) * 4 > integers.size()) throw std::runtime_error("Vertex/pixel integer registers exceeded");
-            std::memcpy(output, integers.data() + index * 4, count * 16);
-        } else if (uniform.type == MOJOSHADER_UNIFORM_BOOL) {
-            if (index + count > booleans.size()) throw std::runtime_error("Vertex/pixel boolean registers exceeded");
-            for (unsigned j = 0; j < count; ++j) std::memcpy(output + j * 16, &booleans[index + j], 4);
-        } else throw std::runtime_error("Unsupported shader uniform type");
-        for (int j = 0; j < parsed->constant_count; ++j) {
-            const auto& constant = parsed->constants[j];
-            if (constant.type != uniform.type || constant.index < uniform.index || unsigned(constant.index - uniform.index) >= count) continue;
-            const auto bytes = constant.type == MOJOSHADER_UNIFORM_BOOL ? 4 : 16;
-            std::memcpy(output + unsigned(constant.index - uniform.index) * 16, &constant.value, bytes);
-        }
-        output += count * 16;
+    for(const auto& u:uniformCopies){auto* target=output+u.offset;const auto end=std::size_t(u.index)+u.count;
+        if(u.type==MOJOSHADER_UNIFORM_FLOAT){if(end>floats.size()/4)throw std::runtime_error("Vertex/pixel float registers exceeded");std::memcpy(target,floats.data()+std::size_t(u.index)*4,std::size_t(u.count)*16);}
+        else if(u.type==MOJOSHADER_UNIFORM_INT){if(end>integers.size()/4)throw std::runtime_error("Vertex/pixel integer registers exceeded");std::memcpy(target,integers.data()+std::size_t(u.index)*4,std::size_t(u.count)*16);}
+        else {if(end>booleans.size())throw std::runtime_error("Vertex/pixel boolean registers exceeded");std::memset(target,0,std::size_t(u.count)*16);for(unsigned n=0;n<u.count;++n)std::memcpy(target+n*16,&booleans[u.index+n],4);}
     }
+    for(const auto& literal:uniformLiterals)std::memcpy(output+literal.offset,literal.value.data(),literal.bytes);
 }
 void validateSpirv(std::span<const std::uint32_t> words, const char* name) {
     spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);

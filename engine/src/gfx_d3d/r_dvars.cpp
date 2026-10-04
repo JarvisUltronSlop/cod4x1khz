@@ -51,6 +51,9 @@ const dvar_t *r_vkFramesInFlight;
  const dvar_t *r_showTriCounts;
  const dvar_t *sc_debugReceiverCount;
  const dvar_t *r_cacheSModelLighting;
+#ifdef COD4X1KHZ
+const dvar_t* r_bspPreTessBatch;
+#endif
  const dvar_t *r_drawEntities;
  const dvar_t *r_distortion;
  const dvar_t *r_filmUseTweaks;
@@ -581,6 +584,10 @@ const dvar_t *r_vkFramesInFlight;
          DVAR_NOFLAG,
          "GPU synchronization type (used to improve mouse responsiveness)");
      r_multiGpu = Dvar_RegisterBool("r_multiGpu", false, DVAR_ARCHIVE, "Use multiple GPUs");
+#ifdef COD4X1KHZ
+     r_bspPreTessBatch = Dvar_RegisterBool("r_bspPreTessBatch", false, DVAR_NOFLAG,
+         "Experimental batching of adjacent world pre-tess draws with identical inputs");
+#endif
      r_skinCache = Dvar_RegisterBool("r_skinCache", true, DVAR_NOFLAG, "Enable cache for vertices of animated models");
      r_fastSkin = Dvar_RegisterBool("r_fastSkin", false, DVAR_ARCHIVE, "Enable fast model skinning");
      r_smc_enable = Dvar_RegisterBool("r_smc_enable", true, DVAR_NOFLAG, "Enable static model cache");

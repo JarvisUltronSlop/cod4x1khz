@@ -710,6 +710,9 @@ void __cdecl RB_StretchRaw(int x, int y, int w, int h, int cols, int rows, const
 
 void __cdecl R_DrawSurfs(GfxCmdBufContext context, GfxCmdBufState *prepassState, const GfxDrawSurfListInfo *info)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::DrawSurfs);
+#endif
     GfxViewport viewport; // [esp+30h] [ebp-30h] BYREF
     GfxCmdBufContext prepassContext; // [esp+40h] [ebp-20h]
     GfxDrawSurfListArgs listArgs; // [esp+48h] [ebp-18h] BYREF
@@ -808,7 +811,16 @@ uint32_t __cdecl R_RenderDrawSurfListMaterial(const GfxDrawSurfListArgs *listArg
             passPrepassContext.state = prepassContext.state;
         }
         iassert(drawSurf.fields.surfType < ARRAY_COUNT(rb_tessTable));
-        subListCount = rb_tessTable[drawSurf.fields.surfType](listArgs, passPrepassContext);
+        {
+#ifdef COD4X1KHZ
+            const auto type = drawSurf.fields.surfType;
+            const auto stage = type <= 1 || type == 6 ? KHZ_RenderStage::TessWorld :
+                type <= 5 ? KHZ_RenderStage::TessStaticModel :
+                type <= 9 ? KHZ_RenderStage::TessModel : KHZ_RenderStage::TessEffects;
+            KHZ_RenderProfileScope tessDetail(stage, true);
+#endif
+            subListCount = rb_tessTable[drawSurf.fields.surfType](listArgs, passPrepassContext);
+        }
     }
     if (isPixelCostEnabled)
         R_PixelCost_EndSurface(listArgs->context);
@@ -2614,6 +2626,9 @@ void __cdecl RB_ResetStatTracking()
 void __cdecl RB_BeginFrame(const GfxBackEndData *data)
 {
 #ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::BackendBegin);
+#endif
+#ifdef COD4X1KHZ
     KHZ_FrontendUpload(data);
 #endif
     int hr; // [esp+0h] [ebp-4h]
@@ -2776,6 +2791,9 @@ void __cdecl RB_ExecuteRenderCommandsLoop(const void *cmds)
 
 void __cdecl RB_Draw3D()
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::Backend3D);
+#endif
     const GfxBackEndData *data; // [esp+30h] [ebp-8h]
 
     data = backEndData;
@@ -2829,6 +2847,9 @@ int RB_AdaptiveGpuSyncFinal()
 
 void __cdecl RB_CallExecuteRenderCommands()
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::Backend2D);
+#endif
     const char *v0; // eax
     int hr; // [esp+40h] [ebp-4h]
     
@@ -2918,6 +2939,9 @@ void __cdecl RB_CallExecuteRenderCommands()
         {
             if (dx.gpuSync)
             {
+#ifdef COD4X1KHZ
+                KHZ_RenderProfileScope gpuSyncTrace(KHZ_RenderStage::BackendGpuSync);
+#endif
                 R_AcquireGpuFenceLock();
                 RB_AdaptiveGpuSyncFinal();
                 if (dx.gpuSync == 2)
@@ -3091,6 +3115,7 @@ void __cdecl RB_RenderCommandFrame(const GfxBackEndData *data)
         PROF_SCOPED("WaitRenderSwap");
 #ifdef COD4X1KHZ
         KHZ_TimingScope fenceTimer(KHZ_Timing::SwapFence);
+        KHZ_RenderProfileScope fenceTrace(KHZ_RenderStage::SwapFence);
 #endif
         R_ProcessWorkerCmdsWithTimeout(RB_BackendTimeout, 1);
     }

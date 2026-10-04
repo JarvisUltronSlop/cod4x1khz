@@ -66,6 +66,9 @@ struct DrawPacket {
     // Opt-in only for versioned packet storage that cannot change until the
     // current recording ends. Ordinary callers may mutate spans between draws.
     bool immutableConstants=false;
+    // The legacy device captures a monotonically growing written prefix.
+    // Registers beyond each span have never been set and remain zero.
+    bool zeroConstantTail=false;
     MaterialState state;
     unsigned indexCount = 0, firstIndex = 0; int vertexBase = 0;
     unsigned vertexFirst=0,vertexCount=0;

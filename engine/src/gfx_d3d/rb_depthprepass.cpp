@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "rb_depthprepass.h"
 #include "r_rendercmds.h"
 #include "rb_backend.h"
@@ -60,6 +61,9 @@ void R_DepthPrepass(
     const GfxViewInfo *viewInfo,
     GfxCmdBuf *cmdBuf)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::DepthPass);
+#endif
     GfxCmdBufSourceState state; // [sp+50h] [-F00h] BYREF
 
     R_InitCmdBufSourceState(&state, &viewInfo->input, 1);

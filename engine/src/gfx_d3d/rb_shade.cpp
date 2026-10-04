@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "rb_shade.h"
 #include "rb_logfile.h"
 #include "rb_state.h"
@@ -13,6 +14,9 @@
 
 void __cdecl R_SetVertexDecl(GfxCmdBufPrimState *primState, const MaterialVertexDeclaration *vertexDecl)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::VertexDecl, true);
+#endif
     IDirect3DVertexDeclaration9 *v3; // [esp+0h] [ebp-40h]
     int hr; // [esp+34h] [ebp-Ch]
     IDirect3DDevice9 *device; // [esp+3Ch] [ebp-4h]
@@ -59,6 +63,9 @@ void __cdecl RB_ClearPixelShader()
 
 void __cdecl R_HW_SetPixelShader(IDirect3DDevice9 *device, const MaterialPixelShader *mtlShader)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::PixelShader, true);
+#endif
     int v2; // eax
     HRESULT hr; // [esp+4h] [ebp-4h]
 
@@ -102,6 +109,9 @@ void __cdecl RB_ClearVertexShader()
 
 void __cdecl R_HW_SetVertexShader(IDirect3DDevice9 *device, const MaterialVertexShader *mtlShader)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::VertexShader, true);
+#endif
     int v2; // eax
     HRESULT hr; // [esp+4h] [ebp-4h]
 

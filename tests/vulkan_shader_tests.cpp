@@ -62,6 +62,39 @@ int main() {
         std::vector<float> packed(pixel.uniformBytes / 4);
         pixel.packUniforms(packed.data(), floats, integers, booleans);
         assert(packed.size() == 4 && packed[0] == .25f && packed[3] == 1);
+        // The legacy packet's omitted tail represents only never-written
+        // registers. Ordinary backend callers still reject undersized spans.
+        bool shortRejected=false;
+        try {pixel.packUniforms(packed.data(), {}, {}, {});}
+        catch(const std::exception&) {shortRejected=true;}
+        assert(shortRejected);
+        std::fill(packed.begin(),packed.end(),9.0f);
+        pixel.packUniforms(packed.data(), {}, {}, {}, true);
+        for(auto value:packed)assert(value==0);
+        std::vector<float> transform(vertex.uniformBytes/4,9.0f);
+        for(unsigned n=16;n<28;++n)floats[n]=float(n);
+        vertex.packUniforms(transform.data(), std::span<const float>(floats).first(28), {}, {}, true);
+        assert(transform.size()==16);
+        for(unsigned n=0;n<12;++n)assert(transform[n]==float(n+16));
+        for(unsigned n=12;n<16;++n)assert(transform[n]==0);
+        // Authored VS3 REP reads a sparse integer loop register. HLSL maps
+        // general int uniforms to float constants, so use actual DX9 tokens.
+        const std::uint32_t sparseIntVs[]={0xfffe0300,0x0200001f,0x80000000,0x900f0000,
+            0x0200001f,0x80000000,0xe00f0000,0x02000001,0x800f0000,0x90e40000,
+            0x01000026,0xf0e40009,0x03000002,0x800f0000,0x80e40000,0xa0e4000c,
+            0x00000027,0x02000001,0xe00f0000,0x80e40000,0xffff};
+        gfx::vk::Shader sparseInts(sparseIntVs,"sparse integer VS3");
+        std::vector<std::byte> packedInts(sparseInts.uniformBytes);
+        sparseInts.packUniforms(packedInts.data(), {}, {}, {}, true);
+        for(auto value:packedInts)assert(value==std::byte{});
+        integers[36]=2;integers[37]=3;integers[38]=4;integers[39]=5;
+        sparseInts.packUniforms(packedInts.data(), {}, std::span<const int>(integers).first(40), {}, true);
+        bool foundInt=false;unsigned offset=0;
+        for(int n=0;n<sparseInts.parsed->uniform_count;++n){const auto& u=sparseInts.parsed->uniforms[n];
+            if(u.type==MOJOSHADER_UNIFORM_INT){assert(u.index==9);assert(std::memcmp(packedInts.data()+offset,integers.data()+36,16)==0);foundInt=true;}
+            offset+=unsigned((std::max)(1,u.array_count))*16;
+        }
+        assert(foundInt);
         bool rejected = false; try { gfx::vk::Shader bad(std::array<std::uint32_t, 3>{0, 1, 2}, "invalid"); } catch (...) { rejected = true; } assert(rejected);
         std::cout << "PASS: bounded generation handles, SM3 linking, immutable translation, constant register packing, invalid-bytecode rejection\n";
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }

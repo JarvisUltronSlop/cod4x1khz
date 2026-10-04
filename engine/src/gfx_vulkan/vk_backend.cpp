@@ -137,7 +137,7 @@ struct Frame {
     std::vector<Descriptors> cachedDescriptors;
     std::array<unsigned,cacheSlots> descriptorIndex{};
     bool descriptorsDirty=false;
-    struct Uniform {ResourceId shader;std::uint64_t serial=0;std::span<const float> floats;std::span<const int> integers,booleans;unsigned offset=0;};
+    struct Uniform {ResourceId shader;std::uint64_t serial=0;std::span<const float> floats;std::span<const int> integers,booleans;unsigned offset=0;bool zeroTail=false;};
     std::vector<Uniform> uniforms;
     struct Bindings {
         VkPipeline pipeline=VK_NULL_HANDLE;VkPipelineLayout descriptors=VK_NULL_HANDLE,push=VK_NULL_HANDLE;
@@ -787,10 +787,10 @@ void Backend::draw(const DrawPacket& d) {
             auto& cached=i.frame->uniforms[(id.value&65535u)-1];
             const bool immutable=i.config.cacheBindings&&d.immutableConstants;
             unsigned offset=cached.offset;
-            if(!immutable||cached.serial!=i.nextSerial||cached.shader!=id||cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size()){
+            if(!immutable||cached.zeroTail!=d.zeroConstantTail||cached.serial!=i.nextSerial||cached.shader!=id||cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size()){
                 offset=unsigned(i.allocate(shader.uniformBytes,(std::max)(VkDeviceSize(16),i.context.selected.properties.limits.minUniformBufferOffsetAlignment)));
-                shader.packUniforms(static_cast<std::byte*>(i.frame->arena.mapped)+offset,floats,integers,booleans);
-                cached={id,immutable?i.nextSerial:0,floats,integers,booleans,offset};
+                shader.packUniforms(static_cast<std::byte*>(i.frame->arena.mapped)+offset,floats,integers,booleans,d.zeroConstantTail);
+                cached={id,immutable?i.nextSerial:0,floats,integers,booleans,offset,d.zeroConstantTail};
             }
             offsets[offsetCount++] = unsigned(offset);
             if(writeDescriptors) {auto& buffer=buffers[stage];buffer={i.frame->arena.buffer,0,shader.uniformBytes};auto& write=writes[writeCount++];write.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;write.dstSet=sets[stage*2+1];write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;write.pBufferInfo=&buffer;}

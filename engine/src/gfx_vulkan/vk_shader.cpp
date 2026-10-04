@@ -91,12 +91,19 @@ unsigned Shader::inputRegister(MOJOSHADER_usage usage, unsigned index) const {
     throw std::runtime_error("Stock vertex declaration lacks a reflected input register");
 }
 void Shader::packUniforms(void* destination, std::span<const float> floats,
-    std::span<const int> integers, std::span<const int> booleans) const {
+    std::span<const int> integers, std::span<const int> booleans, bool zeroTail) const {
     auto* output = static_cast<unsigned char*>(destination);
+    const auto copyVectors=[zeroTail](void* target, auto values, std::size_t first, std::size_t count, const char* error) {
+        if(first+count<=values.size()/4){std::memcpy(target,values.data()+first*4,count*16);return;}
+        if(!zeroTail)throw std::runtime_error(error);
+        std::memset(target,0,count*16);
+        const auto available=first<values.size()/4?(std::min)(count,values.size()/4-first):0;
+        if(available)std::memcpy(target,values.data()+first*4,available*16);
+    };
     for(const auto& u:uniformCopies){auto* target=output+u.offset;const auto end=std::size_t(u.index)+u.count;
-        if(u.type==MOJOSHADER_UNIFORM_FLOAT){if(end>floats.size()/4)throw std::runtime_error("Vertex/pixel float registers exceeded");std::memcpy(target,floats.data()+std::size_t(u.index)*4,std::size_t(u.count)*16);}
-        else if(u.type==MOJOSHADER_UNIFORM_INT){if(end>integers.size()/4)throw std::runtime_error("Vertex/pixel integer registers exceeded");std::memcpy(target,integers.data()+std::size_t(u.index)*4,std::size_t(u.count)*16);}
-        else {if(end>booleans.size())throw std::runtime_error("Vertex/pixel boolean registers exceeded");std::memset(target,0,std::size_t(u.count)*16);for(unsigned n=0;n<u.count;++n)std::memcpy(target+n*16,&booleans[u.index+n],4);}
+        if(u.type==MOJOSHADER_UNIFORM_FLOAT)copyVectors(target,floats,u.index,u.count,"Vertex/pixel float registers exceeded");
+        else if(u.type==MOJOSHADER_UNIFORM_INT)copyVectors(target,integers,u.index,u.count,"Vertex/pixel integer registers exceeded");
+        else {if(!zeroTail&&end>booleans.size())throw std::runtime_error("Vertex/pixel boolean registers exceeded");std::memset(target,0,std::size_t(u.count)*16);for(unsigned n=0;n<u.count&&u.index+n<booleans.size();++n)std::memcpy(target+n*16,&booleans[u.index+n],4);}
     }
     for(const auto& literal:uniformLiterals)std::memcpy(output+literal.offset,literal.value.data(),literal.bytes);
 }

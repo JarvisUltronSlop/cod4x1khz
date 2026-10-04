@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "rb_draw3d.h"
 #include "rb_logfile.h"
 #include "r_dvars.h"
@@ -443,6 +444,9 @@ void __cdecl RB_StandardDrawCommands(const GfxViewInfo *viewInfo)
 
 void  R_DrawLights(const GfxViewInfo *viewInfo, GfxCmdBuf *cmdBuf)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::LightPass);
+#endif
     GfxCmdBufSourceState v4; // [sp+50h] [-F00h] BYREF
 
     R_InitCmdBufSourceState(&v4, &viewInfo->input, 1);
@@ -673,6 +677,9 @@ void __cdecl R_DrawEmissiveCallback(const void *userData, GfxCmdBufContext conte
 
 void R_DrawEmissive(const GfxViewInfo *viewInfo, GfxCmdBuf *cmdBuf)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::EmissivePass);
+#endif
     GfxCmdBufSourceState v4; // [sp+50h] [-F00h] BYREF
 
     R_InitCmdBufSourceState(&v4, &viewInfo->input, 1);
@@ -745,6 +752,9 @@ GfxCmdBufSourceState *RB_DebugShaderDrawCommandsCommon()
 
 void RB_StandardDrawCommandsCommon()
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::PostFx);
+#endif
     const GfxBackEndData *data; // [esp+1Ch] [ebp-Ch]
     GfxViewInfo *viewInfo; // [esp+20h] [ebp-8h]
     GfxViewInfo *viewInfoa; // [esp+20h] [ebp-8h]

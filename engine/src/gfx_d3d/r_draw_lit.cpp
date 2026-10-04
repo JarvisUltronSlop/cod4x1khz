@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "r_draw_lit.h"
 
 #include "r_rendercmds.h"
@@ -36,6 +37,9 @@ void __cdecl R_DrawLitCallback(const void *userData, GfxCmdBufContext context, G
 
 void R_DrawLit(const GfxViewInfo *viewInfo, GfxCmdBuf *cmdBuf, GfxCmdBuf *prepassCmdBuf)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::LitPass);
+#endif
     GfxCmdBufSourceState v6; // [sp+50h] [-F00h] BYREF
 
     R_InitCmdBufSourceState(&v6, &viewInfo->input, 1);
@@ -81,6 +85,9 @@ void __cdecl R_DrawDecalCallback(const void *userdata, GfxCmdBufContext context,
 
 void R_DrawDecal(const GfxViewInfo *viewInfo, GfxCmdBuf *cmdBuf, GfxCmdBuf *prepassCmdBuf)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope backendDetail(KHZ_RenderStage::DecalPass);
+#endif
     GfxCmdBufSourceState v6; // [sp+50h] [-F00h] BYREF
 
     R_InitCmdBufSourceState(&v6, &viewInfo->input, 1);

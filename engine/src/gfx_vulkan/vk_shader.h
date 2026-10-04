@@ -15,7 +15,7 @@ struct Shader {
     std::size_t uniformBytes = 0;
     Shader(std::span<const std::uint32_t> source, std::string debugName);
     void packUniforms(void* destination, std::span<const float> floats,
-        std::span<const int> integers, std::span<const int> booleans) const;
+        std::span<const int> integers, std::span<const int> booleans, bool zeroTail=false) const;
     unsigned inputRegister(MOJOSHADER_usage usage, unsigned index) const;
 private:
     struct UniformCopy {MOJOSHADER_uniformType type;unsigned index,count,offset;};

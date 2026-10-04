@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "r_draw_bsp.h"
 #include "r_state.h"
 #include "rb_logfile.h"
@@ -8,6 +9,9 @@
 #include "rb_stats.h"
 #include "rb_tess.h"
 #include "r_pretess.h"
+#ifdef COD4X1KHZ
+#include <bsp_pre_tess_batch.hpp>
+#endif
 
 const int g_layerDataStride[16] = { 0, 0, 0, 8, 12, 16, 20, 24, 24, 28, 32, 32, 36, 40, 0, 0 }; // idb
 
@@ -29,6 +33,9 @@ void __cdecl R_SetStreamSource(
 
 void __cdecl R_HW_SetSamplerTexture(IDirect3DDevice9 *device, uint32_t samplerIndex, const GfxTexture *texture)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::SamplerTexture, true);
+#endif
     int hr; // [esp+0h] [ebp-4h]
 
     iassert(texture);
@@ -459,6 +466,57 @@ void __cdecl R_DrawBspDrawSurfsPreTess(const uint32_t *primDrawSurfPos, GfxCmdBu
 
 void __cdecl R_DrawBspDrawSurfsLitPreTess(const uint32_t *primDrawSurfPos, GfxCmdBufContext context)
 {
+#ifdef COD4X1KHZ
+    if (r_bspPreTessBatch->current.enabled)
+    {
+        const bool batching = !r_drawPrimFloor->current.integer && !r_drawPrimCap->current.integer &&
+            !r_skipDrawTris->current.enabled;
+        const bool layered = g_layerDataStride[context.state->prim.vertDeclType] != 0;
+        R_SetCodeImageTexture(context.source, TEXTURE_SRC_CODE_DYNAMIC_SHADOWS,
+            sc_enable->current.enabled ? gfxRenderTargets[R_RENDERTARGET_DYNAMICSHADOWS].image : rgp.whiteImage);
+        GfxReadCmdBuf cmdBuf{primDrawSurfPos};
+        const GfxBspPreTessDrawSurf* list;
+        uint32_t count, baseIndex;
+        while (R_ReadBspPreTessDrawSurfs(&cmdBuf, &list, &count, &baseIndex))
+        {
+            uint32_t probe = 255, lightmap = 31;
+            khz::BspPreTessRun run{};
+            srfTriangles_t drawTris{};
+            bool pending = false;
+            const auto flush = [&] {
+                if (!pending) return;
+                drawTris.vertexCount = run.vertices;
+                R_DrawPreTessTris(&context.state->prim, &drawTris, run.baseIndex, run.triangles);
+                pending = false;
+            };
+            for (uint32_t index = 0; index != count; ++index)
+            {
+                const auto surfIndex = list[index].baseSurfIndex;
+                if (surfIndex >= rgp.world->surfaceCount)
+                    MyAssertHandler(".\\r_draw_bsp.cpp", __LINE__, 0, "Invalid pre-tess world surface %u", surfIndex);
+                const auto& surf = rgp.world->dpvs.surfaces[surfIndex];
+                const auto& tris = surf.tris;
+                const khz::BspPreTessRun next{uint32_t(tris.firstVertex), uint32_t(tris.vertexLayerData),
+                    surf.reflectionProbeIndex, surf.lightmapIndex, baseIndex, list[index].totalTriCount, tris.vertexCount};
+                if (!pending || !batching || !khz::appendBspPreTessRun(run, next, layered))
+                {
+                    // Submit the old run before changing any shader or texture binding.
+                    flush();
+                    if (probe != surf.reflectionProbeIndex || lightmap != surf.lightmapIndex)
+                    {
+                        probe = surf.reflectionProbeIndex; lightmap = surf.lightmapIndex;
+                        R_SetReflectionProbe(context, probe); R_SetLightmap(context, lightmap);
+                        R_SetupPassPerObjectArgs(context); R_SetupPassPerPrimArgs(context);
+                    }
+                    drawTris = tris; run = next; pending = true;
+                }
+                baseIndex += 3 * list[index].totalTriCount;
+            }
+            flush();
+        }
+        return;
+    }
+#endif
     uint32_t baseIndex; // [esp+4h] [ebp-28h] BYREF
     uint32_t surfIndex; // [esp+8h] [ebp-24h]
     GfxReadCmdBuf cmdBuf; // [esp+Ch] [ebp-20h] BYREF
@@ -505,4 +563,5 @@ void __cdecl R_DrawBspDrawSurfsLitPreTess(const uint32_t *primDrawSurfPos, GfxCm
             baseIndex += 3 * list[index].totalTriCount;
         }
     }
+
 }

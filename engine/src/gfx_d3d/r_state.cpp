@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "r_state.h"
 #include "rb_logfile.h"
 #include "r_dvars.h"
@@ -74,6 +75,9 @@ void __cdecl R_ChangeStreamSource(
     uint32_t vertexOffset,
     uint32_t vertexStride)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::StreamSource, true);
+#endif
     int hr; // [esp+0h] [ebp-8h]
     IDirect3DDevice9 *device; // [esp+4h] [ebp-4h]
 
@@ -770,6 +774,9 @@ void __cdecl R_ClearAllStreamSources(GfxCmdBufPrimState *state)
 
 void __cdecl R_DrawIndexedPrimitive(GfxCmdBufPrimState *state, const GfxDrawPrimArgs *args)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::DrawIndexed, true);
+#endif
     const char *v2; // eax
     int hr; // [esp+0h] [ebp-Ch]
     int triCount; // [esp+4h] [ebp-8h]
@@ -1735,6 +1742,9 @@ uint32_t __cdecl R_HW_SetSamplerState(
     uint32_t samplerState,
     uint32_t oldSamplerState)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::SamplerState, true);
+#endif
     const char *v4; // eax
     const char *v5; // eax
     const char *v6; // eax

@@ -248,14 +248,18 @@ template<class T,unsigned N> struct Registers {
     std::array<T,N> values{};
     std::span<const T> captured;
     std::uint64_t revision=1,capturedRevision=0,capturedEpoch=0;
+    unsigned written=0;
     HRESULT set(UINT first,const T* source,UINT count,unsigned width){
         if(!source||first>N/width||count>N/width-first)return D3DERR_INVALIDCALL;
         auto* destination=values.data()+first*width;const auto bytes=count*width*sizeof(T);
         if(std::memcmp(destination,source,bytes)){std::memcpy(destination,source,bytes);++revision;}
+        // Even an all-zero write extends the prefix. Never shrink it: every
+        // register omitted from a packet must still have its initial value.
+        if(count&&(first+count)*width>written){written=(first+count)*width;++revision;}
         return S_OK;
     }
     std::span<const T> snapshot(State& state){
-        if(capturedEpoch!=state.packetEpoch||capturedRevision!=revision){captured=state.copy<T>(values);capturedEpoch=state.packetEpoch;capturedRevision=revision;}
+        if(capturedEpoch!=state.packetEpoch||capturedRevision!=revision){captured=state.copy<T>(std::span<const T>(values).first(written));capturedEpoch=state.packetEpoch;capturedRevision=revision;}
         return captured;
     }
 };
@@ -447,7 +451,7 @@ HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE type,INT base,UINT minimum
     return checked([&]{std::lock_guard guard(state->mutex);auto& c=state->append(Operation::Draw);auto& d=c.draw;
         d.vertexShader=id(boundVs);d.pixelShader=id(boundPs);d.indexBuffer=id(boundIndices);d.colorTarget=id(boundColor);d.depthTarget=id(boundDepth);d.strides=strides;d.vertexOffsets=offsets;d.samplers=samplers;
         if(capturedDeclarationEpoch!=state->packetEpoch||capturedDeclarationRevision!=declarationRevision){capturedDeclaration=state->copy<VertexElement>(declaration->elements);capturedDeclarationEpoch=state->packetEpoch;capturedDeclarationRevision=declarationRevision;}
-        d.elements=capturedDeclaration;d.vertexConstants=vertexFloats.snapshot(*state);d.pixelConstants=pixelFloats.snapshot(*state);d.vertexIntegers=vertexInts.snapshot(*state);d.pixelIntegers=pixelInts.snapshot(*state);d.vertexBooleans=vertexBools.snapshot(*state);d.pixelBooleans=pixelBools.snapshot(*state);d.immutableConstants=true;
+        d.elements=capturedDeclaration;d.vertexConstants=vertexFloats.snapshot(*state);d.pixelConstants=pixelFloats.snapshot(*state);d.vertexIntegers=vertexInts.snapshot(*state);d.pixelIntegers=pixelInts.snapshot(*state);d.vertexBooleans=vertexBools.snapshot(*state);d.pixelBooleans=pixelBools.snapshot(*state);d.immutableConstants=true;d.zeroConstantTail=true;
         d.state=material();d.indexCount=primitives*3;d.firstIndex=first;d.vertexBase=base;d.vertexFirst=minimum;d.vertexCount=count;d.x=float(viewport.X);d.y=float(viewport.Y);d.width=float(viewport.Width);d.height=float(viewport.Height);d.minDepth=viewport.MinZ;d.maxDepth=viewport.MaxZ;
         d.scissor=renderStates[D3DRS_SCISSORTESTENABLE]!=0;d.scissorX=scissor.left;d.scissorY=scissor.top;d.scissorWidth=scissor.right-scissor.left;d.scissorHeight=scissor.bottom-scissor.top;
         for(unsigned s=0;s<16;++s){d.vertexBuffers[s]=id(boundVertices[s]);d.textures[s]=id(boundTextures[s]);if(boundVertices[s])state->keep(boundVertices[s]->storage);if(boundTextures[s])state->keep(boundTextures[s]->storage);

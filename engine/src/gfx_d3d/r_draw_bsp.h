@@ -1,5 +1,8 @@
 #pragma once
 #include "rb_backend.h"
+#ifdef COD4X1KHZ
+extern const dvar_t* r_bspPreTessBatch;
+#endif
 
 struct GfxTrianglesDrawStream // sizeof=0x30
 {                                       // ...

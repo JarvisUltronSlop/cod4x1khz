@@ -14,14 +14,19 @@
 #include <filesystem>
 #include <fstream>
 
+std::atomic<bool> KHZ_RenderProfileRecording{false};
+
 namespace {
 enum Phase : unsigned { Idle, Preparing, Recording, Draining, Complete, Aborted };
 constexpr unsigned CpuCapacity = 524288, GpuCapacity = 32768, QueryCapacity = 64;
 const char* stageNames[] = {"frontend", "consume", "worker_wait", "frontend_workers", "renderer_wait", "backend_idle", "present",
     "gpu_sync", "begin_frame", "cgame", "render_scene", "packet_entities", "view_weapon", "draw_2d", "draw_active",
-    "vertex_lock", "index_lock", "world_dpvs", "bsp", "static_models", "dyn_models", "scene_entities", "model_lighting", "merge_surfs", "sound", "fx_physics", "dyn_entity_physics", "frame_work", "client_frame", "end_frame"};
+    "vertex_lock", "index_lock", "world_dpvs", "bsp", "static_models", "dyn_models", "scene_entities", "model_lighting", "merge_surfs", "sound", "fx_physics", "dyn_entity_physics", "frame_work", "client_frame", "end_frame", "backend_begin", "backend_3d", "backend_2d", "swap_fence", "backend_gpu_sync", "depth_pass", "lit_pass", "decal_pass", "emissive_pass", "light_pass", "draw_surfs", "post_fx", "draw_indexed", "stream_source", "index_data", "vertex_constants", "pixel_constants", "pixel_shader", "vertex_shader", "vertex_decl", "sampler_texture", "sampler_state", "setup_pass", "tess_world", "tess_static_model", "tess_model", "tess_effects"};
+static_assert(std::size(stageNames) == unsigned(KHZ_RenderStage::Count));
 struct CpuEvent { std::uint64_t begin, end; unsigned stage, thread; };
+struct CpuAggregate { std::uint64_t count = 0, ticks = 0, maxTicks = 0; };
 struct CpuBuffer {
+    std::array<CpuAggregate, unsigned(KHZ_RenderStage::Count)> aggregates{};
     std::array<CpuEvent, CpuCapacity> events;
     unsigned written = 0;
     std::atomic<unsigned> published{0}, overflow{0};
@@ -77,6 +82,7 @@ void beginDrain() {
     if (supported.load(std::memory_order_relaxed)) {
         if (FAILED(disjointQuery->Issue(D3DISSUE_END)) || FAILED(frequencyQuery->Issue(D3DISSUE_END))) failQuery();
     }
+    KHZ_RenderProfileRecording.store(false, std::memory_order_relaxed);
     phase.store(Draining, std::memory_order_release);
 }
 void finishDrain() {
@@ -128,6 +134,19 @@ bool exportCapture() {
                  << "\",\"begin\":" << event.begin << ",\"end\":" << event.end << '}';
         }
     }
+    // Aggregates deliberately omit individual timestamps to keep frequent
+    // driver calls bounded. They are inclusive totals, not timeline events.
+    file << "],\"cpu_aggregates\":["; first = true;
+    for (unsigned role = 0; role != 2; ++role) {
+        for (unsigned stage = 0; stage != unsigned(KHZ_RenderStage::Count); ++stage) {
+            const auto& value = cpu[role].aggregates[stage];
+            if (!value.count) continue;
+            if (!first) file << ','; first = false;
+            file << "{\"role\":" << role << ",\"stage\":\"" << stageNames[stage]
+                 << "\",\"count\":" << value.count << ",\"ticks\":" << value.ticks
+                 << ",\"max_ticks\":" << value.maxTicks << '}';
+        }
+    }
     file << "],\"gpu\":[";
     for (unsigned i = 0; i < frameCount; ++i) {
         const auto& frame = frames[i]; if (i) file << ',';
@@ -139,7 +158,8 @@ bool exportCapture() {
     exported = path; return true;
 }
 }
-KHZ_RenderProfileScope::KHZ_RenderProfileScope(KHZ_RenderStage stage) : stage_(stage) {
+void KHZ_RenderProfileScope::beginCapture() {
+    const auto stage = stage_;
     if (phase.load(std::memory_order_acquire) != Recording) return;
     // The drill-down is for frontend/device contention. The backend streams
     // hundreds of small buffers per frame; retain its whole submission span
@@ -147,11 +167,18 @@ KHZ_RenderProfileScope::KHZ_RenderProfileScope(KHZ_RenderStage stage) : stage_(s
     if ((stage == KHZ_RenderStage::VertexLock || stage == KHZ_RenderStage::IndexLock) && !Sys_IsMainThread()) return;
     epoch_ = epoch.load(); begin_ = khz::counter();
 }
-KHZ_RenderProfileScope::~KHZ_RenderProfileScope() {
+void KHZ_RenderProfileScope::endCapture() {
     if (!begin_ || epoch_ != epoch.load() || phase.load(std::memory_order_acquire) != Recording) return;
     const unsigned role = Sys_IsMainThread() ? 0 : Sys_IsRenderThread() ? 1 : 2;
     if (role > 1) return;
     auto& buffer = cpu[role];
+    if (aggregate_) {
+        auto& value = buffer.aggregates[unsigned(stage_)];
+        const auto elapsed = khz::counter() - begin_;
+        ++value.count; value.ticks += elapsed;
+        if (elapsed > value.maxTicks) value.maxTicks = elapsed;
+        return;
+    }
     if (buffer.written == CpuCapacity) { buffer.overflow.fetch_add(1, std::memory_order_relaxed); return; }
     buffer.events[buffer.written++] = {begin_, khz::counter(), unsigned(stage_), Sys_GetCurrentThreadId()};
     buffer.published.store(buffer.written, std::memory_order_release);
@@ -159,7 +186,7 @@ KHZ_RenderProfileScope::~KHZ_RenderProfileScope() {
 void KHZ_RenderProfileBackendBegin(IDirect3DDevice9* device) {
     unsigned state = phase.load(std::memory_order_acquire);
     if (state == Preparing) {
-        cpu[1].written = 0; cpu[1].published.store(0); cpu[1].overflow.store(0);
+        cpu[1].aggregates = {}; cpu[1].written = 0; cpu[1].published.store(0); cpu[1].overflow.store(0);
         frameCount = readyCount = 0; currentSlot = -1; frequencyReady = disjointReady = false;
         gpuPublished.store(0); gpuReady.store(0); gpuSkipped.store(0); queryErrors.store(0);
         gpuFrequency.store(0); disjoint.store(true);
@@ -168,7 +195,8 @@ void KHZ_RenderProfileBackendBegin(IDirect3DDevice9* device) {
         supported.store(available, std::memory_order_relaxed);
         const auto now = khz::counter(); started.store(now); ended.store(0);
         deadline = now + khz::frequency() * durationMs.load() / 1000;
-        phase.store(Recording, std::memory_order_release); state = Recording;
+        phase.store(Recording, std::memory_order_release);
+        KHZ_RenderProfileRecording.store(true, std::memory_order_relaxed); state = Recording;
     }
     if (state == Draining) { finishDrain(); return; }
     if (state != Recording) return;
@@ -195,6 +223,7 @@ void KHZ_RenderProfileFrameEnd() {
     if (phase.load(std::memory_order_acquire) == Draining) finishDrain();
 }
 void KHZ_RenderProfileShutdown() {
+    KHZ_RenderProfileRecording.store(false, std::memory_order_relaxed);
     // Native graphics teardown has already joined the backend and owns device lifetime.
     if (phase.load() == Recording || phase.load() == Preparing || phase.load() == Draining)
         phase.store(Aborted, std::memory_order_release);
@@ -216,7 +245,7 @@ const char* KHZ_RenderProfileProbe(const char* action) {
         if (end == action + 6 || *end || value < 1000 || value > 10000) return "{\"error\":\"duration must be 1000..10000 ms\"}";
         const auto state = phase.load(std::memory_order_acquire);
         if (state != Idle && state != Complete && state != Aborted) return "{\"error\":\"capture already active\"}";
-        cpu[0].written = 0; cpu[0].published.store(0); cpu[0].overflow.store(0);
+        cpu[0].aggregates = {}; cpu[0].written = 0; cpu[0].published.store(0); cpu[0].overflow.store(0);
         exported.clear(); durationMs.store(static_cast<unsigned>(value)); epoch.fetch_add(1);
         phase.store(Preparing, std::memory_order_release); return status();
     }

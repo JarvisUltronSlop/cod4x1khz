@@ -1,4 +1,5 @@
 #include <universal/q_shared.h>
+#include <khz/khz_render_profile.h>
 #include "r_shade.h"
 #include "r_state.h"
 #include "rb_logfile.h"
@@ -39,6 +40,9 @@ int __cdecl R_ReserveIndexData(GfxCmdBufPrimState *state, int triCount)
 
 int __cdecl R_SetIndexData(GfxCmdBufPrimState *state, uint8_t *indices, int triCount)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::IndexData, true);
+#endif
     int baseIndex; // [esp+60h] [ebp-18h]
     int indexDataSize; // [esp+64h] [ebp-14h]
     uint32_t lockFlags; // [esp+68h] [ebp-10h]
@@ -88,6 +92,9 @@ void __cdecl R_HW_SetVertexShaderConstant(
     const float *data,
     uint32_t rowCount)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::VertexConstants, true);
+#endif
     const char *v4; // eax
     const char *v5; // eax
     int hr; // [esp+30h] [ebp-4h]
@@ -246,6 +253,9 @@ void __cdecl R_HW_SetPixelShaderConstant(
     const float *data,
     uint32_t rowCount)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::PixelConstants, true);
+#endif
     const char *v4; // eax
     int hr; // [esp+0h] [ebp-4h]
 
@@ -495,6 +505,9 @@ void __cdecl R_UpdateVertexDecl(GfxCmdBufState *state)
 
 void __cdecl R_SetupPass(GfxCmdBufContext context, uint32_t passIndex)
 {
+#ifdef COD4X1KHZ
+    KHZ_RenderProfileScope callDetail(KHZ_RenderStage::SetupPass, true);
+#endif
     const char *v2; // eax
     const char *v3; // eax
     const char *v4; // eax

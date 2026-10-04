@@ -4,6 +4,7 @@ Broad-view bots join after camera protection so shader startup cannot kill the
 fixture human. Measurements require both bots and a stable actual camera.
 """
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -23,6 +24,7 @@ parser.add_argument("--renderer", choices=["d3d9", "vulkan"], default="d3d9")
 parser.add_argument("--resolution", default="640x480")
 parser.add_argument("--fps-cap", type=int, default=0)
 parser.add_argument("--profile", action="store_true")
+parser.add_argument("--cpu-profile", action="store_true", help="Capture eight seconds of native CPU spans and DX9 GPU timestamps")
 parser.add_argument("--compare", action="store_true")
 parser.add_argument("--validation", action="store_true")
 parser.add_argument("--seconds", type=int, default=40)
@@ -49,7 +51,7 @@ client_args = client_args.replace("+set com_maxfps 0", "+set com_maxfps " + str(
 client_args += " +set r_customMode " + args.resolution + " +set r_vkProfile " + ("1" if args.profile else "0")
 client_args += " +set r_vkCompare " + ("1" if args.compare else "0") + " +set r_vkValidation " + ("1" if args.validation else "0")
 client_args += " +set cl_timeout 300 +set cl_connectTimeout 300"
-client_args += " " + args.extra_client_args
+client_args += " +set r_altModelLightingUpdate 1 " + args.extra_client_args
 samples = []
 screenshot = None
 shot_home = root / "runtime/benchmarks/client-28995/main/screenshots"
@@ -65,6 +67,9 @@ profile_requested = None
 profile_paths = []
 profile_home = root / "runtime/benchmarks/client-28995/vulkan/diagnostics"
 profile_started = time.time()
+cpu_profile = None
+cpu_profile_path = None
+cpu_profile_error = None
 
 def set_bots():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -113,7 +118,33 @@ with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suff
                 bots_requested = True
             if args.profile and profile_requested is None and broad_view and state["seconds"] > args.seconds - 12:
                 profile_requested = {"after_seconds": state["seconds"], "reply": query(28995, "khz_ui console r_vkWriteProfile", "KHZ_UI", .5)}
-            if playing and (not args.broad_view or broad_view is not None and state["presentations"] - broad_view["after_presentations"] > 300) and not shot_requested:
+            if args.cpu_profile and playing and broad_view and state["seconds"] > args.seconds - 13 and cpu_profile is None:
+                cpu_profile = {"after_seconds": state["seconds"], "request": query(28995, "khz_ui renderprofile start 8000", "KHZ_UI", 1),
+                               "statuses": [], "uploads_before": query(28995, "khz_ui renderprofile uploads", "KHZ_UI", 1)}
+            if cpu_profile is not None and cpu_profile_path is None and cpu_profile_error is None:
+                status = query(28995, "khz_ui renderprofile status", "KHZ_UI", 1)
+                cpu_profile["statuses"].append(status)
+                if status.get("phase") == 5:
+                    cpu_profile_error = "Native CPU/GPU capture aborted"
+                elif status.get("phase") == 4:
+                    if (status.get("cpu_overflow") or status.get("query_errors") or status.get("gpu_skipped") or
+                            not status.get("gpu_supported") or status.get("disjoint") or
+                            not status.get("gpu_frequency") or status.get("gpu_ready") != status.get("gpu_frames")):
+                        cpu_profile_error = "Native CPU/GPU capture is incomplete: " + json.dumps(status)
+                    else:
+                        cpu_profile["export"] = query(28995, "khz_ui renderprofile export", "KHZ_UI", 4)
+                        path = root / "runtime/benchmarks/client-28995" / ("render-profile-" + str(status["start_qpc"]) + ".json")
+                        data = path.read_bytes()
+                        cpu_profile["exported_after_seconds"] = state["seconds"]
+                        capture = json.loads(data)
+                        if len(capture["cpu"]) != status["cpu_main"] + status["cpu_backend"] or len(capture["gpu"]) != status["gpu_frames"]:
+                            cpu_profile_error = "Native exported capture differs from frozen counters"
+                        else:
+                            cpu_profile_path = str(prefix.parent / (prefix.name + "-cpu-profile.json"))
+                            Path(cpu_profile_path).write_bytes(data)
+                            cpu_profile["capture_sha256"] = hashlib.sha256(data).hexdigest()
+                            cpu_profile["uploads_after"] = query(28995, "khz_ui renderprofile uploads", "KHZ_UI", 1)
+            if playing and (not args.broad_view or broad_view is not None and state["presentations"] - broad_view["after_presentations"] > 300 and state["seconds"] >= args.seconds - 14) and not shot_requested:
                 reply = query(28995, "khz_ui screenshot", "KHZ_UI", .5)
                 shot_requested = True
                 if reply.get("result") != "queued": shot_error = str(reply)
@@ -140,7 +171,8 @@ for path in profile_home.glob("*"):
         destination.mkdir(exist_ok=True)
         shutil.copy2(path, destination / path.name)
         profile_paths.append(str(destination / path.name))
-prefix.with_suffix(".json").write_text(json.dumps({"client_exit": client_exit, "server_exit": server_exit, "renderer": args.renderer, "resolution": args.resolution, "fps_cap": args.fps_cap, "profile": args.profile, "profile_export": profile_requested, "diagnostic_paths": profile_paths, "compare": args.compare, "validation": args.validation, "samples": samples, "query_errors": query_errors, "screenshot": screenshot, "screenshot_error": shot_error, "broad_view": broad_view}, indent=2))
+prefix.with_suffix(".json").write_text(json.dumps({"client_exit": client_exit, "server_exit": server_exit, "renderer": args.renderer, "resolution": args.resolution, "fps_cap": args.fps_cap, "profile": args.profile, "profile_export": profile_requested, "diagnostic_paths": profile_paths, "cpu_profile": cpu_profile, "cpu_profile_path": cpu_profile_path, "cpu_profile_error": cpu_profile_error, "compare": args.compare, "validation": args.validation, "samples": samples, "query_errors": query_errors, "screenshot": screenshot, "screenshot_error": shot_error, "broad_view": broad_view,
+    "binary_sha256": {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in (client, server)}}, indent=2))
 report = json.loads(prefix.with_suffix(".json").read_text())
 measurement = []
 camera_errors = []
@@ -148,12 +180,14 @@ if broad_view:
     point = broad_view["evidence"]["selected"]["point"]
     yaw = broad_view["evidence"]["heading"]["yaw"]
     for sample in samples:
-        if sample["client"]["seconds"] < broad_view["after_seconds"] + 3 or sample["server"].get("native_bots", {}).get("active", 0) != 2 or profile_requested and sample["client"]["seconds"] >= profile_requested["after_seconds"]:
+        if (sample["client"]["seconds"] < broad_view["after_seconds"] + 3 or sample["server"].get("native_bots", {}).get("active", 0) != 2 or
+                profile_requested and sample["client"]["seconds"] >= profile_requested["after_seconds"] or
+                cpu_profile and sample["client"]["seconds"] >= cpu_profile["after_seconds"]):
             continue
         view = sample["state"].get("rendered_view_angles", [])
         origin = sample["state"].get("origin", [])
         if (sample["state"].get("pm_type") != 0 or sample["ui"].get("top_menu") or len(view) != 3 or len(origin) != 3 or
-                math.dist(origin[:2], point[:2]) > 20 or abs((view[1] - yaw + 180) % 360 - 180) > 2 or abs(view[0]) > 2):
+                math.dist(origin[:2], point[:2]) > 20 or abs((view[1] - yaw + 180) % 360 - 180) > 2 or abs((view[0] + 180) % 360 - 180) > 2):
             camera_errors.append({"time": sample["time"], "state": sample["state"], "ui": sample["ui"]})
         measurement.append(sample)
 if len(measurement) >= 2:
@@ -168,10 +202,27 @@ if len(measurement) >= 2:
         "client_debt": last["client"]["debt"], "server_debt": last["server"]["debt"]}
 else:
     report["measurement"] = {"camera_passed": False, "error": "No sustained live broad-view interval was captured"}
+if cpu_profile and broad_view:
+    profile_samples = [sample for sample in samples if
+        cpu_profile['after_seconds'] <= sample['client']['seconds'] <= cpu_profile.get('exported_after_seconds', -1)]
+    profile_camera_errors = []
+    for sample in profile_samples:
+        view = sample['state'].get('rendered_view_angles', [])
+        origin = sample['state'].get('origin', [])
+        if (sample['state'].get('pm_type') != 0 or sample['ui'].get('top_menu') or len(view) != 3 or len(origin) != 3 or
+                math.dist(origin[:2], point[:2]) > 20 or abs((view[1] - yaw + 180) % 360 - 180) > 2 or abs((view[0] + 180) % 360 - 180) > 2 or
+                sample['server'].get('native_bots', {}).get('active', 0) != 2):
+            profile_camera_errors.append({'time': sample['time'], 'state': sample['state'], 'ui': sample['ui']})
+    report['cpu_profile_camera'] = {'passed': len(profile_samples) >= 10 and not profile_camera_errors,
+        'samples': len(profile_samples), 'errors': profile_camera_errors}
+    if not report['cpu_profile_camera']['passed']:
+        report['cpu_profile_error'] = cpu_profile_error = 'Camera or bot fixture changed during CPU/GPU capture'
 prefix.with_suffix(".json").write_text(json.dumps(report, indent=2))
 print(json.dumps(report["measurement"], indent=2), flush=True)
 if query_errors:
     print(json.dumps(query_errors, indent=2), flush=True)
 print("Client exit", client_exit, "server exit", server_exit, "telemetry samples", len(samples), flush=True)
 print(prefix.with_suffix(".client.log").read_text(errors="replace")[-6500:], flush=True)
-raise SystemExit(client_exit or server_exit or (args.broad_view and not report["measurement"]["camera_passed"]))
+if args.cpu_profile and (not cpu_profile_path or cpu_profile_error):
+    print("CPU profile failed:", cpu_profile_error or "No complete capture exported", flush=True)
+raise SystemExit(client_exit or server_exit or (args.broad_view and not report["measurement"]["camera_passed"]) or (args.cpu_profile and (not cpu_profile_path or cpu_profile_error)))

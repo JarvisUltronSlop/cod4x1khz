@@ -68,12 +68,39 @@ struct Fixture {
         if(kind){const auto words=compile(kind==1?"samplerCUBE image:register(s0);float4 tint:register(c0);float4 main(float2 t:TEXCOORD0):COLOR0{return texCUBE(image,float3(1,t.x-.5,t.y-.5))*tint;}":"sampler3D image:register(s0);float4 tint:register(c0);float4 main(float2 t:TEXCOORD0):COLOR0{return tex3D(image,float3(t,.5))*tint;}","ps_3_0");IDirect3DPixelShader9* next=nullptr;check(device->CreatePixelShader(words.data(),&next));release(pixel);pixel=next;}
     }
     std::vector<BYTE> run(int transfer=-1){
+        if(transfer==-5){
+            // Read sparse never-written F/I/B registers, then expand those
+            // prefixes after the first immutable draw has been recorded.
+            const auto vs=compile("float4 padding:register(c20);struct I{float4 p:POSITION;float2 t:TEXCOORD0;};struct O{float4 p:POSITION;float2 t:TEXCOORD0;};O main(I i){O o;o.p=i.p+padding;o.t=i.t;return o;}","vs_3_0");
+            // Authored PS3: r0=c0+c12; if(b6) rep(i9.x) r0+=c13.
+            // HLSL globals use float registers even for int/bool types.
+            const DWORD ps[]={0xffff0300,0x02000001,0x800f0000,0xa0e40000,
+                0x03000002,0x800f0000,0x80e40000,0xa0e4000c,
+                0x01000028,0xe0e40806,0x01000026,0xf0e40009,
+                0x03000002,0x800f0000,0x80e40000,0xa0e4000d,
+                0x00000027,0x0000002b,0x02000001,0x800f0800,0x80e40000,0xffff};
+            release(vertex);release(pixel);check(device->CreateVertexShader(vs.data(),&vertex));check(device->CreatePixelShader(ps,&pixel));
+        }
         check(device->SetRenderTarget(0,surface));check(device->SetDepthStencilSurface(nullptr));D3DVIEWPORT9 viewport{0,0,64,64,0,1};check(device->SetViewport(&viewport));
         check(device->SetRenderState(D3DRS_ZENABLE,FALSE));check(device->SetRenderState(D3DRS_ZWRITEENABLE,FALSE));check(device->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));check(device->SetRenderState(D3DRS_LIGHTING,FALSE));
         check(device->SetVertexDeclaration(declaration));check(device->SetVertexShader(vertex));check(device->SetTexture(0,image));if(transfer>=0)textureTransfer(unsigned(transfer));check(device->SetPixelShader(pixel));check(device->SetStreamSource(0,vertices,0,24));check(device->SetIndices(indices));
         check(device->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));check(device->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
         check(device->BeginScene());check(device->Clear(0,nullptr,D3DCLEAR_TARGET,0xff102030,1,0));
-        const float tint[]={1,1,1,1},changed[]={0,0,0,0};check(device->SetPixelShaderConstantF(0,tint,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+        const float brightness=transfer==-5?.25f:1.0f;const float tint[]={brightness,brightness,brightness,1},changed[]={0,0,0,0};check(device->SetPixelShaderConstantF(0,tint,1));check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+        if(transfer==-5){
+            const BOOL disabled=FALSE,enabled=TRUE;const int zero[]={0,0,0,0},extra[]={1,0,0,0};
+            const float step[]={.125f,0,0,0};check(device->SetPixelShaderConstantF(13,step,1));
+            // Explicit zero writes extend the prefix too. Gaps remain zero.
+            check(device->SetVertexShaderConstantF(20,changed,1));check(device->SetPixelShaderConstantF(12,changed,1));
+            check(device->SetPixelShaderConstantI(9,zero,1));check(device->SetPixelShaderConstantB(6,&disabled,1));
+            RECT box{0,0,32,32};check(device->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE));check(device->SetScissorRect(&box));
+            check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+            check(device->SetPixelShaderConstantI(9,extra,1));check(device->SetPixelShaderConstantB(6,&enabled,1));
+            check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
+            // Mutations after recording must not change any earlier packet.
+            const float moved[]={10,10,0,0};check(device->SetVertexShaderConstantF(20,moved,1));
+            check(device->SetPixelShaderConstantI(9,zero,1));check(device->SetPixelShaderConstantB(6,&disabled,1));
+        }
         if(transfer==-4)for(unsigned draw=1;draw<128;++draw)check(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2));
         if(transfer==-2){
             // Distinct immutable register versions and repeated unchanged
@@ -148,8 +175,8 @@ int main(int argc,char** argv){try{
       assert(gfx::legacy::validationErrors(foreign.device)==UINT32_MAX);
       assert(!gfx::legacy::writeFrameTimings(foreign.device,"foreign-dx9-unused.csv"));
     }
-    for(int transfer:{-4,-3,-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);if(transfer==-3)f.frontendTransfers();reference=f.run(transfer);}{Fixture f(window.handle,true,false,transfer==-4);if(transfer==-3)f.frontendTransfers();candidate=f.run(transfer);f.completedQueryKeepsLaterPacketsQueued();assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}
+    for(int transfer:{-5,-4,-3,-2,-1,0,1,2}){std::vector<BYTE> reference,candidate;{Fixture f(window.handle,false);if(transfer==-3)f.frontendTransfers();reference=f.run(transfer);if(transfer==-5){for(unsigned channel=0;channel<3;++channel)assert(reference[(48*64+48)*4+channel]==64);assert(reference[(16*64+16)*4+2]==96);}}{Fixture f(window.handle,true,false,transfer==-4);if(transfer==-3)f.frontendTransfers();candidate=f.run(transfer);f.completedQueryKeepsLaterPacketsQueued();assert(gfx::legacy::validationErrors(f.device)==0);}assert(reference==candidate);}
     assert(contendedPolls>0);pollingEvent=nullptr;
     if(timings){Fixture f(window.handle,true,true);for(unsigned n=0;n<24;++n){f.run();check(f.device->Present(nullptr,nullptr,nullptr,nullptr));}assert(gfx::legacy::writeFrameTimings(f.device,timings));assert(gfx::legacy::validationErrors(f.device)==0);}
-    std::cout<<"Legacy resource/constant/query, frontend upload and 2D/cube/volume transfer parity passed\n";return 0;
+    std::cout<<"Legacy resource/sparse immutable F/I/B constant/query, frontend upload and 2D/cube/volume transfer parity passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

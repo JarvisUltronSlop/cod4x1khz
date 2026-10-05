@@ -23,8 +23,11 @@ def compare(first,second):
     w,h,a=ppm(first);ww,hh,b=ppm(second)
     if (w,h)!=(ww,hh) or min(w,h)<7:
         raise ValueError('Fixture dimensions differ or are too small for SSIM')
-    scores=[];c1=(.01*255)**2;c2=(.03*255)**2;n=49
-    for y in range(3,h-3):
+    # Equal pixels have SSIM exactly one in every window. Avoid constructing
+    # hundreds of identical windows for each protected-frame-slot fixture.
+    identical=a==b
+    scores=[1.] if identical else [];c1=(.01*255)**2;c2=(.03*255)**2;n=49
+    for y in (() if identical else range(3,h-3)):
         for x in range(3,w-3):
             for channel in range(3):
                 aa=[a[(yy*w+xx)*3+channel] for yy in range(y-3,y+4) for xx in range(x-3,x+4)]

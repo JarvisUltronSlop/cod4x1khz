@@ -62,6 +62,10 @@ def analyze(path,start_us,end_us):
             'gpu_work':distribution(gpu_values),'cpu_stages':{k:distribution(v) for k,v in values.items()},
             'parallel_batches':sum(r['parallel_batches'] for batches in displays.values() for r in batches),
             'parallel_draws':sum(r['parallel_draws'] for batches in displays.values() for r in batches),
+            'optimization_counters':{
+                field:{'total':sum(r.get(field,0) for batches in displays.values() for r in batches),
+                       'per_display_mean':statistics.mean(sum(r.get(field,0) for r in batches) for batches in displays.values())}
+                for field in ('parallel_prepare_batches','parallel_prepare_draws','geometry_copied_bytes','geometry_reused_bytes','batched_draws')},
             'draws':sum(r['draws'] for batches in displays.values() for r in batches),
             'timing_capture_complete':contiguous and len(gpu_values)==len(presented),
             'full_performance_acceptance_verified':False}

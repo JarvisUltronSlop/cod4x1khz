@@ -85,6 +85,7 @@ static const char* s_threadNames[THREAD_CONTEXT_COUNT] =
 #ifdef COD4X1KHZ_NATIVE_VULKAN
     "Worker2",
     "Worker3",
+    "VulkanSubmission",
 #endif
 #endif
 };
@@ -185,6 +186,20 @@ bool Sys_IsClientSimulationThread()
 {
     return threadId[THREAD_CONTEXT_CLIENT_SIM] == GetCurrentThreadId();
 }
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+void Sys_InitVulkanSubmissionThread()
+{
+    iassert(threadId[THREAD_CONTEXT_VULKAN] == 0);
+    threadId[THREAD_CONTEXT_VULKAN] = GetCurrentThreadId();
+    Sys_InitThread(THREAD_CONTEXT_VULKAN);
+}
+void Sys_ReleaseVulkanSubmissionThread()
+{
+    iassert(threadId[THREAD_CONTEXT_VULKAN] == GetCurrentThreadId());
+    g_threadLocals = nullptr;
+    threadId[THREAD_CONTEXT_VULKAN] = 0;
+}
+#endif
 #endif
 
 char __cdecl Sys_SpawnRenderThread(void(__cdecl* function)(uint32_t))

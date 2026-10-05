@@ -69,6 +69,14 @@ struct DrawPacket {
     // The legacy device captures a monotonically growing written prefix.
     // Registers beyond each span have never been set and remain zero.
     bool zeroConstantTail=false;
+    // Optional producer-owned monotonically increasing version of the complete
+    // pipeline key. Nonzero equal versions within one immutable submission
+    // promise identical shaders, declaration/strides, targets, material state
+    // and depth-sampler mask. Ordinary backend callers leave this zero.
+    std::uint64_t immutablePipelineVersion=0;
+    // Equal nonzero versions in one submission promise identical shader,
+    // texture-resource and sampler bindings, independently of uniform values.
+    std::uint64_t immutableDescriptorVersion=0;
     MaterialState state;
     unsigned indexCount = 0, firstIndex = 0; int vertexBase = 0;
     unsigned vertexFirst=0,vertexCount=0;
@@ -80,8 +88,12 @@ struct FrameTiming {
     std::uint64_t serial = 0;
     std::uint64_t gpuSerial = 0;
     double gpuMs = 0, recordMs = 0, submitMs = 0, acquireMs = 0, presentMs = 0, recycleWaitMs = 0, swapchainMs = 0;
+    // prepareMs is recordMs minus command-pass time, including CPU replay,
+    // uploads, queries, barriers and frame finish; no per-draw clock sampling.
     double prepareMs=0,commandsMs=0;
     unsigned parallelBatches=0,parallelDraws=0;
+    unsigned parallelPrepareBatches=0,parallelPrepareDraws=0,batchedDraws=0;
+    std::uint64_t geometryCopiedBytes=0,geometryReusedBytes=0;
     unsigned draws = 0;
 };
 struct Config {
@@ -90,6 +102,11 @@ struct Config {
     bool compareD3D9 = false; // isolated immutable-packet visual diagnostic
     bool cacheBindings = true; // development A/B control
     bool cacheDescriptors = true;
+    bool parallelPrepare = true,cacheGeometry = true,batchDraws = true;
+    bool overlapFrontendUploads = false;
+    bool asyncSubmission = false;
+    void (*initializeSubmissionThread)() = nullptr;
+    void (*releaseSubmissionThread)() = nullptr;
     unsigned recordingWorkers = 1;
     bool recordFrameTimings=false; // bounded isolated benchmark capture
     // Synchronous dispatch into the engine's existing renderer worker pool.

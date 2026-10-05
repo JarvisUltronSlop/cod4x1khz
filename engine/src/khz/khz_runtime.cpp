@@ -37,6 +37,9 @@
 #include <universal/com_files.h>
 #include <qcommon/cmd.h>
 #include <qcommon/threads.h>
+#ifndef KISAK_DEDICATED
+#include <gfx_d3d/r_dvars.h>
+#endif
 #include <qcommon/msg_mp.h>
 #include <qcommon/qcommon.h>
 #include <script/scr_vm.h>
@@ -60,6 +63,19 @@
 void KHZ_AdvanceGunRecoil(cg_s* game);
 
 namespace {
+#ifndef KISAK_DEDICATED
+const dvar_t* overlapFrontendVar = nullptr;
+bool frontendMayBuild() {
+    // The stock SMP renderer owns two CPU frame banks and waits at the end
+    // of construction before handing off the next bank. Waiting before
+    // construction serializes frontend and backend work unnecessarily. Only
+    // the independent gameplay owner permits the frontend to block there.
+    return Sys_IsRendererReady() ||
+        (overlapFrontendVar && overlapFrontendVar->current.enabled &&
+         KHZ_ClientOwnerRunning() && r_smp_backend && r_smp_backend->current.enabled &&
+         sys_smp_allowed && sys_smp_allowed->current.enabled);
+}
+#endif
 struct QueuedCommand { usercmd_s command{}; std::uint64_t sequence = 0, viewTick = 0; };
 struct RewindPose { float origin[3]{}, mins[3]{}, maxs[3]{}; int generation = 0, spawnTime = 0; bool playing = false; };
 khz::TickHistory<std::array<RewindPose, 64>, khz::RewindHistory> rewindPoses;
@@ -112,6 +128,7 @@ std::uint64_t snapshotCollisionTicks = 0, legacyCollisionTicks = 0;
 std::uint64_t rewindQueries = 0, rewindMatches = 0, snapshotBytes = 0;
 double predictionCorrectionMax = 0;
 int inputTime = 0;
+int inputSnapshotTime = 0;
 std::atomic<bool> clientActive{false};
 bool benchmarkJoined = false;
 bool scriptFrameEnd = false;
@@ -287,11 +304,12 @@ void KHZ_CommitSnapshot(int messageNumber) {
     predictionHeader = serverHeader;
     // Asset/audio reload can pause command production while the dedicated
     // server continues advancing native commandTime. Retaining only ++inputTime
-    // makes fresh commands fail the server's two-second admission window, then
-    // stalls acknowledgements and amplifies prediction replay. Rebase the
-    // admission timestamp from this accepted player state, without changing
+    // makes fresh commands fail the server's two-second admission window. Tick
+    // catch-up can instead push that clock beyond the +200 ms future bound.
+    // Both stall acknowledgements and amplify prediction replay. Rebase the
+    // admission timestamp from the newest accepted player state, without changing
     // command sequences, saved inputs, acknowledgements or one-ms Pmove steps.
-    inputTime = khz::alignInputTimestamp(inputTime, cl->snap.ps.commandTime);
+    inputTime = khz::alignInputTimestamp(inputTime, cl->snap.ps.commandTime, inputSnapshotTime);
     ++snapshotsReceived;
 }
 std::uint64_t KHZ_PredictionAck() { return predictionHeader.input; }
@@ -310,7 +328,7 @@ struct RuntimeCheckpointImage {
     khz::WireHeader serverHeader, predictionHeader;
     khz::checkpoint::Frame frame;
     std::uint64_t benchmarkTick;
-    int inputTime;
+    int inputTime, inputSnapshotTime;
     bool clientActive, benchmarkJoined, captured;
 };
 RuntimeCheckpointImage runtimeImage; // fixture-only BSS, never a tick allocation
@@ -346,6 +364,7 @@ bool runtimeCapture(const khz::checkpoint::Frame& frame, char* reason, unsigned 
     KHZ_CopyCommittedSnapshotHeaders(&runtimeImage.committedHeaders);
     runtimeImage.serverHeader = serverHeader; runtimeImage.predictionHeader = predictionHeader;
     runtimeImage.inputTime = inputTime; runtimeImage.benchmarkTick = benchmarkTick;
+    runtimeImage.inputSnapshotTime = inputSnapshotTime;
     runtimeImage.benchmarkJoined = benchmarkJoined;
     runtimeImage.clientActive = clientActive.load(std::memory_order_acquire);
     runtimeImage.frame = frame; runtimeImage.captured = true;
@@ -370,6 +389,7 @@ bool runtimeRestore(const khz::checkpoint::Frame& frame, std::uint64_t, char* re
     KHZ_RestoreCommittedSnapshotHeaders(runtimeImage.committedHeaders);
     serverHeader = runtimeImage.serverHeader; predictionHeader = runtimeImage.predictionHeader;
     inputTime = runtimeImage.inputTime; benchmarkTick = runtimeImage.benchmarkTick;
+    inputSnapshotTime = runtimeImage.inputSnapshotTime;
     benchmarkJoined = runtimeImage.benchmarkJoined;
     clientActive.store(runtimeImage.clientActive, std::memory_order_release);
     return true;
@@ -386,7 +406,7 @@ void KHZ_ClientRuntimeRegisterCheckpoint() {
 #endif
 }
 void KHZ_ResetClientTransport() {
-    serverHeader = {}; predictionHeader = {}; clientActive = false; inputTime = 0;
+    serverHeader = {}; predictionHeader = {}; clientActive = false; inputTime = inputSnapshotTime = 0;
     KHZ_ResetCommittedSnapshotHeaders(0);
     KHZ_UnbindPredictionCollisionFrame();
 }
@@ -600,6 +620,10 @@ void KHZ_Init() {
     Dvar_SetBool(scriptProfileVar, scriptProfileStartup);
     Dvar_RegisterBool("khz_test_ads", false, 0, "Isolated benchmark ADS input for native FOV checks");
     Dvar_RegisterBool("khz_snapshot_collision", true, DVAR_INIT, "Predict against fixed snapshot collision frames when complete; count legacy fallback otherwise");
+#ifndef KISAK_DEDICATED
+    overlapFrontendVar = Dvar_RegisterBool("r_overlapFrontend", false, DVAR_NOFLAG,
+        "Construct the next SMP frame while the backend runs; requires the independent gameplay owner");
+#endif
     resetStats();
     KHZ_RenderProfileInit();
     KHZ_BenchmarkSceneInit();
@@ -640,7 +664,7 @@ void KHZ_WaitFrame() {
                 khz::waitUntil(wake);
                 continue;
             }
-            if (Sys_IsRendererReady()) {
+            if (frontendMayBuild()) {
                 KHZ_PresentFrame();
             } else {
                 khz::waitUntilOrEvent(frameStart, Sys_GetRendererCompletionEvent());
@@ -659,7 +683,11 @@ bool KHZ_PresentDue() {
     const auto fps = static_cast<unsigned>((std::max)(0, com_maxfps->current.integer));
     if (!presentationClock.frequency() || presentationClock.rate() != fps)
         presentationClock.reset(frameStart, khz::frequency(), fps);
+#ifdef KISAK_DEDICATED
     const bool ready = Sys_IsRendererReady() != 0;
+#else
+    const bool ready = frontendMayBuild();
+#endif
     if (!ready) ++rendererUnreadyTicks;
     if (!presentationClock.present(khz::counter(), ready)) {
         if (ready) ++presentationCapTicks;
@@ -735,7 +763,7 @@ void KHZ_ClientTick() {
             presentationClock = {};
             lateness = {}; backlogMax = 0;
         }
-        inputTime = khz::alignInputTimestamp(inputTime, CL_GetLocalClientGlobals(0)->snap.ps.commandTime);
+        inputTime = khz::alignInputTimestamp(inputTime, CL_GetLocalClientGlobals(0)->snap.ps.commandTime, inputSnapshotTime);
         idlePhases.fill(AccumulatedPhase{});
         clientActive = true;
         benchmarkTick = 0;
@@ -930,7 +958,7 @@ bool KHZ_ReadServerHeader(msg_t* message) {
             KHZ_ClientTransportDeferPayload(message, true);
             return false;
         }
-        inputTime = 0; clientActive = false; predictionHeader = {};
+        inputTime = inputSnapshotTime = 0; clientActive = false; predictionHeader = {};
         KHZ_ResetCommittedSnapshotHeaders(header.session);
         std::fill(commands.begin(), commands.end(), usercmd_s{});
         std::fill(packets.begin(), packets.end(), outPacket_t{});

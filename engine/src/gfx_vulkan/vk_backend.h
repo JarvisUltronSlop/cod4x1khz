@@ -26,6 +26,10 @@ public:
         unsigned stencilValue=0,bool clearDepth=true,bool clearStencil=true,std::span<const ClearRect> rectangles={}) override;
     void draw(const DrawPacket&) override;
     void warm(const DrawPacket&) override;
+    // Optional whole-submission preparation after warmup/beginFrame and before
+    // replay. Packets and constant spans must remain immutable through endFrame.
+    // Resource updates, barriers, queries and geometry still replay in order.
+    void prepareDraws(std::span<const DrawPacket* const>);
     void resolve(ResourceId source,ResourceId destination) override;
     void blit(ResourceId source,ResourceId destination,bool linear=false,
         const ClearRect* sourceRect=nullptr,const ClearRect* destinationRect=nullptr) override;
@@ -40,9 +44,9 @@ public:
     void adoptOwnerAtBarrier();
     FrameTiming latestTiming() const;
     struct CompletedGpuTiming {std::uint64_t serial=0;double ms=0;};
-    // Diagnostic export barrier only; drain the last one/two timestamp pairs
+    // Diagnostic export barrier only; drain the last one to three timestamp pairs
     // without adding submissions or changing the ordinary frame scheduler.
-    std::array<CompletedGpuTiming,2> completeFrameTimings();
+    std::array<CompletedGpuTiming,3> completeFrameTimings();
     // Fail closed after recording fails: cleanup waits only for submitted work.
     void cancelFrame() noexcept;
 private:

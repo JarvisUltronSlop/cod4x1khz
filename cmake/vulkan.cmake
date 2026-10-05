@@ -73,6 +73,11 @@ if(BUILD_TESTING)
   target_link_libraries(khz_vulkan_gpu_tests PRIVATE khz_vulkan_backend khz_d3d9_backend khz_graphics_gamma d3dcompiler)
   target_link_libraries(khz_vulkan_gpu_tests PRIVATE "${KHZ_D3DX9_LIBRARY}")
   foreach(gpu_target khz_vulkan_gpu_tests khz_vulkan_legacy_gpu_tests)
+    # Match the Win32 client's address-space allowance while loading native
+    # driver, validation and private DX9 reference allocations together.
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      target_link_options(${gpu_target} PRIVATE /LARGEADDRESSAWARE)
+    endif()
     add_custom_command(TARGET ${gpu_target} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${KHZ_D3DX9_RUNTIME}" "$<TARGET_FILE_DIR:${gpu_target}>/D3DX9_43.dll")

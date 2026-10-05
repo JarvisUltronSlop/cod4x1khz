@@ -8,6 +8,9 @@
 #endif
 #include <qcommon/mem_track.h>
 #include <qcommon/threads.h>
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+#include <gfx/legacy_factory.h>
+#endif
 #include "rb_logfile.h"
 #include "r_utils.h"
 #include "r_model_lighting.h"
@@ -248,6 +251,11 @@ void __cdecl R_SyncRenderThread()
                 Sys_FrontEndSleep();
                 r_glob.haveThreadOwnership = 1;
             }
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+            // The CPU backend is paused now. Finish its immutable submission
+            // before Com_SyncThreads can pause/reconfigure the shared workers.
+            gfx::legacy::waitSubmissions(dx.device);
+#endif
         }
     }
 }

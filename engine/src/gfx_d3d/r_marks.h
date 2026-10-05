@@ -254,3 +254,9 @@ void __cdecl R_LerpModelMarkPoints(
     const FxModelMarkPoint *to,
     float lerp,
     FxModelMarkPoint *out);
+bool __cdecl R_MarkModelCoreCallback_0_(void* context,
+    const GfxPackedVertex** triVerts0, const GfxPackedVertex** triVerts1);
+char __cdecl R_MarkFragment_DoTriangle_0_(MarkInfo* markInfo,
+    const float (*clipPlanes)[4], const GfxMarkContext* markContext,
+    const GfxPackedVertex** triVerts, const float (*transformNormalMatrix)[3],
+    FxModelMarkPoint (*clipPoints)[9]);

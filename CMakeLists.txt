@@ -24,6 +24,8 @@ add_executable(khz_launch_probe EXCLUDE_FROM_ALL native/launch_probe.cpp)
 target_link_libraries(khz_launch_probe PRIVATE dbghelp)
 add_executable(khz_thread_probe EXCLUDE_FROM_ALL native/thread_probe.cpp)
 target_link_libraries(khz_thread_probe PRIVATE dbghelp psapi)
+add_executable(khz_cpu_sample_probe EXCLUDE_FROM_ALL native/cpu_sample_probe.cpp)
+target_link_libraries(khz_cpu_sample_probe PRIVATE dbghelp)
 add_executable(khz_asset_layout_catalog EXCLUDE_FROM_ALL native/asset_layout_catalog.cpp)
 target_include_directories(khz_asset_layout_catalog PRIVATE "${CMAKE_GENERATOR_INSTANCE}/DIA SDK/include")
 target_link_libraries(khz_asset_layout_catalog PRIVATE dbghelp)
@@ -44,6 +46,9 @@ add_library(khz_core STATIC native/clock.cpp)
 target_include_directories(khz_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native")
 target_compile_options(khz_core PRIVATE /W4 /fp:precise)
 if(BUILD_TESTING)
+  add_executable(khz_pcm_prefetch_tests tests/pcm_prefetch_tests.cpp)
+  target_include_directories(khz_pcm_prefetch_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
+  add_test(NAME khz_pcm_prefetch COMMAND khz_pcm_prefetch_tests)
   add_executable(khz_bsp_pre_tess_batch_tests tests/bsp_pre_tess_batch_tests.cpp)
   target_include_directories(khz_bsp_pre_tess_batch_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
   target_compile_options(khz_bsp_pre_tess_batch_tests PRIVATE /UNDEBUG /W4)
@@ -104,7 +109,7 @@ if(BUILD_TESTING)
   add_test(NAME khz_dvar_values_native COMMAND khz_dvar_values_native_tests)
   add_executable(khz_script_value_native_tests tests/script_value_native_tests.cpp
     engine/src/script/scr_emit_operands.cpp engine/src/script/scr_parse_nodes.cpp
-    engine/src/script/scr_animation_fixups.cpp)
+    engine/src/script/scr_animation_fixups.cpp engine/src/script/scr_function_positions.cpp)
   target_include_directories(khz_script_value_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps"
     "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
@@ -139,6 +144,14 @@ if(BUILD_TESTING)
   target_compile_definitions(khz_model_skin_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
   target_compile_options(khz_model_skin_native_tests PRIVATE /fp:precise)
   add_test(NAME khz_model_skin_native COMMAND khz_model_skin_native_tests)
+  add_executable(khz_mark_context_native_tests tests/mark_context_native_tests.cpp
+    engine/src/gfx_d3d/r_mark_model_callback.cpp)
+  target_include_directories(khz_mark_context_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_mark_context_native_tests PRIVATE KISAK_MP=1)
+  target_compile_options(khz_mark_context_native_tests PRIVATE /UNDEBUG)
+  add_test(NAME khz_mark_context_native COMMAND khz_mark_context_native_tests)
   add_executable(khz_asset_stream_native_tests tests/asset_stream_native_tests.cpp
     engine/src/database/db_stream.cpp engine/src/database/db_stream_load.cpp
     engine/src/database/db_assetnames.cpp)

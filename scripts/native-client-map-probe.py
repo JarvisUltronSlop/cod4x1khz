@@ -15,6 +15,7 @@ import shutil
 import time
 from monitor import query
 from gpu_metrics import GpuSampler
+from native_fixture_ui import choose_assault
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--server", default="build/x64/native-dedicated/native-server/Release/cod4x1khz_server_x64.exe")
@@ -25,6 +26,7 @@ parser.add_argument("--resolution", default="640x480")
 parser.add_argument("--fps-cap", type=int, default=0)
 parser.add_argument("--profile", action="store_true")
 parser.add_argument("--cpu-profile", action="store_true", help="Capture eight seconds of native CPU spans and DX9 GPU timestamps")
+parser.add_argument("--sample-cpu", action="store_true", help="Sample exact owned client thread stacks before the span capture; diagnostic only")
 parser.add_argument("--compare", action="store_true")
 parser.add_argument("--validation", action="store_true")
 parser.add_argument("--seconds", type=int, default=40)
@@ -70,6 +72,11 @@ profile_started = time.time()
 cpu_profile = None
 cpu_profile_path = None
 cpu_profile_error = None
+join_recovery = []
+last_join_action = 0
+cpu_sampler = None
+cpu_sampling = None
+join_inspections = []
 
 def set_bots():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -105,6 +112,19 @@ with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suff
                 gpu_sampler = GpuSampler([state["process_id"]])
             gpu_state = gpu_sampler.sample()
             samples.append({"time": time.time(), "client": state, "server": server_state, "state": game_state, "ui": ui_state, "gpu": gpu_state})
+            # The automatic benchmark join can leave changeclass open after
+            # spawning. Activate the actual stock assault control before camera
+            # placement; never count a menu interval as a rendering benchmark.
+            if (args.broad_view and broad_view is None and ui_state.get('top_menu') == 'changeclass' and
+                    game_state.get('connection') == 9 and state['seconds'] > last_join_action + 2):
+                last_join_action = state['seconds']
+                first_inspection = [] if not join_inspections else None
+                action = choose_assault(lambda text: query(28995, text, 'KHZ_UI', .5), ui_state, game_state, first_inspection)
+                if first_inspection:
+                    join_inspections = first_inspection
+                    prefix.with_suffix('.join-menu.json').write_text(json.dumps(join_inspections, indent=2))
+                if action:
+                    join_recovery.append({'after_seconds': state['seconds'], **action})
             playing = state.get("prediction_ticks", 0) > 0 and game_state.get("pm_type") == 0 and (not ui_state.get("top_menu") or args.compare)
             if args.broad_view and playing and broad_view is None:
                 node, heading, evidence = selected_view
@@ -118,6 +138,14 @@ with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suff
                 bots_requested = True
             if args.profile and profile_requested is None and broad_view and state["seconds"] > args.seconds - 12:
                 profile_requested = {"after_seconds": state["seconds"], "reply": query(28995, "khz_ui console r_vkWriteProfile", "KHZ_UI", .5)}
+            if args.sample_cpu and cpu_sampler is None and playing and broad_view and state["seconds"] > args.seconds - 26:
+                sampling_path = prefix.parent / (prefix.name + '-cpu-stacks.log')
+                cpu_sampling = {'after_seconds': state['seconds'], 'process_id': state['process_id'], 'path': str(sampling_path),
+                                'scope': '8-second diagnostic wall-time stack samples and thread CPU deltas; temporarily suspends each sampled thread'}
+                with sampling_path.open('w') as sampling_log:
+                    cpu_sampler = subprocess.Popen([str(root / 'build/x64/Release/Release/khz_cpu_sample_probe.exe'),
+                        str(state['process_id']), str(client), str(root / 'bin/x64/Release'), '8'],
+                        cwd=root, stdout=sampling_log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
             if args.cpu_profile and playing and broad_view and state["seconds"] > args.seconds - 13 and cpu_profile is None:
                 cpu_profile = {"after_seconds": state["seconds"], "request": query(28995, "khz_ui renderprofile start 8000", "KHZ_UI", 1),
                                "statuses": [], "uploads_before": query(28995, "khz_ui renderprofile uploads", "KHZ_UI", 1)}
@@ -127,11 +155,13 @@ with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suff
                 if status.get("phase") == 5:
                     cpu_profile_error = "Native CPU/GPU capture aborted"
                 elif status.get("phase") == 4:
+                    cpu_only = args.renderer == "vulkan" and not status.get("gpu_supported")
                     if (status.get("cpu_overflow") or status.get("query_errors") or status.get("gpu_skipped") or
-                            not status.get("gpu_supported") or status.get("disjoint") or
-                            not status.get("gpu_frequency") or status.get("gpu_ready") != status.get("gpu_frames")):
+                            (not cpu_only and (not status.get("gpu_supported") or status.get("disjoint") or
+                            not status.get("gpu_frequency") or status.get("gpu_ready") != status.get("gpu_frames")))):
                         cpu_profile_error = "Native CPU/GPU capture is incomplete: " + json.dumps(status)
                     else:
+                        cpu_profile["scope"] = "CPU spans only; use the separate serial-matched Vulkan GPU timing export" if cpu_only else "CPU spans and DX9 GPU timestamps"
                         cpu_profile["export"] = query(28995, "khz_ui renderprofile export", "KHZ_UI", 4)
                         path = root / "runtime/benchmarks/client-28995" / ("render-profile-" + str(status["start_qpc"]) + ".json")
                         data = path.read_bytes()
@@ -162,7 +192,17 @@ with prefix.with_suffix(".server.log").open("w") as server_log, prefix.with_suff
             query_errors[message] = query_errors.get(message, 0) + 1
         time.sleep(.5)
     client_exit = owned_client.wait(timeout=15)
-    server_exit = owned_server.wait(timeout=60)
+    # The probe is the owning debugger for its exact created child. A client
+    # failure must not leave the server waiting out a long benchmark lifetime.
+    if client_exit and owned_server.poll() is None:
+        owned_server.terminate()
+    try:
+        server_exit = owned_server.wait(timeout=60)
+    except subprocess.TimeoutExpired:
+        owned_server.terminate()
+        server_exit = owned_server.wait(timeout=15)
+if cpu_sampler is not None:
+    cpu_sampling['exit_code'] = cpu_sampler.wait(timeout=15)
 if gpu_sampler:
     gpu_sampler.close()
 for path in profile_home.glob("*"):
@@ -174,6 +214,8 @@ for path in profile_home.glob("*"):
 prefix.with_suffix(".json").write_text(json.dumps({"client_exit": client_exit, "server_exit": server_exit, "renderer": args.renderer, "resolution": args.resolution, "fps_cap": args.fps_cap, "profile": args.profile, "profile_export": profile_requested, "diagnostic_paths": profile_paths, "cpu_profile": cpu_profile, "cpu_profile_path": cpu_profile_path, "cpu_profile_error": cpu_profile_error, "compare": args.compare, "validation": args.validation, "samples": samples, "query_errors": query_errors, "screenshot": screenshot, "screenshot_error": shot_error, "broad_view": broad_view,
     "binary_sha256": {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in (client, server)}}, indent=2))
 report = json.loads(prefix.with_suffix(".json").read_text())
+report['join_recovery'] = join_recovery
+report['cpu_sampling'] = cpu_sampling
 measurement = []
 camera_errors = []
 if broad_view:
@@ -182,7 +224,8 @@ if broad_view:
     for sample in samples:
         if (sample["client"]["seconds"] < broad_view["after_seconds"] + 3 or sample["server"].get("native_bots", {}).get("active", 0) != 2 or
                 profile_requested and sample["client"]["seconds"] >= profile_requested["after_seconds"] or
-                cpu_profile and sample["client"]["seconds"] >= cpu_profile["after_seconds"]):
+                cpu_profile and sample["client"]["seconds"] >= cpu_profile["after_seconds"] or
+                cpu_sampling and sample["client"]["seconds"] >= cpu_sampling["after_seconds"]):
             continue
         view = sample["state"].get("rendered_view_angles", [])
         origin = sample["state"].get("origin", [])
@@ -225,4 +268,7 @@ print("Client exit", client_exit, "server exit", server_exit, "telemetry samples
 print(prefix.with_suffix(".client.log").read_text(errors="replace")[-6500:], flush=True)
 if args.cpu_profile and (not cpu_profile_path or cpu_profile_error):
     print("CPU profile failed:", cpu_profile_error or "No complete capture exported", flush=True)
-raise SystemExit(client_exit or server_exit or (args.broad_view and not report["measurement"]["camera_passed"]) or (args.cpu_profile and (not cpu_profile_path or cpu_profile_error)))
+sampling_failed = args.sample_cpu and (cpu_sampling is None or cpu_sampling.get('exit_code') != 0)
+if sampling_failed:
+    print("CPU sampling failed: no successful exact-process sample was retained", flush=True)
+raise SystemExit(client_exit or server_exit or (args.broad_view and not report["measurement"]["camera_passed"]) or (args.cpu_profile and (not cpu_profile_path or cpu_profile_error)) or sampling_failed)

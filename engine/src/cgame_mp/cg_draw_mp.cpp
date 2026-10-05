@@ -159,7 +159,11 @@ void __cdecl CG_Draw2D(int32_t localClientNum)
             }
             else
             {
-                Dvar_SetBool(ui_showEndOfGame, 0);
+                // This UI value belongs to the presentation thread. Avoid a
+                // redundant settings write (and the prediction-owner lock)
+                // on every rendered frame while it is already false.
+                if (ui_showEndOfGame->current.enabled)
+                    Dvar_SetBool(ui_showEndOfGame, false);
                 CG_CompassUpdateActors(localClientNum);
                 chatOverScoreboard = CG_IsScoreboardDisplayed(localClientNum);
                 if (ps->pm_type == PM_SPECTATOR)

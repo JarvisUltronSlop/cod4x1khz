@@ -2621,31 +2621,6 @@ void Scr_CreateVector(VariableCompileValue *constValue, VariableValue *value)
 SpecifyThreadPosition
 ============
 */
-uint32_t SpecifyThreadPosition(uint32_t posId, uint32_t name, uint32_t sourcePos, int type)
-{
-	uint32_t id;
-	VariableValue pos;
-
-	id = GetVariable(posId, 1);
-	pos = Scr_EvalVariable(id);
-
-	if (pos.type == VAR_UNDEFINED)
-	{
-		pos.type = (Vartype_t)type;
-		pos.u.intValue = 0;
-
-		SetNewVariableValue(id, &pos);
-		return id;
-	}
-
-	if (pos.u.intValue)
-		CompileError(sourcePos, "function '%s' already defined in '%s'", SL_ConvertToString(name), scrParserPub.sourceBufferLookup[Scr_GetSourceBuffer(pos.u.codePosValue)].buf);
-	else
-		CompileError(sourcePos, "function '%s' already defined", SL_ConvertToString(name));
-
-	return 0;
-}
-
 /*
 ============
 LinkThread

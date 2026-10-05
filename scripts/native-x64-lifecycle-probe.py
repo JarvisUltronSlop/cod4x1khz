@@ -1,5 +1,6 @@
 """Exercise the packaged AMD64 client and its owned server through real restarts."""
 import hashlib
+import argparse
 import json
 import os
 from pathlib import Path
@@ -10,14 +11,23 @@ import time
 
 from monitor import query
 from native_lifecycle_bounded_probe import OwnedServer, continuity, native_map_matches
+from native_fixture_ui import choose_assault
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--renderer', choices=('d3d9', 'vulkan'), default='d3d9')
+parser.add_argument('--validation', action='store_true')
+parser.add_argument('--output', default='results/x64-native-packaged-lifecycle')
+parser.add_argument('--extra-client-args', default='')
+parser.add_argument('--debug-server', action='store_true', help='Attach the bounded native debugger to the exact owned server')
+args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 client = root / "runtime/x64/cod4x1khz.exe"
 server = root / "runtime/x64/cod4x1khz_server.exe"
 probe = root / "build/x64/Release/Release/khz_launch_probe.exe"
-prefix = root / "results/x64-native-packaged-lifecycle"
+prefix = root / args.output
+prefix.parent.mkdir(parents=True, exist_ok=True)
 port = 28989
-report = {"binaries": {}, "stages": [], "cleanup": {}}
+report = {"renderer": args.renderer, "validation": args.validation, "extra_client_args": args.extra_client_args, "binaries": {}, "stages": [], "cleanup": {}}
 for binary in (client, server):
     data = binary.read_bytes()
     offset = struct.unpack_from("<I", data, 0x3c)[0]
@@ -31,10 +41,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as endpoint:
 env = dict(os.environ, KHZ_PROBE_SECONDS="360", KHZ_PROBE_HIDE_WINDOW="1")
 env.pop("KHZ_WATCH_HUNK", None)
 env.pop("KHZ_WATCH_SYMBOL", None)
+if args.validation:
+    env['VK_LAYER_PATH'] = str(root / '.deps/vulkan/layers/x64/Release')
 arguments = (f"+set net_port {port} +set khz_benchmark 1 +set khz_test_controls 1 "
-             "+set com_introPlayed 1 +set r_customMode 1280x720 +set r_graphicsApi d3d9 "
-             "+set r_vsync 0 +set com_maxfps 1000 +set logfile 2 +set cl_timeout 300 +set cl_connectTimeout 300")
+             f"+set com_introPlayed 1 +set r_customMode 1280x720 +set r_graphicsApi {args.renderer} "
+             f"+set r_vkValidation {int(args.validation)} +set r_vsync 0 +set com_maxfps 1000 +set logfile 2 +set cl_timeout 300 +set cl_connectTimeout 300")
+arguments += " " + args.extra_client_args
 owned_server = None
+server_debugger = None
+server_debug_log = None
 client_pid = None
 started = time.monotonic()
 
@@ -56,9 +71,16 @@ def wait_ready(expected_map, timeout=45, previous=None, changed=None):
     deadline = time.monotonic() + timeout
     attempts = []
     threads_captured = False
+    last_join_action = 0
     while time.monotonic() < deadline:
         try:
             current = sample()
+            report['last_ready_sample'] = current
+            if current['elapsed'] > last_join_action + 2:
+                last_join_action = current['elapsed']
+                action = choose_assault(call, current['ui'], current['state'])
+                if action:
+                    report.setdefault('join_recovery', []).append({'elapsed': current['elapsed'], **action})
             host = current["ui"].get("host", {})
             owner = current["stats"].get("client_owner", {})
             ready = (host.get("owned") is True and host.get("authenticated") is True
@@ -77,6 +99,11 @@ def wait_ready(expected_map, timeout=45, previous=None, changed=None):
             if ready:
                 time.sleep(2)
                 after = sample()
+                if args.renderer == 'vulkan':
+                    graphics = after['stats'].get('native_graphics', {})
+                    if (graphics.get('backend') != 'vulkan' or not graphics.get('active') or
+                            graphics.get('validation_errors') != 0 or not graphics.get('parallel_prepare_batches')):
+                        raise ValueError('Vulkan lifecycle did not retain valid active parallel preparation')
                 result = {"map": expected_map, "first": current, "last": after, "attempts": attempts}
                 try:
                     result["continuity"] = continuity(current, after)
@@ -116,17 +143,27 @@ with prefix.with_suffix(".log").open("w") as logfile:
         else:
             raise TimeoutError("Packaged native client did not open the main menu")
         report["start"] = call("khz_ui host mp_backlot dm 2 1")
-        previous = wait_ready("mp_backlot")
+        previous = wait_ready("mp_backlot", timeout=90)
         child_pid = previous["ui"]["host"]["child_pid"]
         owned_server = OwnedServer(child_pid, server)
         report["child_pid"] = child_pid
+        if args.debug_server:
+            server_debug_log = prefix.with_suffix('.server-debug.log').open('w')
+            server_debugger = subprocess.Popen([str(probe), '--attach', str(child_pid), str(server), str(root / 'bin/x64/Release')],
+                cwd=root, env=env, stdout=server_debug_log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NO_WINDOW)
+            time.sleep(.5)
+            if server_debugger.poll() is not None:
+                raise RuntimeError('Owned server debugger failed to attach')
         for name, command, expected_map, changed in (
                 ("map", "server map mp_crash", "mp_crash", "session"),
                 ("fast_restart", "server fast_restart", "mp_crash", "session"),
                 ("vid_restart", "vid_restart", "mp_crash", "generation"),
                 ("snd_restart", "snd_restart", "mp_crash", "generation")):
             report["request"] = {"stage": name, "reply": call("khz_ui " + command)}
-            previous = wait_ready(expected_map, timeout=90 if changed == "generation" else 45, previous=previous, changed=changed)
+            # Validation can recompile the entire shader set during a device
+            # restart. Retain the continuity gates, allow that cold work to finish.
+            restart_timeout = (180 if args.validation else 90) if changed == "generation" else 45
+            previous = wait_ready(expected_map, timeout=restart_timeout, previous=previous, changed=changed)
             report["stages"][-1]["stage"] = name
             if previous["ui"]["host"]["child_pid"] != child_pid or not owned_server.alive():
                 raise ValueError("Owned native server changed or exited")
@@ -169,9 +206,19 @@ with prefix.with_suffix(".log").open("w") as logfile:
         report["client_exit"] = owned.returncode
         if owned_server is not None:
             report["cleanup"]["server_alive"] = owned_server.alive()
+            report["cleanup"]["server_exit_before_cleanup"] = owned_server.exit_code()
             if owned_server.alive():
                 owned_server.stop()
+            report["cleanup"]["server_exit"] = owned_server.exit_code()
             owned_server.close()
+        if server_debugger is not None:
+            try:
+                report['server_debugger_exit'] = server_debugger.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server_debugger.terminate()
+                report['server_debugger_exit'] = server_debugger.wait(timeout=10)
+        if server_debug_log is not None:
+            server_debug_log.close()
         report["elapsed"] = time.monotonic() - started
         prefix.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
 print(json.dumps({key: report.get(key) for key in ("passed", "error", "elapsed", "client_exit", "child_pid", "cleanup")}))

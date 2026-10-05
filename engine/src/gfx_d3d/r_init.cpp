@@ -3219,6 +3219,13 @@ char __cdecl R_PreCreateWindow()
             config.compareD3D9=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkCompare");
             config.cacheBindings=Dvar_GetBool("r_vkStateCache");
             config.cacheDescriptors=Dvar_GetBool("r_vkDescriptorCache");
+            config.parallelPrepare=Dvar_GetBool("r_vkParallelPrepare");
+            config.cacheGeometry=Dvar_GetBool("r_vkGeometryCache");
+            config.batchDraws=Dvar_GetBool("r_vkBatchDraws");
+            config.overlapFrontendUploads=Dvar_GetBool("r_vkOverlapUploads");
+            config.asyncSubmission=Dvar_GetBool("r_vkAsyncSubmit");
+            config.initializeSubmissionThread=Sys_InitVulkanSubmissionThread;
+            config.releaseSubmissionThread=Sys_ReleaseVulkanSubmissionThread;
             config.recordingWorkers=Dvar_GetInt("r_vkRecordingWorkers");
             config.dispatchRecording=R_DispatchVulkanRecording;
             config.recordFrameTimings=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkProfile");

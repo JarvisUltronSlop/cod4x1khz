@@ -56,5 +56,28 @@ int main() {
         CHECK(window.accept(++commands));
     }
     CHECK(commands == 4000 && window.highest() == 4000);
-    std::puts("input timestamp: restart admission, monotonic accepted snapshots, preserved sequences/history/edges pass");
+    // Measured catch-up drift: +317 ms caused almost every fresh input to be
+    // rejected and hundreds of inputs to be replayed on every prediction tick.
+    int latestSnapshot = 90000;
+    stamp = 90805;
+    CHECK(!admitted({1, stamp + 1}, 90488));
+    stamp = khz::alignInputTimestamp(stamp, 90488, latestSnapshot);
+    CHECK(stamp == 90488 && admitted({1, ++stamp}, 90488));
+    CHECK(received.highest() == sequence && latch.sequence() == sequence + 1);
+    for (unsigned i = 0; i != history.size(); ++i)
+        CHECK(history[i].serverTime == retained[i].serverTime && history[i].buttons == retained[i].buttons);
+    CHECK(khz::alignInputTimestamp(stamp, 90000, latestSnapshot) == stamp);
+    CHECK(latestSnapshot == 90488); // delayed message cannot undo the newer baseline
+    CHECK(khz::alignInputTimestamp(90588, 90488, latestSnapshot) == 90588);
+    CHECK(khz::alignInputTimestamp(90589, 90488, latestSnapshot) == 90488);
+    latestSnapshot = 0; localTime = nativeTime; // new session resets the watermark
+    for (unsigned tick = 0; tick != 4000; ++tick) {
+        nativeTime += tick == 1000 ? 3100 : 1;
+        if (tick == 2000) localTime += 317;
+        localTime = khz::alignInputTimestamp(localTime, nativeTime, latestSnapshot);
+        CHECK(admitted({0, ++localTime}, nativeTime));
+        CHECK(window.accept(++commands));
+    }
+    CHECK(commands == 8000 && window.highest() == 8000);
+    std::puts("input timestamp: restart/catch-up admission, delayed snapshots, preserved sequences/history/edges pass");
 }

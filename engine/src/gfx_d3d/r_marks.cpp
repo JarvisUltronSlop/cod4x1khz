@@ -2052,44 +2052,6 @@ char __cdecl R_MarkFragment_DoTriangle_0_(
     return 1;
 }
 
-bool __cdecl R_MarkModelCoreCallback_0_(
-    void *contextAsVoid,
-    const GfxPackedVertex **triVerts0,
-    const GfxPackedVertex **triVerts1)
-{
-    float *vertWeights; // [esp+2Ch] [ebp-1D8h]
-    float *xyz; // [esp+30h] [ebp-1D4h]
-    const GfxPackedVertex *v6; // [esp+34h] [ebp-1D0h]
-    FxModelMarkPoint clipPoints[2][9]; // [esp+4Ch] [ebp-1B8h] BYREF
-    int vertIndex; // [esp+200h] [ebp-4h]
-
-    for (vertIndex = 0; vertIndex != 3; ++vertIndex)
-    {
-        xyz = clipPoints[0][vertIndex].xyz;
-        v6 = triVerts0[vertIndex];
-        *xyz = v6->xyz[0];
-        xyz[1] = v6->xyz[1];
-        xyz[2] = v6->xyz[2];
-        vertWeights = clipPoints[0][vertIndex].vertWeights;
-        *vertWeights = 0.0;
-        vertWeights[1] = 0.0;
-        vertWeights[2] = 0.0;
-        clipPoints[0][vertIndex].vertWeights[vertIndex] = 1.0;
-    }
-    return R_MarkFragment_IsTriangleRejected(
-        *(const float**)((uintptr_t)contextAsVoid + 12),
-        clipPoints[0][0].xyz,
-        clipPoints[0][1].xyz,
-        clipPoints[0][2].xyz)
-        || R_MarkFragment_DoTriangle_0_(
-            *(MarkInfo**)contextAsVoid,
-            *(const float(**)[4])((uintptr_t)contextAsVoid + 16),
-            *(const GfxMarkContext**)((uintptr_t)contextAsVoid + 4),
-            triVerts1,
-            *(const float(**)[3])((uintptr_t)contextAsVoid + 24),
-            clipPoints) != 0;
-}
-
 void __cdecl DObjSkelMatToMatrix43(const DObjSkelMat *inSkelMat, float (*outMatrix)[3])
 {
     float *v2; // r10
@@ -2133,7 +2095,7 @@ char  R_MarkFragments_AnimatedXModel_VertList(
     float aabbMins[4]; // [sp+60h] [-2A0h] BYREF
     float originalOrigin[4]; // [sp+70h] [-290h] BYREF
     DObjAnimMat poseBoneWithViewOffset; // [sp+80h] [-280h] BYREF
-    MarkModelCoreContext visitorContext;
+    MarkModelCoreContext visitorContext{};
     float markDir[4]; // [sp+C0h] [-240h] BYREF
     float clipPlanesMatrix[4][3]; // [sp+D0h] [-230h] BYREF
     DObjSkelMat invBaseBoneSkelMat; // [sp+100h] [-200h] BYREF

@@ -10,6 +10,9 @@ const dvar_t *winvoice_mic_mute;
 const dvar_t *winvoice_mic_reclevel;
 const dvar_t *winvoice_save_voice;
 const dvar_t *winvoice_mic_scaler;
+static const dvar_t *winvoice_capturePollMs;
+static unsigned voiceCaptureLastPoll;
+static bool voiceCapturePolled;
 
 char old_rec_source[256];
 int mic_old_reclevel;
@@ -596,6 +599,8 @@ bool __cdecl Voice_Init()
     min.value.min = 0.0;
     winvoice_mic_reclevel = Dvar_RegisterFloat("winvoice_mic_reclevel", 65535.0, min, DVAR_ARCHIVE, "Microphone recording level");
     winvoice_save_voice = Dvar_RegisterBool("winvoice_save_voice", 0, DVAR_ARCHIVE, "Write voice data to a file");
+    winvoice_capturePollMs = Dvar_RegisterInt("winvoice_capturePollMs", 1, 1, 10, DVAR_NOFLAG, "Milliseconds between microphone cursor reads; all captured PCM is retained");
+    voiceCapturePolled = false;
     mina.value.max = 2.0;
     mina.value.min = 0.25;
     winvoice_mic_scaler = Dvar_RegisterFloat("winvoice_mic_scaler", 1.0, mina, DVAR_ARCHIVE, "Microphone scaler value");
@@ -719,7 +724,16 @@ int __cdecl Voice_GetLocalVoiceData()
             voice_current_scaler = 0.5;
         }
     }
-    Record_Frame();
+    // The capture device keeps producing PCM between cursor reads. Polling
+    // Windows at the gameplay tick rate pays an IPC round trip even when no
+    // audio is available. Drain the same capture range at an independent rate.
+    const unsigned now = static_cast<unsigned>(Sys_Milliseconds());
+    if (!voiceCapturePolled || now - voiceCaptureLastPoll >= static_cast<unsigned>(winvoice_capturePollMs->current.integer))
+    {
+        voiceCaptureLastPoll = now;
+        voiceCapturePolled = true;
+        Record_Frame();
+    }
     return 0;
 }
 
@@ -795,6 +809,7 @@ char __cdecl Voice_StartRecording()
         currentRecordingSample = Record_NewSample();
         Record_Start(currentRecordingSample);
         recording = 1;
+        voiceCapturePolled = false;
         ++count;
     }
     return 1;
@@ -817,6 +832,7 @@ char __cdecl Voice_StopRecording()
     Record_Stop(currentRecordingSample);
     Record_DestroySample(currentRecordingSample);
     recording = 0;
+    voiceCapturePolled = false;
     return 1;
 }
 

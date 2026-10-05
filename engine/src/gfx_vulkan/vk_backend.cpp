@@ -104,6 +104,10 @@ struct Resource {
     Buffer buffer; Image image; std::unique_ptr<Shader> shader;
     std::uint64_t lastUse = 0;
     std::vector<std::byte> dynamicBytes;
+    struct GeometryVersion {Buffer buffer;std::uint64_t revision=0,serial=0;};
+    std::array<GeometryVersion,3> geometryVersions;
+    VkBufferUsageFlags geometryUsage=0;
+    VkBuffer uploadedBuffer=VK_NULL_HANDLE;void* uploadedMapped=nullptr;
     std::uint64_t revision=0,uploadedRevision=0,uploadedSerial=0;
     VkDeviceSize uploadedOffset=0;
     unsigned usedBytes=0;
@@ -132,6 +136,7 @@ struct Frame {
     VkCommandPool pool = VK_NULL_HANDLE; VkCommandBuffer cmd = VK_NULL_HANDLE;
     VkDescriptorPool descriptors = VK_NULL_HANDLE; VkQueryPool queries = VK_NULL_HANDLE;
     VkSemaphore acquired = VK_NULL_HANDLE;
+    VkDeviceSize cachedGeometryBytes=0;
     Buffer arena; VkDeviceSize used = 0; std::uint64_t serial = 0; unsigned draws = 0;
     struct Descriptors {ResourceId vs,ps;unsigned mask=0;std::array<ResourceId,16> textures{};std::array<Sampler,16> samplers{};std::array<VkDescriptorSet,4> sets{};};
     std::vector<Descriptors> cachedDescriptors;
@@ -157,6 +162,27 @@ struct PreparedDraw {
     bool stencil=false,push=false;unsigned stencilRef=0,indexCount=0,firstIndex=0;int vertexBase=0;
     VkQueryPool query=VK_NULL_HANDLE;unsigned queryIndex=0;VkQueryControlFlags queryFlags=0;
 };
+bool adjacentDraws(const PreparedDraw& a,const PreparedDraw& b){
+    return !a.query&&!b.query&&a.indexCount%3==0&&b.indexCount%3==0&&
+        std::uint64_t(a.firstIndex)+a.indexCount==b.firstIndex&&std::uint64_t(a.indexCount)+b.indexCount<=UINT32_MAX&&
+        a.pipeline==b.pipeline&&a.layout==b.layout&&a.sets==b.sets&&a.offsets==b.offsets&&a.offsetCount==b.offsetCount&&
+        a.vertices==b.vertices&&a.vertexOffsets==b.vertexOffsets&&a.index==b.index&&a.indexOffset==b.indexOffset&&a.indexType==b.indexType&&a.vertexBase==b.vertexBase&&
+        a.stencil==b.stencil&&a.stencilRef==b.stencilRef&&a.push==b.push&&a.constants==b.constants&&
+        !std::memcmp(&a.viewport,&b.viewport,sizeof(a.viewport))&&!std::memcmp(&a.scissor,&b.scissor,sizeof(a.scissor));
+}
+void rasterState(PreparedDraw& packet,const DrawPacket& d,unsigned width,unsigned height,bool bias){
+    packet.stencil=d.state.stencil;packet.stencilRef=d.state.stencilRef;packet.push=d.state.alphaTest||bias;
+    packet.constants={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};
+    packet.viewport={d.x+.5f,d.y+d.height+.5f,d.width,-d.height,d.minDepth,d.maxDepth};
+    packet.scissor={{0,0},{width,height}};
+    if(d.scissor){
+        const auto left=std::clamp(d.scissorX,0,int(width)),top=std::clamp(d.scissorY,0,int(height));
+        const auto right=std::clamp(std::int64_t(d.scissorX)+d.scissorWidth,std::int64_t(left),std::int64_t(width));
+        const auto bottom=std::clamp(std::int64_t(d.scissorY)+d.scissorHeight,std::int64_t(top),std::int64_t(height));
+        packet.scissor={{left,top},{unsigned(right-left),unsigned(bottom-top)}};
+    }
+    packet.indexCount=d.indexCount;packet.firstIndex=d.firstIndex;packet.vertexBase=d.vertexBase;
+}
 void recordDraw(Context& context,VkCommandBuffer cmd,const PreparedDraw& d,Frame::Bindings& bound,bool cacheBindings){
     if(!cacheBindings)bound={};
     if(d.query)context.api.CmdBeginQuery(cmd,d.query,d.queryIndex,d.queryFlags);
@@ -185,7 +211,7 @@ struct Backend::Impl {
     std::vector<Pipeline> retiredPipelines;
     struct CachedSampler { Sampler desc; VkSampler sampler; };
     std::vector<CachedSampler> samplers;
-    std::array<Frame, 2> frames;
+    std::array<Frame, 3> frames;
     Frame* frame = nullptr; unsigned frameIndex = 0; std::uint64_t nextSerial = 0,lastSubmitted=0;
     bool recordingFailed=false;
     VkSemaphore timeline = VK_NULL_HANDLE;
@@ -203,12 +229,23 @@ struct Backend::Impl {
     ResourceId activeOcclusion;
     ResourceId renderingColor,renderingDepth;
     std::vector<PreparedDraw> prepared;
+    struct DrawPlan {
+        const DrawPacket* source=nullptr;Shader* vertex=nullptr;Shader* pixel=nullptr;
+        Image* color=nullptr;Image* depth=nullptr;Pipeline* pipeline=nullptr;
+        unsigned samplerMask=0,descriptorHash=0;PreparedDraw packet;
+    };
+    struct UniformJob {
+        const Shader* shader;unsigned offset;std::span<const float> floats;
+        std::span<const int> integers,booleans;bool zeroTail;
+    };
+    std::vector<DrawPlan> plans;std::vector<UniformJob> uniformJobs;unsigned planCursor=0;
+    std::uint64_t previousDescriptorVersion=0;Frame::Descriptors* previousDescriptors=nullptr;
 
     explicit Impl(const gfx::Config& c) : context({static_cast<HWND>(c.window), c.device, c.validation}), config(c) {
-        if (c.framesInFlight < 1 || c.framesInFlight > 2) throw std::runtime_error("Frames in flight must be 1 or 2");
+        if (c.framesInFlight < 1 || c.framesInFlight > 3) throw std::runtime_error("Frames in flight must be between 1 and 3");
         if(c.recordingWorkers<1||c.recordingWorkers>4)throw std::runtime_error("Recording workers must be between one and four");
         retired.reserve(maxResources); pipelines.reserve(maxDraws); retiredPipelines.reserve(maxDraws); samplers.reserve(512);
-        prepared.reserve(maxDraws);
+        prepared.reserve(maxDraws);plans.reserve(maxDraws);uniformJobs.reserve(maxDraws*2);
         try {
             VkSemaphoreTypeCreateInfo type{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO}; type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
             VkSemaphoreCreateInfo sem{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO}; sem.pNext = &type;
@@ -240,7 +277,9 @@ struct Backend::Impl {
     Buffer makeBuffer(VkDeviceSize bytes, VkBufferUsageFlags usage) {
         Buffer b; b.bytes = bytes;
         VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO}; info.size = bytes; info.usage = usage; info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        VmaAllocationCreateInfo alloc{}; alloc.usage = VMA_MEMORY_USAGE_AUTO; alloc.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        VmaAllocationCreateInfo alloc{};
+        alloc.usage=VMA_MEMORY_USAGE_AUTO;
+        alloc.flags=VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT|VMA_ALLOCATION_CREATE_MAPPED_BIT;
         VmaAllocationInfo result{};
         check(vmaCreateBuffer(context.allocator, &info, &alloc, &b.buffer, &b.allocation, &result), "allocate Vulkan upload/buffer memory"); b.mapped = result.pMappedData;
         return b;
@@ -248,6 +287,7 @@ struct Backend::Impl {
     void destroy(Buffer& b) { if (b.buffer) vmaDestroyBuffer(context.allocator, b.buffer, b.allocation); b = {}; }
     void destroy(Resource& r) {
         if(r.query.pool) context.api.DestroyQueryPool(context.device,r.query.pool,nullptr);
+        for(unsigned n=0;n<r.geometryVersions.size();++n){auto& v=r.geometryVersions[n];frames[n].cachedGeometryBytes-=v.buffer.bytes;destroy(v.buffer);}
         destroy(r.buffer);
         if (r.image.view) context.api.DestroyImageView(context.device, r.image.view, nullptr);
         if (r.image.sampledView) context.api.DestroyImageView(context.device, r.image.sampledView, nullptr);
@@ -256,6 +296,8 @@ struct Backend::Impl {
     }
     void wait(std::uint64_t serial) {
         if (!serial) return;
+        std::uint64_t completed=0;check(context.api.GetSemaphoreCounterValue(context.device,timeline,&completed),"check frame resource completion");
+        if(completed>=serial)return;
         VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO}; info.semaphoreCount = 1; info.pSemaphores = &timeline; info.pValues = &serial;
         check(context.api.WaitSemaphores(context.device, &info, UINT64_MAX), "wait frame resource completion");
     }
@@ -276,18 +318,31 @@ struct Backend::Impl {
     Resource& use(ResourceId id) { auto& r = resources.get(id); r.lastUse = nextSerial; return r; }
     Image& image(ResourceId id) { auto& r = use(id); if (!r.image.image) throw std::runtime_error("Graphics reference is not an image"); return r.image; }
     Shader& shader(ResourceId id) { auto& r = use(id); if (!r.shader) throw std::runtime_error("Graphics reference is not a shader"); return *r.shader; }
-    std::pair<VkBuffer,VkDeviceSize> geometry(ResourceId id) {
-        auto& r=use(id);
+    std::pair<VkBuffer,VkDeviceSize> geometry(Resource& r) {
         if(!r.dynamicBytes.empty()) {
             if(r.uploadedSerial!=nextSerial||r.uploadedRevision!=r.revision) {
                 if(!r.usedBytes) throw std::runtime_error("Uninitialized dynamic geometry buffer");
-                // Reserve capacity once per immutable buffer version. Safe
-                // appends fill unused bytes without copying its growing prefix.
-                r.uploadedOffset=allocate(r.buffer.bytes,16);std::memcpy(static_cast<std::byte*>(frame->arena.mapped)+r.uploadedOffset,r.dynamicBytes.data(),r.usedBytes);
+                auto& version=r.geometryVersions[frameIndex];
+                // A completed frame slot may reuse or replace its own version.
+                // A second version inside this submission uses the arena so an
+                // earlier draw can never observe overwritten geometry.
+                if(config.cacheGeometry&&version.serial!=nextSerial&&
+                    (version.buffer.buffer||r.buffer.bytes<=arenaBytes-frame->cachedGeometryBytes)){
+                    if(!version.buffer.buffer){version.buffer=makeBuffer(r.buffer.bytes,r.geometryUsage);frame->cachedGeometryBytes+=r.buffer.bytes;}
+                    if(version.revision!=r.revision){
+                        std::memcpy(version.buffer.mapped,r.dynamicBytes.data(),r.usedBytes);check(vmaFlushAllocation(context.allocator,version.buffer.allocation,0,r.usedBytes),"flush cached geometry version");
+                        version.revision=r.revision;timing.geometryCopiedBytes+=r.usedBytes;
+                    }else timing.geometryReusedBytes+=r.usedBytes;
+                    version.serial=nextSerial;r.uploadedBuffer=version.buffer.buffer;r.uploadedMapped=version.buffer.mapped;r.uploadedOffset=0;
+                }else{
+                    r.uploadedOffset=allocate(r.buffer.bytes,16);r.uploadedBuffer=frame->arena.buffer;
+                    r.uploadedMapped=static_cast<std::byte*>(frame->arena.mapped)+r.uploadedOffset;
+                    std::memcpy(r.uploadedMapped,r.dynamicBytes.data(),r.usedBytes);timing.geometryCopiedBytes+=r.usedBytes;
+                }
                 r.uploadedSerial=nextSerial;r.uploadedRevision=r.revision;
                 r.readBegin=UINT64_MAX;r.readEnd=0;
             }
-            return {frame->arena.buffer,r.uploadedOffset};
+            return {r.uploadedBuffer,r.uploadedOffset};
         }
         if(!r.buffer.buffer) throw std::runtime_error("Graphics reference is not geometry");return {r.buffer.buffer,0};
     }
@@ -446,6 +501,7 @@ struct Backend::Impl {
             (state.depthBias||state.slopeDepthBias)&&!context.selected.depthBiasFloat&&!context.selected.depthBiasUnorm;
     }
     void rebuildPipelineIndex(){
+        previousWarmPipeline=nullptr;
         pipelineIndex.fill(0);
         for(unsigned n=0;n<pipelines.size();++n){const auto& p=pipelines[n];unsigned at=pipelineHash(p.vs,p.ps,p.state,p.strides,p.elements,p.color,p.depth,p.samples,p.depthSamplerMask)&(cacheSlots-1);while(pipelineIndex[at])at=(at+1)&(cacheSlots-1);pipelineIndex[at]=n+1;}
     }
@@ -461,11 +517,17 @@ struct Backend::Impl {
         for(unsigned n=0;n<f.cachedDescriptors.size();++n){const auto& d=f.cachedDescriptors[n];unsigned at=descriptorHash(d.vs,d.ps,d.textures,d.samplers,d.mask)&(cacheSlots-1);while(f.descriptorIndex[at])at=(at+1)&(cacheSlots-1);f.descriptorIndex[at]=n+1;}
         f.descriptorsDirty=false;
     }
-    Pipeline& pipeline(const DrawPacket& d, Image& color, Image* depth) {
+    Pipeline* previousWarmPipeline=nullptr;
+    Pipeline& pipeline(const DrawPacket& d, Image& color, Image* depth,Pipeline** previous=nullptr) {
         const auto depthFmt = depth ? depth->format : VK_FORMAT_UNDEFINED;
         unsigned shadowMask=0;for(unsigned slot=0;slot<16;++slot)if(d.samplers[slot].compare)shadowMask|=1u<<slot;
+        const auto matches=[&](const Pipeline& p){return p.vs == d.vertexShader && p.ps == d.pixelShader && p.state == d.state && p.strides == d.strides && p.color == color.format && p.depth == depthFmt && p.samples == color.desc.samples && p.depthSamplerMask==shadowMask && std::equal(p.elements.begin(),p.elements.end(),d.elements.begin(),d.elements.end());};
+        // Material-sorted adjacent draws usually share a full key. Check that
+        // key directly before rebuilding its hash. Each preparation worker
+        // owns its own previous pointer; warmed caches remain read-only.
+        if(previous&&*previous&&matches(**previous))return **previous;
         unsigned cacheAt=pipelineHash(d.vertexShader,d.pixelShader,d.state,d.strides,d.elements,color.format,depthFmt,color.desc.samples,shadowMask)&(cacheSlots-1);
-        while(pipelineIndex[cacheAt]){auto& p=pipelines[pipelineIndex[cacheAt]-1];if(p.vs == d.vertexShader && p.ps == d.pixelShader && p.state == d.state && p.strides == d.strides && p.color == color.format && p.depth == depthFmt && p.samples == color.desc.samples && p.depthSamplerMask==shadowMask && std::equal(p.elements.begin(), p.elements.end(), d.elements.begin(), d.elements.end()))return p;cacheAt=(cacheAt+1)&(cacheSlots-1);}
+        while(pipelineIndex[cacheAt]){auto& p=pipelines[pipelineIndex[cacheAt]-1];if(matches(p)){if(previous)*previous=&p;return p;}cacheAt=(cacheAt+1)&(cacheSlots-1);}
         if(frame) throw std::runtime_error("Material pipeline was not warmed during asset loading");
         if (pipelines.size() >= maxDraws) throw std::runtime_error("Bounded material pipeline cache exhausted");
         if(d.state.wireframe&&!context.selected.features.fillModeNonSolid) throw std::runtime_error("Selected GPU does not support wireframe");
@@ -555,7 +617,7 @@ struct Backend::Impl {
             throw;
         }
         for (auto module : modules) context.api.DestroyShaderModule(context.device, module, nullptr);
-        pipelines.push_back(std::move(p));pipelineIndex[cacheAt]=unsigned(pipelines.size());return pipelines.back();
+        pipelines.push_back(std::move(p));pipelineIndex[cacheAt]=unsigned(pipelines.size());if(previous)*previous=&pipelines.back();return pipelines.back();
     }
     void cleanup() noexcept {
         if (!context.device) return;
@@ -615,7 +677,7 @@ bool Backend::pollQuerySerialized(ResourceId id,std::uint64_t& value) {
 ResourceId Backend::createBuffer(std::span<const std::byte> data, bool index, bool dynamic) {
     auto& i = *impl; i.assertOwner(); if (data.empty()) throw std::runtime_error("Empty graphics buffer");
     const auto id = i.resources.create(); auto& r = i.resources.get(id);
-    try {if(dynamic){r.dynamicBytes.assign(data.begin(),data.end());r.usedBytes=unsigned(data.size());r.revision=1;r.buffer.bytes=data.size();}
+    try {if(dynamic){r.dynamicBytes.assign(data.begin(),data.end());r.usedBytes=unsigned(data.size());r.revision=1;r.buffer.bytes=data.size();r.geometryUsage=index?VK_BUFFER_USAGE_INDEX_BUFFER_BIT:VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;}
         else {r.buffer = i.makeBuffer(data.size(), index ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT); std::memcpy(r.buffer.mapped, data.data(), data.size()); check(vmaFlushAllocation(i.context.allocator, r.buffer.allocation, 0, data.size()), "flush static geometry");} }
     catch (...) { i.destroy(r); i.resources.erase(id); throw; } return id;
 }
@@ -627,7 +689,16 @@ void Backend::updateBuffer(ResourceId id,unsigned offset,std::span<const std::by
         const bool append=noOverwrite&&!discard&&i.frame&&r.uploadedSerial==i.nextSerial;
         if(append&&offset<r.readEnd&&std::uint64_t(offset)+bytes.size()>r.readBegin)throw std::runtime_error("Stock NOOVERWRITE update overlaps an earlier draw");
         if(!bytes.empty())std::memcpy(r.dynamicBytes.data()+offset,bytes.data(),bytes.size());r.usedBytes=discard?unsigned(offset+bytes.size()):(std::max)(r.usedBytes,unsigned(offset+bytes.size()));++r.revision;
-        if(append){if(!bytes.empty())std::memcpy(static_cast<std::byte*>(i.frame->arena.mapped)+r.uploadedOffset+offset,bytes.data(),bytes.size());r.uploadedRevision=r.revision;}
+        if(append){
+            auto& version=r.geometryVersions[i.frameIndex];
+            const bool cached=r.uploadedBuffer==version.buffer.buffer;
+            if(!bytes.empty()){
+                std::memcpy(static_cast<std::byte*>(r.uploadedMapped)+offset,bytes.data(),bytes.size());
+                i.timing.geometryCopiedBytes+=bytes.size();
+            }
+            if(cached){version.revision=r.revision;if(!bytes.empty())check(vmaFlushAllocation(i.context.allocator,version.buffer.allocation,offset,bytes.size()),"flush cached geometry append");}
+            r.uploadedRevision=r.revision;
+        }
     }
     else {if(!r.buffer.buffer) throw std::runtime_error("Update reference is not geometry");if(!bytes.empty()){i.wait(r.lastUse);std::memcpy(static_cast<std::byte*>(r.buffer.mapped)+offset,bytes.data(),bytes.size());check(vmaFlushAllocation(i.context.allocator,r.buffer.allocation,offset,bytes.size()),"flush static geometry update");}}
 }
@@ -699,6 +770,8 @@ void Backend::beginFrame() {
     i.retireDescriptors(f);i.collect(); check(i.context.api.ResetCommandPool(i.context.device, f.pool, 0), "recycle completed command pool");
     if(!i.config.cacheDescriptors){check(i.context.api.ResetDescriptorPool(i.context.device,f.descriptors,0),"recycle completed descriptors");f.cachedDescriptors.clear();f.descriptorIndex.fill(0);}
     for(auto& r:f.workers)if(r.pool){check(i.context.api.ResetCommandPool(i.context.device,r.pool,0),"recycle completed worker pool");r.used=0;}
+    i.plans.clear();i.uniformJobs.clear();i.planCursor=0;
+    i.previousDescriptorVersion=0;i.previousDescriptors=nullptr;
     f.used = 0; f.draws = 0;f.bindings={}; ++i.nextSerial; i.timing.serial = i.nextSerial; i.recording = Clock::now();
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO}; begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     check(i.context.api.BeginCommandBuffer(f.cmd, &begin), "begin native frame"); i.context.api.CmdResetQueryPool(f.cmd, f.queries, 0, 2); i.context.api.CmdWriteTimestamp2(f.cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, f.queries, 0);
@@ -736,16 +809,17 @@ void Backend::clear(ResourceId color, ResourceId depth, const std::array<float, 
 }
 void Backend::draw(const DrawPacket& d) {
     auto& i = *impl; i.requireFrame(); if (i.frame->draws >= maxDraws) throw std::runtime_error("Bounded frame draw budget exhausted");
-    const auto started=Clock::now();const auto previousCommands=i.timing.commandsMs;
     if(i.renderingColor && (i.renderingColor!=d.colorTarget || i.renderingDepth!=d.depthTarget))i.endRendering();
-    auto& color = i.image(d.colorTarget); auto* depth = d.depthTarget ? &i.image(d.depthTarget) : nullptr;
-    auto& vs = i.shader(d.vertexShader); auto& ps = i.shader(d.pixelShader);
-    auto& pipeline = i.pipeline(d, color, depth);
+    const Impl::DrawPlan* plan=i.planCursor<i.plans.size()&&i.plans[i.planCursor].source==&d?&i.plans[i.planCursor++]:nullptr;
+    auto& color = plan?*plan->color:i.image(d.colorTarget); auto* depth = plan?plan->depth:(d.depthTarget ? &i.image(d.depthTarget) : nullptr);
+    auto& vs = plan?*plan->vertex:i.shader(d.vertexShader); auto& ps = plan?*plan->pixel:i.shader(d.pixelShader);
+    auto& pipeline = plan?*plan->pipeline:i.pipeline(d, color, depth);
     pipeline.lastUse=i.nextSerial;
-    Frame::Descriptors* descriptors=nullptr;
-    unsigned samplerMask=0;for(const auto* shader:{&vs,&ps})for(int n=0;n<shader->parsed->sampler_count;++n)samplerMask|=1u<<shader->parsed->samplers[n].index;
-    unsigned descriptorAt=descriptorHash(d.vertexShader,d.pixelShader,d.textures,d.samplers,samplerMask)&(cacheSlots-1);
-    while(i.frame->descriptorIndex[descriptorAt]) {
+    Frame::Descriptors* descriptors=d.immutableDescriptorVersion&&d.immutableDescriptorVersion==i.previousDescriptorVersion?i.previousDescriptors:nullptr;
+    unsigned samplerMask=plan?plan->samplerMask:0;
+    if(!plan)for(const auto* shader:{&vs,&ps})for(int n=0;n<shader->parsed->sampler_count;++n)samplerMask|=1u<<shader->parsed->samplers[n].index;
+    unsigned descriptorAt=(plan?plan->descriptorHash:descriptorHash(d.vertexShader,d.pixelShader,d.textures,d.samplers,samplerMask))&(cacheSlots-1);
+    while(!descriptors&&i.frame->descriptorIndex[descriptorAt]) {
         auto& cached=i.frame->cachedDescriptors[i.frame->descriptorIndex[descriptorAt]-1];
         bool match=cached.vs==d.vertexShader&&cached.ps==d.pixelShader;
         for(unsigned slot=0;match&&slot<16;++slot)if(samplerMask&(1u<<slot))if(cached.textures[slot]!=d.textures[slot]||cached.samplers[slot]!=d.samplers[slot]){match=false;break;}
@@ -763,10 +837,13 @@ void Backend::draw(const DrawPacket& d) {
         check(i.context.api.AllocateDescriptorSets(i.context.device,&alloc,descriptors->sets.data()),"allocate bounded draw descriptors");
         i.frame->descriptorIndex[descriptorAt]=unsigned(i.frame->cachedDescriptors.size());
     }
+    i.previousDescriptorVersion=d.immutableDescriptorVersion;i.previousDescriptors=descriptors;
     const auto& sets=descriptors->sets;
-    std::array<VkWriteDescriptorSet,34> writes{};unsigned writeCount=0,imageCount=0;
-    std::array<VkDescriptorImageInfo,32> images{};
-    std::array<VkDescriptorBufferInfo,2> buffers{};
+    // Initialize only descriptors actually written. Cached draws need no
+    // descriptor updates and must not clear several kilobytes of scratch data.
+    std::array<VkWriteDescriptorSet,34> writes;unsigned writeCount=0,imageCount=0;
+    std::array<VkDescriptorImageInfo,32> images;
+    std::array<VkDescriptorBufferInfo,2> buffers;
     std::array<unsigned, 2> offsets{}; unsigned offsetCount = 0;
     for (unsigned stage = 0; stage < 2; ++stage) {
         const auto& shader = stage ? ps : vs;
@@ -777,7 +854,7 @@ void Backend::draw(const DrawPacket& d) {
             if(writeDescriptors) {
                 if(d.samplers[slot].compare&&tex.desc.format!=ImageFormat::DepthStencil)throw std::runtime_error("Shadow comparison requires a depth texture");
                 auto& image=images[imageCount++];image={i.sampler(d.samplers[slot]), tex.sampledView?tex.sampledView:tex.view, tex.layout};
-                auto& write=writes[writeCount++];write.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;write.dstSet=sets[stage*2];write.dstBinding=slot;write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
+                auto& write=writes[writeCount++];write={VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};write.dstSet=sets[stage*2];write.dstBinding=slot;write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
             }
         }
         if (shader.uniformBytes) {
@@ -787,13 +864,13 @@ void Backend::draw(const DrawPacket& d) {
             auto& cached=i.frame->uniforms[(id.value&65535u)-1];
             const bool immutable=i.config.cacheBindings&&d.immutableConstants;
             unsigned offset=cached.offset;
-            if(!immutable||cached.zeroTail!=d.zeroConstantTail||cached.serial!=i.nextSerial||cached.shader!=id||cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size()){
+            if(!plan&&(!immutable||cached.zeroTail!=d.zeroConstantTail||cached.serial!=i.nextSerial||cached.shader!=id||cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size())){
                 offset=unsigned(i.allocate(shader.uniformBytes,(std::max)(VkDeviceSize(16),i.context.selected.properties.limits.minUniformBufferOffsetAlignment)));
                 shader.packUniforms(static_cast<std::byte*>(i.frame->arena.mapped)+offset,floats,integers,booleans,d.zeroConstantTail);
                 cached={id,immutable?i.nextSerial:0,floats,integers,booleans,offset,d.zeroConstantTail};
             }
-            offsets[offsetCount++] = unsigned(offset);
-            if(writeDescriptors) {auto& buffer=buffers[stage];buffer={i.frame->arena.buffer,0,shader.uniformBytes};auto& write=writes[writeCount++];write.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;write.dstSet=sets[stage*2+1];write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;write.pBufferInfo=&buffer;}
+            offsets[offsetCount] = plan?plan->packet.offsets[offsetCount]:offset;++offsetCount;
+            if(writeDescriptors) {auto& buffer=buffers[stage];buffer={i.frame->arena.buffer,0,shader.uniformBytes};auto& write=writes[writeCount++];write={VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};write.dstSet=sets[stage*2+1];write.descriptorCount=1;write.descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;write.pBufferInfo=&buffer;}
         }
     }
     if(writeCount)i.context.api.UpdateDescriptorSets(i.context.device,writeCount,writes.data(),0,nullptr);
@@ -816,35 +893,82 @@ void Backend::draw(const DrawPacket& d) {
     std::array<VkBuffer,16> vertexBuffers{};std::array<VkDeviceSize,16> vertexOffsets{};
     for(unsigned s=0;s<16;++s)if(d.vertexBuffers[s]){
         auto& r=i.use(d.vertexBuffers[s]);auto& b=r.buffer;if(d.vertexOffsets[s]>=b.bytes)throw std::runtime_error("Invalid stock vertex buffer/offset");
-        const auto [buffer,base]=i.geometry(d.vertexBuffers[s]);vertexBuffers[s]=buffer;vertexOffsets[s]=base+d.vertexOffsets[s];
+        const auto [buffer,base]=i.geometry(r);vertexBuffers[s]=buffer;vertexOffsets[s]=base+d.vertexOffsets[s];
         if(!r.dynamicBytes.empty()){const auto first=std::int64_t(d.vertexBase)+d.vertexFirst;if(first<0)throw std::runtime_error("Invalid stock dynamic vertex range");const auto begin=std::uint64_t(d.vertexOffsets[s])+std::uint64_t(first)*d.strides[s],end=d.vertexCount?begin+std::uint64_t(d.vertexCount)*d.strides[s]:r.usedBytes;if(end>b.bytes||end<begin)throw std::runtime_error("Stock dynamic vertex range exceeds buffer");r.readBegin=(std::min)(r.readBegin,begin);r.readEnd=(std::max)(r.readEnd,end);}
     }
     auto& indexResource=i.use(d.indexBuffer);const auto indexWidth=d.index32?4u:2u;
     if((std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth>indexResource.buffer.bytes)throw std::runtime_error("Invalid stock draw index range");
-    const auto [indexBuffer,indexOffset]=i.geometry(d.indexBuffer);
+    const auto [indexBuffer,indexOffset]=i.geometry(indexResource);
     if(!indexResource.dynamicBytes.empty()){indexResource.readBegin=(std::min)(indexResource.readBegin,std::uint64_t(d.firstIndex)*indexWidth);indexResource.readEnd=(std::max)(indexResource.readEnd,(std::uint64_t(d.firstIndex)+d.indexCount)*indexWidth);}
     if(!i.renderingColor){i.renderingColor=d.colorTarget;i.renderingDepth=d.depthTarget;}
-    PreparedDraw packet;packet.pipeline=pipeline.pipeline;packet.layout=pipeline.layout;packet.sets=sets;packet.offsets=offsets;packet.offsetCount=offsetCount;
+    PreparedDraw packet=plan?plan->packet:PreparedDraw{};packet.pipeline=pipeline.pipeline;packet.layout=pipeline.layout;packet.sets=sets;packet.offsets=offsets;packet.offsetCount=offsetCount;
     packet.vertices=vertexBuffers;packet.vertexOffsets=vertexOffsets;packet.index=indexBuffer;packet.indexOffset=indexOffset;packet.indexType=d.index32?VK_INDEX_TYPE_UINT32:VK_INDEX_TYPE_UINT16;
-    packet.stencil=d.state.stencil;packet.stencilRef=d.state.stencilRef;packet.push=d.state.alphaTest||i.shaderBias(d.state,pipeline.depth);packet.constants={float(d.state.alphaRef)/255.f,d.state.depthBias,d.state.slopeDepthBias};
-    // Vulkan's negative viewport keeps stock D3D clip-space Y orientation. The
-    // half-pixel offset remains a parity gate before enabling this in the game.
-    packet.viewport={d.x + .5f, d.y + d.height + .5f, d.width, -d.height, d.minDepth, d.maxDepth};
-    VkRect2D scissor{{0,0},{color.desc.width,color.desc.height}};
-    if(d.scissor) {
-        const auto left=std::clamp(d.scissorX,0,int(color.desc.width)),top=std::clamp(d.scissorY,0,int(color.desc.height));
-        const auto right=std::clamp(std::int64_t(d.scissorX)+d.scissorWidth,std::int64_t(left),std::int64_t(color.desc.width)),bottom=std::clamp(std::int64_t(d.scissorY)+d.scissorHeight,std::int64_t(top),std::int64_t(color.desc.height));
-        scissor={{left,top},{unsigned(right-left),unsigned(bottom-top)}};
-    }
-    packet.scissor=scissor;packet.indexCount=d.indexCount;packet.firstIndex=d.firstIndex;packet.vertexBase=d.vertexBase;
+    // Negative viewport and half-pixel offset preserve stock D3D orientation.
+    if(!plan)rasterState(packet,d,color.desc.width,color.desc.height,i.shaderBias(d.state,pipeline.depth));
     if(occlusion){packet.query=occlusion->pool;packet.queryIndex=queryIndex;packet.queryFlags=i.context.selected.features.occlusionQueryPrecise?VK_QUERY_CONTROL_PRECISE_BIT:0;}
-    i.prepared.push_back(packet);
+    // Only contiguous triangle lists with exactly the same GPU inputs merge.
+    // Query boundaries and every material/geometry/constant change stay distinct.
+    if(i.config.batchDraws&&i.config.cacheBindings&&!i.prepared.empty()&&adjacentDraws(i.prepared.back(),packet)){
+        i.prepared.back().indexCount+=packet.indexCount;++i.timing.batchedDraws;
+    }else i.prepared.push_back(packet);
     ++i.frame->draws;
-    i.timing.prepareMs+=(std::max)(0.,elapsed(started)-(i.timing.commandsMs-previousCommands));
+}
+void Backend::prepareDraws(std::span<const DrawPacket* const> draws) {
+    auto& i=*impl;i.requireFrame();
+    if(!i.config.parallelPrepare||draws.empty())return;
+    if(i.frame->draws||!i.plans.empty()||draws.size()>maxDraws)throw std::runtime_error("Invalid immutable draw preparation phase");
+    for(const auto* source:draws){
+        if(!source||!source->immutableConstants)throw std::runtime_error("Parallel preparation requires immutable draw packets");
+        const auto& d=*source;auto& p=i.plans.emplace_back();p.source=source;
+        p.vertex=&i.shader(d.vertexShader);p.pixel=&i.shader(d.pixelShader);
+        p.color=&i.image(d.colorTarget);p.depth=d.depthTarget?&i.image(d.depthTarget):nullptr;
+        for(unsigned stage=0;stage<2;++stage){
+            const auto& shader=stage?*p.pixel:*p.vertex;if(!shader.uniformBytes)continue;
+            if(shader.uniformBytes>i.context.selected.properties.limits.maxUniformBufferRange)throw std::runtime_error("Stock uniforms exceed GPU range");
+            const auto id=stage?d.pixelShader:d.vertexShader;
+            const auto floats=stage?d.pixelConstants:d.vertexConstants;
+            const auto integers=stage?d.pixelIntegers:d.vertexIntegers,booleans=stage?d.pixelBooleans:d.vertexBooleans;
+            auto& cached=i.frame->uniforms[(id.value&65535u)-1];
+            if(!i.config.cacheBindings||cached.serial!=i.nextSerial||cached.shader!=id||cached.zeroTail!=d.zeroConstantTail||
+                cached.floats.data()!=floats.data()||cached.floats.size()!=floats.size()||cached.integers.data()!=integers.data()||cached.integers.size()!=integers.size()||cached.booleans.data()!=booleans.data()||cached.booleans.size()!=booleans.size()){
+                const auto offset=unsigned(i.allocate(shader.uniformBytes,(std::max)(VkDeviceSize(16),i.context.selected.properties.limits.minUniformBufferOffsetAlignment)));
+                i.uniformJobs.push_back({&shader,offset,floats,integers,booleans,d.zeroConstantTail});
+                cached={id,i.nextSerial,floats,integers,booleans,offset,d.zeroConstantTail};
+            }
+            p.packet.offsets[p.packet.offsetCount++]=cached.offset;
+        }
+    }
+    const unsigned workers=i.config.dispatchRecording?(std::max)(1u,(std::min)(i.config.recordingWorkers,unsigned(draws.size()/64))):1;
+    struct Batch {Impl* self;unsigned workers;std::array<std::exception_ptr,4> errors{};} batch{&i,workers};
+    const auto task=[](void* data,unsigned worker){auto& b=*static_cast<Batch*>(data);auto& i=*b.self;
+        try{
+            // All mutable caches, resources and arena reservations are owned by
+            // the submitting thread. Workers read warmed pipeline keys and write
+            // disjoint packets/uniform slices; they make no command-pool calls.
+            Pipeline* previous=nullptr;const Impl::DrawPlan* previousPlan=nullptr;
+            for(std::size_t n=i.plans.size()*worker/b.workers;n<i.plans.size()*(worker+1)/b.workers;++n){
+                auto& p=i.plans[n];const auto& d=*p.source;
+                if(previousPlan&&d.immutablePipelineVersion&&d.immutablePipelineVersion==previousPlan->source->immutablePipelineVersion)p.pipeline=previousPlan->pipeline;
+                else p.pipeline=&i.pipeline(d,*p.color,p.depth,&previous);
+                const bool sameDescriptorVersion=previousPlan&&d.immutableDescriptorVersion&&d.immutableDescriptorVersion==previousPlan->source->immutableDescriptorVersion;
+                bool sameDescriptors=previousPlan&&p.vertex==previousPlan->vertex&&p.pixel==previousPlan->pixel;
+                if(sameDescriptors)p.samplerMask=previousPlan->samplerMask;
+                else for(const auto* shader:{p.vertex,p.pixel})for(int s=0;s<shader->parsed->sampler_count;++s){const auto slot=unsigned(shader->parsed->samplers[s].index);if(slot>=16)throw std::runtime_error("Stock sampler index exceeds its bound");p.samplerMask|=1u<<slot;}
+                if(sameDescriptors&&!sameDescriptorVersion)for(unsigned slot=0;slot<16;++slot)if(p.samplerMask&(1u<<slot)){
+                    const auto& old=*previousPlan->source;if(d.textures[slot]!=old.textures[slot]||d.samplers[slot]!=old.samplers[slot]){sameDescriptors=false;break;}}
+                p.descriptorHash=sameDescriptors?previousPlan->descriptorHash:descriptorHash(d.vertexShader,d.pixelShader,d.textures,d.samplers,p.samplerMask);
+                rasterState(p.packet,d,p.color->desc.width,p.color->desc.height,i.shaderBias(d.state,p.pipeline->depth));
+                previousPlan=&p;
+            }
+            for(std::size_t n=i.uniformJobs.size()*worker/b.workers;n<i.uniformJobs.size()*(worker+1)/b.workers;++n){const auto& job=i.uniformJobs[n];job.shader->packUniforms(static_cast<std::byte*>(i.frame->arena.mapped)+job.offset,job.floats,job.integers,job.booleans,job.zeroTail);}
+        }catch(...){b.errors[worker]=std::current_exception();}
+    };
+    if(workers>1){i.config.dispatchRecording(task,&batch,workers);++i.timing.parallelPrepareBatches;i.timing.parallelPrepareDraws+=unsigned(draws.size());}else task(&batch,0);
+    for(unsigned n=0;n<workers;++n)if(batch.errors[n])std::rethrow_exception(batch.errors[n]);
 }
 void Backend::warm(const DrawPacket& d) {
     auto& i=*impl;i.assertOwner();if(i.frame) throw std::runtime_error("Pipeline warmup must run outside gameplay frame recording");
-    auto& color=i.image(d.colorTarget);auto* depth=d.depthTarget?&i.image(d.depthTarget):nullptr;i.pipeline(d,color,depth);
+    auto& color=i.image(d.colorTarget);auto* depth=d.depthTarget?&i.image(d.depthTarget):nullptr;i.pipeline(d,color,depth,&i.previousWarmPipeline);
 }
 void Backend::resolve(ResourceId source,ResourceId destination) {
     auto& i=*impl;i.requireFrame();auto& src=i.image(source);auto& dst=i.image(destination);
@@ -886,13 +1010,23 @@ FrameTiming Backend::endFrame(ResourceId source) {
             // the image even though the later blit waits correctly.
             b.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT; b.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT; b.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             VkDependencyInfo dep{VK_STRUCTURE_TYPE_DEPENDENCY_INFO}; dep.imageMemoryBarrierCount = 1; dep.pImageMemoryBarriers = &b; i.context.api.CmdPipelineBarrier2(f.cmd, &dep);
-            VkImageBlit blit{}; blit.srcSubresource = blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}; blit.srcOffsets[1] = {int(image.desc.width), int(image.desc.height), 1}; blit.dstOffsets[1] = {int(i.swapExtent.width), int(i.swapExtent.height), 1};
-            i.context.api.CmdBlitImage(f.cmd, image.image, image.layout, i.swapImages[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+            if(image.desc.width==i.swapExtent.width&&image.desc.height==i.swapExtent.height){
+                VkImageCopy copy{};copy.srcSubresource=copy.dstSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};copy.extent={image.desc.width,image.desc.height,1};
+                i.context.api.CmdCopyImage(f.cmd,image.image,image.layout,i.swapImages[index],VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1,&copy);
+            }else{
+                VkImageBlit blit{}; blit.srcSubresource = blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}; blit.srcOffsets[1] = {int(image.desc.width), int(image.desc.height), 1}; blit.dstOffsets[1] = {int(i.swapExtent.width), int(i.swapExtent.height), 1};
+                i.context.api.CmdBlitImage(f.cmd, image.image, image.layout, i.swapImages[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+            }
             b.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT; b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT; b.dstStageMask = VK_PIPELINE_STAGE_2_NONE; b.dstAccessMask = 0; b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; i.context.api.CmdPipelineBarrier2(f.cmd, &dep); i.swapInitialized[index] = true; present = true;
         }
     }
     i.context.api.CmdWriteTimestamp2(f.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, f.queries, 1); check(i.context.api.EndCommandBuffer(f.cmd), "finish native frame");
-    check(vmaFlushAllocation(i.context.allocator, f.arena.allocation, 0, f.used), "flush frame upload arena"); i.timing.recordMs = (std::max)(0.,elapsed(i.recording)-i.timing.acquireMs-i.timing.swapchainMs);
+    check(vmaFlushAllocation(i.context.allocator, f.arena.allocation, 0, f.used), "flush frame upload arena");
+    i.timing.recordMs = (std::max)(0.,elapsed(i.recording)-i.timing.acquireMs-i.timing.swapchainMs);
+    // Measure CPU replay/preparation once per frame. Per-draw clock reads add
+    // thousands of unnecessary timer calls to normal high-rate rendering.
+    // This residual also includes uploads, queries, barriers and frame finish.
+    i.timing.prepareMs=(std::max)(0.,i.timing.recordMs-i.timing.commandsMs);
     VkCommandBufferSubmitInfo command{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO}; command.commandBuffer = f.cmd;
     VkSemaphoreSubmitInfo signals[2]{}; signals[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO; signals[0].semaphore = i.timeline; signals[0].value = i.nextSerial; signals[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
     signals[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO; signals[1].semaphore = present ? i.presented[index] : VK_NULL_HANDLE; signals[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -920,15 +1054,16 @@ std::vector<std::byte> Backend::readback(ResourceId id) {
 }
 void Backend::waitIdle() { auto& i = *impl; i.assertOwner(); if (i.frame) throw std::runtime_error("Idle barrier inside a frame"); i.wait(i.lastSubmitted); i.collect(); }
 FrameTiming Backend::latestTiming() const {impl->assertOwner();return impl->timing;}
-std::array<Backend::CompletedGpuTiming,2> Backend::completeFrameTimings(){
-    auto& i=*impl;i.assertOwner();waitIdle();std::array<CompletedGpuTiming,2> result{};
+std::array<Backend::CompletedGpuTiming,3> Backend::completeFrameTimings(){
+    auto& i=*impl;i.assertOwner();waitIdle();std::array<CompletedGpuTiming,3> result{};
     for(unsigned n=0;n<i.frames.size();++n){const auto& f=i.frames[n];if(!f.serial)continue;
         std::uint64_t stamps[2];check(i.context.api.GetQueryPoolResults(i.context.device,f.queries,0,2,sizeof(stamps),stamps,8,VK_QUERY_RESULT_64_BIT),"drain final diagnostic GPU timestamps");
         result[n]={f.serial,double(stamps[1]-stamps[0])*i.context.selected.properties.limits.timestampPeriod/1000000.};
     }return result;
 }
 std::string Backend::deviceReport() const {
-    auto& i = *impl; auto json = i.context.json(); json.pop_back(); return json + ",\"frames_in_flight\":" + std::to_string(i.config.framesInFlight) + ",\"recording_workers\":" + std::to_string(i.config.dispatchRecording?i.config.recordingWorkers:1) + ",\"presentation_mode\":\"" + (i.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : i.presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo") + "\",\"pipeline_count\":" + std::to_string(i.pipelines.size()) + "}";
+    auto& i = *impl;VkMemoryPropertyFlags uploadProperties=0;vmaGetAllocationMemoryProperties(i.context.allocator,i.frames[0].arena.allocation,&uploadProperties);
+    auto json = i.context.json(); json.pop_back(); return json + ",\"frames_in_flight\":" + std::to_string(i.config.framesInFlight) + ",\"recording_workers\":" + std::to_string(i.config.dispatchRecording?i.config.recordingWorkers:1) + ",\"upload_memory_flags\":"+std::to_string(uploadProperties)+",\"presentation_mode\":\"" + (i.presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : i.presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo") + "\",\"pipeline_count\":" + std::to_string(i.pipelines.size()) + "}";
 }
 unsigned Backend::validationErrors() const { return impl->context.validationErrors.load(std::memory_order_relaxed); }
 std::uint64_t Backend::deviceLocalMemory() const {return impl->context.selected.localBytes;}

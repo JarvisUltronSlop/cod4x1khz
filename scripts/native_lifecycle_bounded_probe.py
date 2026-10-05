@@ -148,6 +148,8 @@ class OwnedServer:
         kernel.QueryFullProcessImageNameW.restype = wintypes.BOOL
         kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
         kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel.GetExitCodeProcess.restype = wintypes.BOOL
         kernel.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
         kernel.TerminateProcess.restype = wintypes.BOOL
         kernel.CloseHandle.argtypes = [wintypes.HANDLE]
@@ -176,6 +178,12 @@ class OwnedServer:
             raise ctypes.WinError(ctypes.get_last_error())
         if self.kernel.WaitForSingleObject(self.handle, 5000) != 0:
             raise RuntimeError("Exact owned server handle did not terminate")
+
+    def exit_code(self):
+        code = wintypes.DWORD()
+        if not self.kernel.GetExitCodeProcess(self.handle, ctypes.byref(code)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return code.value
 
     def close(self):
         if self.handle:

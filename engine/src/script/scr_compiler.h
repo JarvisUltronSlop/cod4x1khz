@@ -4,6 +4,8 @@
 
 #define MAX_PRECACHE_ENTRIES 1024
 
+uint32_t SpecifyThreadPosition(uint32_t posId, uint32_t name, uint32_t sourcePos, int type);
+
 enum : __int32
 {
     SOURCE_TYPE_NONE = 0,

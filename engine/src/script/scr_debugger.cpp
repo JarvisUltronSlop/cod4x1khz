@@ -2253,7 +2253,7 @@ void __cdecl Scr_DebugTerminateThread(int topThread)
 {
     Scr_DebugKillThread(
         scrVmPub.function_frame_start[topThread].fs.localId,
-        scrVmPub.stack[3 * topThread - 96].u.codePosValue);
+        scrVmPub.function_frame_start[topThread].fs.pos);
     if (topThread == scrVmPub.function_count)
     {
         if (!scrDebuggerGlob.kill_thread)

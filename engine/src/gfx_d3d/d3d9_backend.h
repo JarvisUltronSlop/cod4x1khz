@@ -20,6 +20,9 @@ public:
     bool queryResult(ResourceId,std::uint64_t&) override;
     void release(ResourceId) override;
     void beginFrame() override;
+    // Depth-only clears still depend on the currently bound color target's
+    // extent in D3D9. The legacy mirror captures that binding explicitly.
+    void bindClearTarget(ResourceId color);
     void clear(ResourceId color, ResourceId depth, const std::array<float, 4>& rgba, float depthValue,
         unsigned stencilValue=0,bool clearDepth=true,bool clearStencil=true,std::span<const ClearRect> rectangles={}) override;
     void draw(const DrawPacket&) override;

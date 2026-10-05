@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <thread>
 #include <iomanip>
+#include <condition_variable>
 
 namespace gfx::legacy {
 namespace {
@@ -24,7 +25,7 @@ bool nativeObject(IUnknown* object) {
     verified->Release();return true;
 }
 constexpr std::size_t packetLimit=8192,byteLimit=64*1024*1024;
-enum Metric {Frames,Draws,GpuSamples,GpuUs,WarmUs,RecordUs,SubmitUs,AcquireUs,PresentUs,RecycleUs,OwnerChanges,OwnerWaitUs,Submissions,PrepareUs,CommandsUs,ParallelBatches,ParallelDraws,MetricCount};
+enum Metric {Frames,Draws,GpuSamples,GpuUs,WarmUs,RecordUs,SubmitUs,AcquireUs,PresentUs,RecycleUs,OwnerChanges,OwnerWaitUs,Submissions,PrepareUs,CommandsUs,ParallelBatches,ParallelDraws,ParallelPrepareBatches,ParallelPrepareDraws,GeometryCopiedBytes,GeometryReusedBytes,BatchedDraws,QueueWaitUs,QueuedFrames,ExecuteUs,LeaseRetireUs,QueryPollUs,QueryPolls,MetricCount};
 std::array<std::atomic<std::uint64_t>,MetricCount> metrics{};
 std::atomic<unsigned> publishedValidationErrors{0},activeStates{0};
 std::atomic<std::uint64_t> traceClockUs{0};
@@ -33,13 +34,17 @@ std::uint64_t microseconds(Timer::time_point start){return std::uint64_t(std::ch
 void record(Metric metric,std::uint64_t value){metrics[metric].fetch_add(value,std::memory_order_relaxed);}
 void recordMs(Metric metric,double value){record(metric,std::uint64_t(value*1000));}
 enum class Operation {Draw,Clear,Buffer,Image,Resolve,Blit,QueryBegin,QueryEnd};
+struct QueryCompletion {
+    std::atomic<std::uint64_t> sequence{0},value{0};
+};
 struct Command {
     std::uint64_t sequence=0;
-    Operation operation;DrawPacket draw;ResourceId first,second;unsigned offset=0,level=0,layer=0;bool discard=false,noOverwrite=false;
+    Operation operation;DrawPacket draw;ResourceId first,second,clearTarget;unsigned offset=0,level=0,layer=0;bool discard=false,noOverwrite=false;
     std::span<const std::byte> bytes;std::array<float,4> rgba{};float depth=1;
     unsigned stencil=0;bool clearDepth=true,clearStencil=true;
     std::span<const ClearRect> rectangles;
     std::array<ClearRect,2> blitRects{};bool hasSourceRect=false,hasDestinationRect=false,linear=false;
+    std::shared_ptr<QueryCompletion> queryCompletion;
 };
 class Reference {
     struct Entry {ResourceId source,target;ImageDesc image;std::string name;std::vector<std::uint32_t> shader;std::uint64_t draws=0;std::vector<float> firstConstants;};
@@ -70,7 +75,7 @@ public:
     void execute(const Command& c){
         switch(c.operation){
         case Operation::Draw:{auto d=c.draw;constants(d.vertexShader,d.vertexConstants);constants(d.pixelShader,d.pixelConstants);pass(d);count(d.vertexShader);count(d.pixelShader);d.vertexShader=map(d.vertexShader);d.pixelShader=map(d.pixelShader);d.indexBuffer=map(d.indexBuffer);d.colorTarget=map(d.colorTarget);d.depthTarget=map(d.depthTarget);for(auto& id:d.vertexBuffers)id=map(id);for(auto& id:d.textures)id=map(id);backend.draw(d);break;}
-        case Operation::Clear:backend.clear(map(c.first),map(c.second),c.rgba,c.depth,c.stencil,c.clearDepth,c.clearStencil,c.rectangles);break;
+        case Operation::Clear:backend.bindClearTarget(map(c.clearTarget));backend.clear(map(c.first),map(c.second),c.rgba,c.depth,c.stencil,c.clearDepth,c.clearStencil,c.rectangles);break;
         case Operation::Buffer:backend.updateBuffer(map(c.first),c.offset,c.bytes,c.discard,c.noOverwrite);break;
         case Operation::Image:backend.uploadImage(map(c.first),c.level,c.layer,c.bytes);break;
         case Operation::Resolve:backend.resolve(map(c.first),map(c.second));break;
@@ -86,6 +91,7 @@ public:
         double seconds=0;std::uint64_t serial=0,gpuSerial=0,display=0;
         float frameMs=0,warmMs=0,prepareMs=0,commandsMs=0,recordMs=0,submitMs=0,acquireMs=0,presentMs=0,recycleMs=0,gpuMs=0;
         unsigned draws=0,parallelBatches=0,parallelDraws=0,presentation=0;
+        unsigned parallelPrepareBatches=0,parallelPrepareDraws=0;std::uint64_t geometryCopiedBytes=0,geometryReusedBytes=0;unsigned batchedDraws=0;
     };
     std::vector<Trace> trace;
     std::uint64_t traceCount=0,displayCount=0;
@@ -94,41 +100,111 @@ public:
     std::unique_ptr<Reference> reference;
     GammaPass gamma;
     std::vector<Command> commands;
+    std::vector<const DrawPacket*> drawPackets;
     std::vector<std::byte> arena;
-    std::array<std::shared_ptr<Storage>,16384> retained{};
+    std::vector<std::shared_ptr<Storage>> retained=std::vector<std::shared_ptr<Storage>>(16384);
     std::vector<unsigned> retainedSlots;
     std::size_t used=0;bool scene=false;
-    std::uint64_t queuedSequence=0,submittedSequence=0;
+    std::uint64_t queuedSequence=0;
+    std::atomic<std::uint64_t> submittedSequence{0};
     std::uint64_t packetEpoch=1;
     std::string failure;
     std::thread::id submissionOwner=std::this_thread::get_id();
     Config config;unsigned diagnosticPresentations=0;
-    explicit State(const Config& c):backend(c),gamma(backend),arena(byteLimit),config(c){commands.reserve(packetLimit);retainedSlots.reserve(retained.size());if(c.recordFrameTimings)trace.resize(524288);if(c.compareD3D9){auto compare=c;compare.device=-1;compare.compareD3D9=false;reference=std::make_unique<Reference>(compare);}activeStates.fetch_add(1,std::memory_order_relaxed);}
-    ~State(){activeStates.fetch_sub(1,std::memory_order_relaxed);}
+    struct FrontTransfer {std::shared_ptr<Storage> resource;unsigned offset;bool discard,noOverwrite;std::span<const std::byte> bytes;};
+    std::mutex frontMutex;
+    std::vector<FrontTransfer> frontTransfers;
+    std::vector<std::byte> frontArena;
+    std::size_t frontUsed=0;
+    std::atomic<DWORD> submissionOwnerId{GetCurrentThreadId()};
+    std::atomic<DWORD> sceneOwnerId{0};
+    std::atomic<DWORD> captureOwnerId{0};
+    std::atomic<bool> failed{false};
+    std::recursive_mutex gpuMutex;
+    struct PendingQuery {ResourceId id;std::uint64_t sequence;std::shared_ptr<QueryCompletion> completion;std::shared_ptr<Storage> lease;};
+    std::vector<PendingQuery> pendingQueries;
+    void pollCompletedQueries(){
+        if(pendingQueries.empty())return;
+        const auto started=Timer::now();record(QueryPolls,pendingQueries.size());
+        for(std::size_t n=0;n<pendingQueries.size();){
+            auto& query=pendingQueries[n];std::uint64_t value=0;
+            if(!backend.pollQuerySerialized(query.id,value)){++n;continue;}
+            query.completion->value.store(value,std::memory_order_relaxed);
+            query.completion->sequence.store(query.sequence,std::memory_order_release);
+            if(n+1!=pendingQueries.size())query=std::move(pendingQueries.back());
+            pendingQueries.pop_back();
+        }
+        record(QueryPollUs,microseconds(started));
+    }
+    void retainQueryCompletion(const Command& command){
+        for(auto& query:pendingQueries)if(query.id==command.first){query.sequence=command.sequence;query.completion=command.queryCompletion;return;}
+        if(pendingQueries.size()==16384)throw std::runtime_error("Bounded pending GPU query inventory exhausted");
+        const auto slot=(command.first.value&65535u)-1;
+        // The current bank retains every QueryEnd resource. Transfer a lease
+        // before retiring that bank, until its actual GPU result is published.
+        const auto& leases=config.asyncSubmission?submission->retained:retained;
+        pendingQueries.push_back({command.first,command.sequence,command.queryCompletion,leases.at(slot)});
+    }
+    struct Submission {
+        std::vector<Command> commands;
+        std::vector<std::byte> arena=std::vector<std::byte>(byteLimit);
+        std::vector<std::shared_ptr<Storage>> retained=std::vector<std::shared_ptr<Storage>>(16384);
+        std::vector<unsigned> retainedSlots;
+        std::size_t used=0;ResourceId present;unsigned width=0,height=0;bool fullscreenGamma=false;
+        Submission(){commands.reserve(packetLimit);retainedSlots.reserve(retained.size());}
+        void retire(){commands.clear();used=0;for(auto index:retainedSlots)retained[index].reset();retainedSlots.clear();}
+    };
+    std::unique_ptr<Submission> submission;
+    std::mutex queueMutex;std::condition_variable queueChanged;
+    bool queueBusy=false,queueStop=false;
+    std::thread submissionThread;
+    explicit State(const Config& c):backend(c),gamma(backend),arena(byteLimit),config(c){config.overlapFrontendUploads|=config.asyncSubmission;commands.reserve(packetLimit);drawPackets.reserve(packetLimit);retainedSlots.reserve(retained.size());if(config.overlapFrontendUploads){frontArena.resize(byteLimit);frontTransfers.reserve(packetLimit);}if(c.recordFrameTimings)trace.resize(524288);if(c.compareD3D9){auto compare=c;compare.device=-1;compare.compareD3D9=false;reference=std::make_unique<Reference>(compare);}if(c.asyncSubmission){submission=std::make_unique<Submission>();submissionThread=std::thread([this]{runSubmissions();});}activeStates.fetch_add(1,std::memory_order_relaxed);}
+    ~State(){stopSubmissions();activeStates.fetch_sub(1,std::memory_order_relaxed);}
+    void waitSubmissions(){if(!config.asyncSubmission)return;std::unique_lock queue(queueMutex);queueChanged.wait(queue,[&]{return !queueBusy;});}
+    void stopSubmissions(){if(!submissionThread.joinable())return;{std::lock_guard queue(queueMutex);queueStop=true;}queueChanged.notify_all();submissionThread.join();}
+    bool submissionIdle(){if(!config.asyncSubmission)return true;std::lock_guard queue(queueMutex);return !queueBusy;}
+    void submissionFailed(const std::exception& error){failure=error.what();failed.store(true,std::memory_order_release);backend.cancelFrame();OutputDebugStringA(("Native Vulkan submission failed: "+failure+"\n").c_str());}
+    void runSubmissions() noexcept {
+        bool initialized=false;
+        for(;;){
+            {std::unique_lock queue(queueMutex);queueChanged.wait(queue,[&]{return queueBusy||queueStop;});if(!queueBusy&&queueStop)break;}
+            {std::lock_guard gpu(gpuMutex);
+                try{if(!initialized){if(config.initializeSubmissionThread)config.initializeSubmissionThread();initialized=true;}
+                    const auto started=Timer::now();execute(submission->commands,submission->present,submission->width,submission->height,submission->fullscreenGamma);record(ExecuteUs,microseconds(started));
+                }catch(const std::exception& error){submissionFailed(error);}catch(...){const std::runtime_error error("Unknown Vulkan submission failure");submissionFailed(error);}
+                const auto retired=Timer::now();submission->retire();record(LeaseRetireUs,microseconds(retired));
+            }
+            {std::lock_guard queue(queueMutex);queueBusy=false;}queueChanged.notify_all();
+        }
+        if(initialized&&config.releaseSubmissionThread)config.releaseSubmissionThread();
+    }
     void timing(const FrameTiming& timing,bool present,std::uint64_t warmUs=0){
         record(Submissions,1);if(present)record(Frames,1);record(Draws,timing.draws);record(WarmUs,warmUs);recordMs(RecordUs,timing.recordMs);recordMs(SubmitUs,timing.submitMs);recordMs(AcquireUs,timing.acquireMs);recordMs(PresentUs,timing.presentMs);recordMs(RecycleUs,timing.recycleWaitMs);if(timing.gpuSerial){record(GpuSamples,1);recordMs(GpuUs,timing.gpuMs);}
         recordMs(PrepareUs,timing.prepareMs);recordMs(CommandsUs,timing.commandsMs);record(ParallelBatches,timing.parallelBatches);record(ParallelDraws,timing.parallelDraws);
+        record(ParallelPrepareBatches,timing.parallelPrepareBatches);record(ParallelPrepareDraws,timing.parallelPrepareDraws);record(GeometryCopiedBytes,timing.geometryCopiedBytes);record(GeometryReusedBytes,timing.geometryReusedBytes);record(BatchedDraws,timing.batchedDraws);
         if(!trace.empty()){
             const auto now=Timer::now();const auto seconds=std::chrono::duration<double>(now.time_since_epoch()).count();
             auto& t=trace[traceCount++%trace.size()];t={seconds,timing.serial,timing.gpuSerial,displayCount,
                 present?float(std::chrono::duration<double,std::milli>(now-previousPresent).count()):0.f,
-                float(warmUs*.001),float(timing.prepareMs),float(timing.commandsMs),float(timing.recordMs),float(timing.submitMs),float(timing.acquireMs),float(timing.presentMs),float(timing.recycleWaitMs),float(timing.gpuMs),timing.draws,timing.parallelBatches,timing.parallelDraws,unsigned(present)};
+                float(warmUs*.001),float(timing.prepareMs),float(timing.commandsMs),float(timing.recordMs),float(timing.submitMs),float(timing.acquireMs),float(timing.presentMs),float(timing.recycleWaitMs),float(timing.gpuMs),timing.draws,timing.parallelBatches,timing.parallelDraws,unsigned(present),timing.parallelPrepareBatches,timing.parallelPrepareDraws,timing.geometryCopiedBytes,timing.geometryReusedBytes,timing.batchedDraws};
             traceClockUs.store(std::uint64_t(seconds*1000000.),std::memory_order_relaxed);
             if(present){previousPresent=now;++displayCount;}
         }
     }
-    void owner(){const auto current=std::this_thread::get_id();if(current!=submissionOwner){const auto start=Timer::now();backend.adoptOwnerAtBarrier();if(reference)reference->backend.adoptOwnerAtBarrier();submissionOwner=current;record(OwnerChanges,1);record(OwnerWaitUs,microseconds(start));}}
-    ResourceId makeBuffer(unsigned bytes,bool index,bool dynamic) override {std::lock_guard guard(mutex);owner();if(!bytes||bytes>64*1024*1024)throw std::runtime_error("Invalid stock geometry size");std::vector<std::byte> zeros(bytes);const auto id=backend.createBuffer(zeros,index,dynamic);if(reference)reference->add(id,reference->backend.createBuffer(zeros,index,dynamic));if(dynamic){backend.updateBuffer(id,0,{},true);if(reference)reference->backend.updateBuffer(reference->map(id),0,{},true);}return id;}
-    ResourceId makeImage(const ImageDesc& desc) override {std::lock_guard guard(mutex);owner();const auto id=backend.createImage(desc);if(reference)reference->add(id,reference->backend.createImage(desc),desc);return id;}
-    ResourceId makeShader(std::span<const std::uint32_t> words) override {std::lock_guard guard(mutex);owner();const auto id=backend.createShader(words,"stock material");if(reference){reference->add(id,reference->backend.createShader(words,"stock material"));reference->shader(id,words);}return id;}
-    ResourceId makeQuery(QueryType type){const auto id=backend.createQuery(type);if(reference)reference->add(id,reference->backend.createQuery(type));return id;}
-    void release(ResourceId id) noexcept override {checked([&]{std::lock_guard guard(mutex);owner();if(reference)reference->release(id);backend.release(id);});}
+    void owner(){const auto current=std::this_thread::get_id();if(current!=submissionOwner){const auto start=Timer::now();backend.adoptOwnerAtBarrier();if(reference)reference->backend.adoptOwnerAtBarrier();submissionOwner=current;submissionOwnerId.store(GetCurrentThreadId(),std::memory_order_release);record(OwnerChanges,1);record(OwnerWaitUs,microseconds(start));}}
+    ResourceId makeBuffer(unsigned bytes,bool index,bool dynamic) override {std::lock_guard guard(mutex);std::lock_guard gpu(gpuMutex);owner();if(!bytes||bytes>64*1024*1024)throw std::runtime_error("Invalid stock geometry size");std::vector<std::byte> zeros(bytes);const auto id=backend.createBuffer(zeros,index,dynamic);if(reference)reference->add(id,reference->backend.createBuffer(zeros,index,dynamic));if(dynamic){backend.updateBuffer(id,0,{},true);if(reference)reference->backend.updateBuffer(reference->map(id),0,{},true);}return id;}
+    ResourceId makeImage(const ImageDesc& desc) override {std::lock_guard guard(mutex);std::lock_guard gpu(gpuMutex);owner();const auto id=backend.createImage(desc);if(reference)reference->add(id,reference->backend.createImage(desc),desc);return id;}
+    ResourceId makeShader(std::span<const std::uint32_t> words) override {std::lock_guard guard(mutex);std::lock_guard gpu(gpuMutex);owner();const auto id=backend.createShader(words,"stock material");if(reference){reference->add(id,reference->backend.createShader(words,"stock material"));reference->shader(id,words);}return id;}
+    ResourceId makeQuery(QueryType type){std::lock_guard gpu(gpuMutex);owner();const auto id=backend.createQuery(type);if(reference)reference->add(id,reference->backend.createQuery(type));return id;}
+    // Final leases can retire on the GPU owner while a producer holds the
+    // packet mutex waiting for a queue slot. Never acquire that mutex here.
+    void release(ResourceId id) noexcept override {checked([&]{std::lock_guard gpu(gpuMutex);owner();if(reference)reference->release(id);backend.release(id);});}
     template<class T> std::span<const T> copy(std::span<const T> source) {
         const auto at=(used+alignof(T)-1)&~(alignof(T)-1),bytes=source.size_bytes();
         if(bytes>arena.size()||at>arena.size()-bytes)throw std::runtime_error("Bounded immutable graphics packet arena exhausted");
         std::memcpy(arena.data()+at,source.data(),bytes);used=at+bytes;return {reinterpret_cast<const T*>(arena.data()+at),source.size()};
     }
-    Command& append(Operation op) {if(!failure.empty())throw std::runtime_error(failure);if(commands.size()==packetLimit)throw std::runtime_error("Bounded immutable graphics packet queue exhausted");commands.emplace_back();commands.back().operation=op;commands.back().sequence=++queuedSequence;return commands.back();}
+    Command& append(Operation op) {if(failed.load(std::memory_order_acquire))throw std::runtime_error("Native Vulkan submission failed; a renderer restart is required");if(commands.size()==packetLimit)throw std::runtime_error("Bounded immutable graphics packet queue exhausted");commands.emplace_back();commands.back().operation=op;commands.back().sequence=++queuedSequence;return commands.back();}
     void keep(const std::shared_ptr<Storage>& storage) {
         if(!storage)return;const auto index=storage->id.value&65535u;
         if(!index||index>retained.size()||storage->host.get()!=this)throw std::runtime_error("Foreign resource in immutable graphics packet");
@@ -137,10 +213,36 @@ public:
         slot=storage;retainedSlots.push_back(index-1);
     }
     void keep(Command&,IUnknown* object) {if(!object)return;auto* r=dynamic_cast<Resource*>(object);if(!r)throw std::runtime_error("Foreign resource in immutable graphics packet");keep(r->storage);}
-    void retirePackets(){commands.clear();used=0;++packetEpoch;for(const auto index:retainedSlots)retained[index].reset();retainedSlots.clear();}
+    void retirePackets(){drawPackets.clear();commands.clear();used=0;++packetEpoch;for(const auto index:retainedSlots)retained[index].reset();retainedSlots.clear();}
+    void drainFrontendTransfers(){
+        // Called under the facade mutex at a CPU frame boundary. The previous
+        // frame has captured its geometry already. Future uploads must never
+        // be replayed into that frame just because its Present is still busy.
+        if(!config.overlapFrontendUploads)return;
+        std::lock_guard front(frontMutex);
+        for(const auto& transfer:frontTransfers){
+            auto& c=append(Operation::Buffer);c.first=transfer.resource->id;c.offset=transfer.offset;
+            c.discard=transfer.discard;c.noOverwrite=transfer.noOverwrite;c.bytes=copy(transfer.bytes);keep(transfer.resource);
+        }
+        frontTransfers.clear();frontUsed=0;
+    }
     void updateBuffer(const std::shared_ptr<Storage>& resource,unsigned at,std::span<const std::byte> bytes,bool discard,bool noOverwrite) override {
         const auto id=resource->id;
-        std::lock_guard guard(mutex);if(!scene&&commands.empty()&&std::this_thread::get_id()==submissionOwner){backend.updateBuffer(id,at,bytes,discard,noOverwrite);if(reference)reference->backend.updateBuffer(reference->map(id),at,bytes,discard,noOverwrite);return;}
+        const auto sceneThread=sceneOwnerId.load(std::memory_order_acquire);
+        const auto captureThread=captureOwnerId.load(std::memory_order_acquire);
+        const auto owningThread=sceneThread?sceneThread:(captureThread?captureThread:submissionOwnerId.load(std::memory_order_acquire));
+        if(config.overlapFrontendUploads&&GetCurrentThreadId()!=owningThread){
+            // This lane owns CPU copies and resource leases only. It never
+            // acquires the submission mutex or calls Vulkan, so frontend skin
+            // uploads can finish while the backend prepares the prior frame.
+            std::lock_guard front(frontMutex);
+            if(failed.load(std::memory_order_acquire))throw std::runtime_error("Native graphics submission failed");
+            if(frontTransfers.size()==packetLimit||bytes.size()>frontArena.size()-frontUsed)throw std::runtime_error("Bounded frontend graphics transfer queue exhausted");
+            auto* destination=frontArena.data()+frontUsed;
+            if(!bytes.empty())std::memcpy(destination,bytes.data(),bytes.size());frontUsed+=bytes.size();
+            frontTransfers.push_back({resource,at,discard,noOverwrite,{destination,bytes.size()}});return;
+        }
+        std::lock_guard guard(mutex);if(!scene&&commands.empty()&&submissionIdle()&&GetCurrentThreadId()==submissionOwnerId.load(std::memory_order_acquire)){std::lock_guard gpu(gpuMutex);owner();backend.updateBuffer(id,at,bytes,discard,noOverwrite);if(reference)reference->backend.updateBuffer(reference->map(id),at,bytes,discard,noOverwrite);return;}
         auto& c=append(Operation::Buffer);c.first=id;c.offset=at;c.discard=discard;c.noOverwrite=noOverwrite;c.bytes=copy(bytes);keep(resource);
     }
     void uploadImage(const std::shared_ptr<Storage>& resource,unsigned level,unsigned layer,std::span<const std::byte> bytes) override {
@@ -151,24 +253,50 @@ public:
         // existing assets join the next submission with immutable bytes and
         // generation leases, without a GPU wait or an owner handoff. Preserve
         // queue order even when a resource creation subsequently changes owner.
-        if(!scene&&commands.empty()&&std::this_thread::get_id()==submissionOwner){backend.beginFrame();backend.uploadImage(id,level,layer,bytes);timing(backend.endFrame({}),false);if(reference)reference->backend.uploadImage(reference->map(id),level,layer,bytes);return;}
+        if(!scene&&commands.empty()&&submissionIdle()&&GetCurrentThreadId()==submissionOwnerId.load(std::memory_order_acquire)){std::lock_guard gpu(gpuMutex);owner();backend.beginFrame();backend.uploadImage(id,level,layer,bytes);timing(backend.endFrame({}),false);if(reference)reference->backend.uploadImage(reference->map(id),level,layer,bytes);return;}
         auto& c=append(Operation::Image);c.first=id;c.level=level;c.layer=layer;c.bytes=copy(bytes);keep(resource);
     }
     void flush(ResourceId present={},unsigned width=0,unsigned height=0,bool fullscreenGamma=false) {
         std::lock_guard guard(mutex);
-        if(!failure.empty())throw std::runtime_error(failure);
+        if(failed.load(std::memory_order_acquire))throw std::runtime_error("Native Vulkan submission failed; a renderer restart is required");
+        if(commands.empty()&&!scene)drainFrontendTransfers();
+        if(commands.empty()&&!present)return;
+        if(config.asyncSubmission){
+            const auto started=Timer::now();std::unique_lock queue(queueMutex);
+            queueChanged.wait(queue,[&]{return !queueBusy;});
+            record(QueueWaitUs,microseconds(started));
+            if(queueStop||failed.load(std::memory_order_acquire))throw std::runtime_error("Native Vulkan submission owner is unavailable");
+            submission->commands.swap(commands);submission->arena.swap(arena);
+            submission->retained.swap(retained);submission->retainedSlots.swap(retainedSlots);
+            std::swap(submission->used,used);++packetEpoch;
+            submission->present=present;submission->width=width;submission->height=height;submission->fullscreenGamma=fullscreenGamma;
+            queueBusy=true;if(present)record(QueuedFrames,1);queue.unlock();queueChanged.notify_all();return;
+        }
+        std::lock_guard gpu(gpuMutex);
         try {
-        if(commands.empty()&&!present)return;owner();
+            execute(commands,present,width,height,fullscreenGamma);retirePackets();
+        }catch(const std::exception& error){submissionFailed(error);retirePackets();{std::lock_guard front(frontMutex);frontTransfers.clear();frontUsed=0;}scene=false;sceneOwnerId.store(0,std::memory_order_release);throw;}
+    }
+    void execute(std::span<const Command> packet,ResourceId present,unsigned width,unsigned height,bool fullscreenGamma){
+        owner();
+        pollCompletedQueries();
         // Pipeline/shader cache work precedes recording. A later loading pass
         // warms complete material variants before entering gameplay.
         const auto warmStart=Timer::now();
-        for(const auto& c:commands)if(c.operation==Operation::Draw)backend.warm(c.draw);
+        std::uint64_t previousPipelineVersion=0;
+        for(const auto& c:packet)if(c.operation==Operation::Draw){
+            const auto version=c.draw.immutablePipelineVersion;
+            if(!version||version!=previousPipelineVersion)backend.warm(c.draw);
+            previousPipelineVersion=version;
+        }
         const auto warmUs=microseconds(warmStart);
         const bool applyGamma=present&&fullscreenGamma&&!gamma.identity();
         if(applyGamma)gamma.prepare(present,width,height);
-        if(reference){reference->backend.beginFrame();for(const auto& c:commands)reference->execute(c);reference->backend.endFrame({});}
+        if(reference){reference->backend.beginFrame();for(const auto& c:packet)reference->execute(c);reference->backend.endFrame({});}
         backend.beginFrame();
-        for(const auto& c:commands)switch(c.operation) {
+        drawPackets.clear();for(const auto& c:packet)if(c.operation==Operation::Draw)drawPackets.push_back(&c.draw);
+        backend.prepareDraws(drawPackets);
+        for(const auto& c:packet)switch(c.operation) {
         case Operation::Draw:backend.draw(c.draw);break;
         case Operation::Clear:backend.clear(c.first,c.second,c.rgba,c.depth,c.stencil,c.clearDepth,c.clearStencil,c.rectangles);break;
         case Operation::Buffer:backend.updateBuffer(c.first,c.offset,c.bytes,c.discard,c.noOverwrite);break;
@@ -180,9 +308,12 @@ public:
         }
         const auto output=applyGamma?gamma.draw():present;
         const auto timing=backend.endFrame(output);
+        for(const auto& command:packet)if(command.operation==Operation::QueryEnd)retainQueryCompletion(command);
+        pollCompletedQueries();
         publishedValidationErrors.store(backend.validationErrors(),std::memory_order_relaxed);
         this->timing(timing,bool(present),warmUs);
-        if(!commands.empty())submittedSequence=commands.back().sequence;retirePackets();
+        if(!packet.empty())submittedSequence.store(packet.back().sequence,std::memory_order_release);
+        drawPackets.clear();
         if(present&&config.validation&&!config.cacheDirectory.empty()) {
             ++diagnosticPresentations;
             if(diagnosticPresentations==1||diagnosticPresentations==12||diagnosticPresentations==1250) {
@@ -195,9 +326,9 @@ public:
                 capture.write(reinterpret_cast<const char*>(pixels.data()),pixels.size());
             }
         }
-        }catch(const std::exception& error){failure=error.what();backend.cancelFrame();retirePackets();scene=false;throw;}
     }
-    void readback(ResourceId id,std::vector<std::byte>& out) override {std::lock_guard guard(mutex);flush();owner();out=backend.readback(id);timing(backend.latestTiming(),false);
+    void close(){checked([&]{flush();flush();});waitSubmissions();stopSubmissions();std::lock_guard guard(mutex);std::lock_guard gpu(gpuMutex);checked([&]{owner();backend.waitIdle();});retirePackets();pendingQueries.clear();{std::lock_guard front(frontMutex);frontTransfers.clear();frontUsed=0;}}
+    void readback(ResourceId id,std::vector<std::byte>& out) override {std::lock_guard guard(mutex);flush();waitSubmissions();drainFrontendTransfers();flush();waitSubmissions();std::lock_guard gpu(gpuMutex);if(failed.load(std::memory_order_acquire))throw std::runtime_error(failure);owner();out=backend.readback(id);timing(backend.latestTiming(),false);
         if(reference&&!config.cacheDirectory.empty()){
             const auto pixels=reference->backend.readback(reference->map(id));const auto& desc=reference->image(id);
             const auto folder=std::filesystem::path(config.cacheDirectory).parent_path()/"diagnostics";std::filesystem::create_directories(folder);
@@ -217,21 +348,27 @@ public:
 class Query final : public IDirect3DQuery9Base,public Resource {
     std::shared_ptr<State> state;D3DQUERYTYPE type;
     std::uint64_t lastIssue=0;
+    std::shared_ptr<QueryCompletion> completion=std::make_shared<QueryCompletion>();
 public:
     Query(std::shared_ptr<State> s,D3DQUERYTYPE t,QueryType q):Resource(std::make_shared<Storage>(s,s->makeQuery(q))),state(std::move(s)),type(t){}
     D3DQUERYTYPE STDMETHODCALLTYPE GetType() override {return type;}
     DWORD STDMETHODCALLTYPE GetDataSize() override {return type==D3DQUERYTYPE_TIMESTAMP?8:4;}
-    HRESULT STDMETHODCALLTYPE Issue(DWORD flags) override {return checked([&]{std::lock_guard guard(state->mutex);if(flags!=D3DISSUE_BEGIN&&flags!=D3DISSUE_END)throw std::runtime_error("Invalid stock query issue flag");if(flags==D3DISSUE_BEGIN&&type!=D3DQUERYTYPE_OCCLUSION)throw std::runtime_error("Invalid stock query begin");auto& c=state->append(flags==D3DISSUE_BEGIN?Operation::QueryBegin:Operation::QueryEnd);c.first=id();lastIssue=c.sequence;state->keep(c,this);});}
+    HRESULT STDMETHODCALLTYPE Issue(DWORD flags) override {return checked([&]{std::lock_guard guard(state->mutex);if(flags!=D3DISSUE_BEGIN&&flags!=D3DISSUE_END)throw std::runtime_error("Invalid stock query issue flag");if(flags==D3DISSUE_BEGIN&&type!=D3DQUERYTYPE_OCCLUSION)throw std::runtime_error("Invalid stock query begin");auto& c=state->append(flags==D3DISSUE_BEGIN?Operation::QueryBegin:Operation::QueryEnd);c.first=id();if(flags==D3DISSUE_END)c.queryCompletion=completion;lastIssue=c.sequence;state->keep(c,this);});}
     HRESULT STDMETHODCALLTYPE GetData(void* out,DWORD bytes,DWORD flags) override {
         try {if(out&&bytes!=GetDataSize())return D3DERR_INVALIDCALL;
             // Frontend workers poll fences while the submission owner uses
             // that same worker pool to record commands. Blocking on its mutex
             // here would prevent those recording jobs from ever running.
             std::unique_lock guard(state->mutex,std::try_to_lock);if(!guard.owns_lock())return S_FALSE;
-            if(!state->failure.empty())throw std::runtime_error(state->failure);
+            if(state->failed.load(std::memory_order_acquire))throw std::runtime_error("Native Vulkan submission failed");
             // D3D9 event queries start signaled. Stock loading barriers poll
             // them before the first Issue; treating idle as pending deadlocks.
             std::uint64_t value=1;if(!lastIssue&&type==D3DQUERYTYPE_EVENT){if(out)std::memcpy(out,&value,bytes);return S_OK;}
+            if(lastIssue&&completion->sequence.load(std::memory_order_acquire)==lastIssue){value=completion->value.load(std::memory_order_relaxed);if(out)std::memcpy(out,&value,bytes);return S_OK;}
+            // An asynchronous owner may be preparing this issue already.
+            // Never wait for it (or flush the next CPU scene) from a worker
+            // that the owner itself needs for preparation/recording.
+            if(!state->submissionIdle())return S_FALSE;
             // Polling an already submitted issue must not drain newer CPU
             // packets. Their next presentation owns that work; a flush is
             // needed only while this query's issue is still queued.
@@ -239,11 +376,12 @@ public:
             // Never return an earlier issue's result while its replacement is
             // still queued on the CPU and absent from the submitted GPU work.
             if(lastIssue>state->submittedSequence)return S_FALSE;
+            std::unique_lock gpu(state->gpuMutex,std::try_to_lock);if(!gpu.owns_lock())return S_FALSE;
             if(!state->backend.pollQuerySerialized(id(),value))return S_FALSE;if(out)std::memcpy(out,&value,bytes);return S_OK;}catch(const std::exception& e){return unsupported(e.what());}
     }
 };
 template<class T> void drop(T*& value){if(value)value->Release();value=nullptr;}
-template<class T> void bind(T*& to,T* value){if(value)value->AddRef();drop(to);to=value;}
+template<class T> void bind(T*& to,T* value){if(to==value)return;if(value)value->AddRef();drop(to);to=value;}
 template<class T,unsigned N> struct Registers {
     std::array<T,N> values{};
     std::span<const T> captured;
@@ -282,14 +420,16 @@ class Device final : public IDirect3DDevice9Base {
     std::array<Resource*,16> boundVertices{},boundTextures{};
     std::array<bool,16> depthTextures{};
     static ResourceId id(Resource* resource){return resource?resource->id():ResourceId{};}
-    template<class T> HRESULT setBinding(T*& object,Resource*& resource,T* value){auto* next=dynamic_cast<Resource*>(value);if(value&&(!next||next->storage->host!=state||!next->id()))return D3DERR_INVALIDCALL;bind(object,value);resource=next;return S_OK;}
+    template<class T> HRESULT setBinding(T*& object,Resource*& resource,T* value){if(object==value)return S_OK;auto* next=dynamic_cast<Resource*>(value);if(value&&(!next||next->storage->host!=state||!next->id()))return D3DERR_INVALIDCALL;bind(object,value);resource=next;return S_OK;}
     std::array<DWORD,256> renderStates{};std::array<std::array<DWORD,14>,16> samplerStates{};
     Registers<float,256*4> vertexFloats;Registers<float,224*4> pixelFloats;
     Registers<int,16*4> vertexInts,pixelInts;Registers<int,16> vertexBools,pixelBools;
-    std::uint64_t declarationRevision=1,capturedDeclarationRevision=0,capturedDeclarationEpoch=0;
+    std::uint64_t declarationRevision=1,capturedDeclarationRevision=0,capturedDeclarationEpoch=0,pipelineVersion=1,descriptorVersion=1;
     std::span<const VertexElement> capturedDeclaration;
     D3DVIEWPORT9 viewport{};RECT scissor{};D3DPRESENT_PARAMETERS pp;
-    MaterialState material() const {
+    MaterialState capturedMaterial;bool materialDirty=true;
+    MaterialState material() {
+        if(!materialDirty)return capturedMaterial;
         MaterialState s;
         s.depthTest=renderStates[D3DRS_ZENABLE]!=D3DZB_FALSE;s.depthWrite=renderStates[D3DRS_ZWRITEENABLE]!=0;s.depthCompare=Compare(renderStates[D3DRS_ZFUNC]-1);
         s.cull=renderStates[D3DRS_CULLMODE]!=D3DCULL_NONE;s.clockwise=renderStates[D3DRS_CULLMODE]==D3DCULL_CCW;s.blend=renderStates[D3DRS_ALPHABLENDENABLE]!=0;
@@ -300,7 +440,7 @@ class Device final : public IDirect3DDevice9Base {
         s.stencil=renderStates[D3DRS_STENCILENABLE]!=0;s.stencilRef=renderStates[D3DRS_STENCILREF];s.stencilReadMask=renderStates[D3DRS_STENCILMASK];s.stencilWriteMask=renderStates[D3DRS_STENCILWRITEMASK];
         s.front={Compare(renderStates[D3DRS_STENCILFUNC]-1),StencilOp(renderStates[D3DRS_STENCILFAIL]-1),StencilOp(renderStates[D3DRS_STENCILZFAIL]-1),StencilOp(renderStates[D3DRS_STENCILPASS]-1)};
         s.back=renderStates[D3DRS_TWOSIDEDSTENCILMODE]?MaterialState::Stencil{Compare(renderStates[D3DRS_CCW_STENCILFUNC]-1),StencilOp(renderStates[D3DRS_CCW_STENCILFAIL]-1),StencilOp(renderStates[D3DRS_CCW_STENCILZFAIL]-1),StencilOp(renderStates[D3DRS_CCW_STENCILPASS]-1)}:s.front;
-        s.depthBias=std::bit_cast<float>(renderStates[D3DRS_DEPTHBIAS]);s.slopeDepthBias=std::bit_cast<float>(renderStates[D3DRS_SLOPESCALEDEPTHBIAS]);return s;
+        s.depthBias=std::bit_cast<float>(renderStates[D3DRS_DEPTHBIAS]);s.slopeDepthBias=std::bit_cast<float>(renderStates[D3DRS_SLOPESCALEDEPTHBIAS]);capturedMaterial=s;materialDirty=false;return s;
     }
 public:
     Device(IDirect3D9* f,Config config,D3DPRESENT_PARAMETERS p):factory(f),pp(p) {
@@ -313,11 +453,13 @@ public:
         for(auto r:{D3DRS_STENCILFAIL,D3DRS_STENCILZFAIL,D3DRS_STENCILPASS,D3DRS_CCW_STENCILFAIL,D3DRS_CCW_STENCILZFAIL,D3DRS_CCW_STENCILPASS})renderStates[r]=D3DSTENCILOP_KEEP;
         renderStates[D3DRS_STENCILMASK]=renderStates[D3DRS_STENCILWRITEMASK]=255;
     }
-    ~Device(){checked([&]{state->flush();});checked([&]{state->owner();state->backend.waitIdle();});for(auto& r:vertices)drop(r);for(auto& r:textures)drop(r);drop(indices);drop(vs);drop(ps);drop(declaration);drop(color);drop(depth);drop(swap);drop(factory);}
+    ~Device(){state->close();for(auto& r:vertices)drop(r);for(auto& r:textures)drop(r);drop(indices);drop(vs);drop(ps);drop(declaration);drop(color);drop(depth);drop(swap);drop(factory);}
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel() override {return S_OK;}
     unsigned validationErrorCount() const {return state->backend.validationErrors();}
+    void waitSubmissionOwner(){state->waitSubmissions();}
     void writeTimings(const char* path){
         std::lock_guard guard(state->mutex);
+        state->waitSubmissions();std::lock_guard gpu(state->gpuMutex);
         if(state->trace.empty())throw std::runtime_error("Frame timing capture was not enabled at startup");
         state->owner();const auto completed=state->backend.completeFrameTimings();
         const auto parent=std::filesystem::path(path).parent_path();std::filesystem::create_directories(parent);
@@ -326,20 +468,20 @@ public:
         out<<"# bounded_capacity="<<state->trace.size()<<" total_records="<<state->traceCount<<" overwritten_records="<<(state->traceCount>state->trace.size()?state->traceCount-state->trace.size():0)<<"\n";
         out<<std::setprecision(12);
         for(const auto& gpu:completed)if(gpu.serial)out<<"# completed_gpu="<<gpu.serial<<','<<float(gpu.ms)<<'\n';
-        out<<"seconds,serial,gpu_serial,display_id,frame_ms,warm_ms,prepare_ms,commands_ms,record_ms,submit_ms,acquire_ms,present_ms,recycle_ms,gpu_ms,draws,parallel_batches,parallel_draws,presentation\n"<<std::setprecision(12);
+        out<<"seconds,serial,gpu_serial,display_id,frame_ms,warm_ms,prepare_ms,commands_ms,record_ms,submit_ms,acquire_ms,present_ms,recycle_ms,gpu_ms,draws,parallel_batches,parallel_draws,presentation,parallel_prepare_batches,parallel_prepare_draws,geometry_copied_bytes,geometry_reused_bytes,batched_draws\n"<<std::setprecision(12);
         const auto start=state->traceCount>state->trace.size()?state->traceCount-state->trace.size():0;
         for(auto n=start;n<state->traceCount;++n){const auto& t=state->trace[n%state->trace.size()];
-            out<<t.seconds<<','<<t.serial<<','<<t.gpuSerial<<','<<t.display<<','<<t.frameMs<<','<<t.warmMs<<','<<t.prepareMs<<','<<t.commandsMs<<','<<t.recordMs<<','<<t.submitMs<<','<<t.acquireMs<<','<<t.presentMs<<','<<t.recycleMs<<','<<t.gpuMs<<','<<t.draws<<','<<t.parallelBatches<<','<<t.parallelDraws<<','<<t.presentation<<'\n';}
+            out<<t.seconds<<','<<t.serial<<','<<t.gpuSerial<<','<<t.display<<','<<t.frameMs<<','<<t.warmMs<<','<<t.prepareMs<<','<<t.commandsMs<<','<<t.recordMs<<','<<t.submitMs<<','<<t.acquireMs<<','<<t.presentMs<<','<<t.recycleMs<<','<<t.gpuMs<<','<<t.draws<<','<<t.parallelBatches<<','<<t.parallelDraws<<','<<t.presentation<<','<<t.parallelPrepareBatches<<','<<t.parallelPrepareDraws<<','<<t.geometryCopiedBytes<<','<<t.geometryReusedBytes<<','<<t.batchedDraws<<'\n';}
         out.close();if(!out)throw std::runtime_error("Frame timing export failed");
         if(!MoveFileExW(temporary.c_str(),std::filesystem::path(path).c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))throw std::runtime_error("Cannot finish frame timing export; partial capture is retained");
     }
     void STDMETHODCALLTYPE SetGammaRamp(UINT chain,DWORD flags,const D3DGAMMARAMP* value) override {
         if(chain||flags||!value){unsupported("Invalid stock gamma ramp");return;}
-        checked([&]{std::lock_guard guard(state->mutex);GammaPass::Ramp ramp;std::memcpy(ramp[0].data(),value->red,512);std::memcpy(ramp[1].data(),value->green,512);std::memcpy(ramp[2].data(),value->blue,512);state->gamma.setRamp(ramp);});
+        checked([&]{std::lock_guard guard(state->mutex);std::lock_guard gpu(state->gpuMutex);GammaPass::Ramp ramp;std::memcpy(ramp[0].data(),value->red,512);std::memcpy(ramp[1].data(),value->green,512);std::memcpy(ramp[2].data(),value->blue,512);state->gamma.setRamp(ramp);});
     }
     void STDMETHODCALLTYPE GetGammaRamp(UINT chain,D3DGAMMARAMP* value) override {
         if(chain||!value){unsupported("Invalid stock gamma ramp output");return;}
-        std::lock_guard guard(state->mutex);const auto& ramp=state->gamma.getRamp();std::memcpy(value->red,ramp[0].data(),512);std::memcpy(value->green,ramp[1].data(),512);std::memcpy(value->blue,ramp[2].data(),512);
+        std::lock_guard guard(state->mutex);std::lock_guard gpu(state->gpuMutex);const auto& ramp=state->gamma.getRamp();std::memcpy(value->red,ramp[0].data(),512);std::memcpy(value->green,ramp[1].data(),512);std::memcpy(value->blue,ramp[2].data(),512);
     }
     UINT STDMETHODCALLTYPE GetAvailableTextureMem() override {return UINT((std::min)(state->backend.deviceLocalMemory(),std::uint64_t(UINT32_MAX)));}
     HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3D9** out) override {if(!out)return E_POINTER;*out=factory;factory->AddRef();return S_OK;}
@@ -347,8 +489,8 @@ public:
     HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* p,IDirect3DSwapChain9** out) override {if(!p||!out)return E_POINTER;if(p->hDeviceWindow!=pp.hDeviceWindow)return unsupported("Native Vulkan additional window");*out=swap;swap->AddRef();return S_OK;}
     UINT STDMETHODCALLTYPE GetNumberOfSwapChains() override {return 1;}
     HRESULT STDMETHODCALLTYPE GetBackBuffer(UINT chain,UINT index,D3DBACKBUFFER_TYPE type,IDirect3DSurface9** out) override {return chain?D3DERR_INVALIDCALL:swap->GetBackBuffer(index,type,out);}
-    HRESULT STDMETHODCALLTYPE BeginScene() override {std::lock_guard guard(state->mutex);if(state->scene)return D3DERR_INVALIDCALL;state->scene=true;return S_OK;}
-    HRESULT STDMETHODCALLTYPE EndScene() override {std::lock_guard guard(state->mutex);if(!state->scene)return D3DERR_INVALIDCALL;state->scene=false;return S_OK;}
+    HRESULT STDMETHODCALLTYPE BeginScene() override {std::lock_guard guard(state->mutex);if(state->scene)return D3DERR_INVALIDCALL;return checked([&]{if(!state->config.asyncSubmission){std::lock_guard gpu(state->gpuMutex);state->owner();}state->drainFrontendTransfers();state->scene=true;state->sceneOwnerId.store(GetCurrentThreadId(),std::memory_order_release);state->captureOwnerId.store(GetCurrentThreadId(),std::memory_order_release);});}
+    HRESULT STDMETHODCALLTYPE EndScene() override {std::lock_guard guard(state->mutex);if(!state->scene)return D3DERR_INVALIDCALL;state->scene=false;state->sceneOwnerId.store(0,std::memory_order_release);return S_OK;}
     HRESULT STDMETHODCALLTYPE Present(const RECT* a,const RECT* b,HWND c,const RGNDATA* d) override {return swap->Present(a,b,c,d,0);}
     HRESULT STDMETHODCALLTYPE CreateVertexBuffer(UINT bytes,DWORD usage,DWORD fvf,D3DPOOL pool,IDirect3DVertexBuffer9** out,HANDLE* shared) override {if(!out||shared)return D3DERR_INVALIDCALL;*out=nullptr;return checked([&]{*out=new VertexBuffer(state,bytes,usage,pool,false,fvf);});}
     HRESULT STDMETHODCALLTYPE CreateIndexBuffer(UINT bytes,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DIndexBuffer9** out,HANDLE* shared) override {if(!out||shared||format!=D3DFMT_INDEX16)return D3DERR_INVALIDCALL;*out=nullptr;return checked([&]{*out=new IndexBuffer(state,bytes,usage,pool,true,0,format);});}
@@ -357,7 +499,7 @@ public:
     HRESULT STDMETHODCALLTYPE CreatePixelShader(const DWORD* words,IDirect3DPixelShader9** out) override {if(!words||!out)return E_POINTER;*out=nullptr;return checked([&]{auto bytes=D3DXGetShaderSize(words);if(!bytes||bytes>65536*4)throw std::runtime_error("Invalid stock pixel shader size");*out=new PixelShader(state,{reinterpret_cast<const std::uint32_t*>(words),bytes/4});});}
     HRESULT STDMETHODCALLTYPE CreateQuery(D3DQUERYTYPE type,IDirect3DQuery9** out) override {
         if(type!=D3DQUERYTYPE_EVENT&&type!=D3DQUERYTYPE_OCCLUSION&&type!=D3DQUERYTYPE_TIMESTAMP)return D3DERR_NOTAVAILABLE;
-        if(!out)return S_OK;*out=nullptr;return checked([&]{std::lock_guard guard(state->mutex);state->owner();*out=new Query(state,type,type==D3DQUERYTYPE_EVENT?QueryType::Event:type==D3DQUERYTYPE_OCCLUSION?QueryType::Occlusion:QueryType::Timestamp);});
+        if(!out)return S_OK;*out=nullptr;return checked([&]{std::lock_guard guard(state->mutex);*out=new Query(state,type,type==D3DQUERYTYPE_EVENT?QueryType::Event:type==D3DQUERYTYPE_OCCLUSION?QueryType::Occlusion:QueryType::Timestamp);});
     }
     HRESULT STDMETHODCALLTYPE CreateTexture(UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* shared) override {if(!out||shared)return D3DERR_INVALIDCALL;*out=nullptr;return checked([&]{ImageDesc d;d.width=w;d.height=h;d.levels=mipLevels(w,h,1,levels);d.format=imageFormat(format);d.renderTarget=(usage&(D3DUSAGE_RENDERTARGET|D3DUSAGE_DEPTHSTENCIL))!=0;*out=new Texture2D(std::make_shared<ImageStorage>(state,d,format,pool,usage,pool==D3DPOOL_SYSTEMMEM));});}
     HRESULT STDMETHODCALLTYPE CreateCubeTexture(UINT edge,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DCubeTexture9** out,HANDLE* shared) override {if(!out||shared)return D3DERR_INVALIDCALL;*out=nullptr;return checked([&]{ImageDesc d;d.width=d.height=edge;d.levels=mipLevels(edge,edge,1,levels);d.kind=ImageKind::Cube;d.format=imageFormat(format);*out=new CubeTexture(std::make_shared<ImageStorage>(state,d,format,pool,usage,pool==D3DPOOL_SYSTEMMEM));});}
@@ -374,17 +516,24 @@ public:
     HRESULT STDMETHODCALLTYPE CreateRenderTarget(UINT w,UINT h,D3DFORMAT f,D3DMULTISAMPLE_TYPE s,DWORD quality,BOOL lockable,IDirect3DSurface9** out,HANDLE* shared) override {return shared||quality?D3DERR_INVALIDCALL:surface(w,h,f,s,D3DUSAGE_RENDERTARGET,out);}
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT w,UINT h,D3DFORMAT f,D3DMULTISAMPLE_TYPE s,DWORD quality,BOOL discard,IDirect3DSurface9** out,HANDLE* shared) override {return shared||quality?D3DERR_INVALIDCALL:surface(w,h,f,s,D3DUSAGE_DEPTHSTENCIL,out);}
     HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface(UINT w,UINT h,D3DFORMAT f,D3DPOOL pool,IDirect3DSurface9** out,HANDLE* shared) override {return shared?D3DERR_INVALIDCALL:surface(w,h,f,D3DMULTISAMPLE_NONE,0,out,true);}
-    HRESULT STDMETHODCALLTYPE SetRenderTarget(DWORD index,IDirect3DSurface9* value) override {if(index)return unsupported("Native Vulkan MRT");return setBinding(color,boundColor,value);}
-    HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* value) override {return setBinding(depth,boundDepth,value);}
+    HRESULT STDMETHODCALLTYPE SetRenderTarget(DWORD index,IDirect3DSurface9* value) override {
+        if(index)return unsupported("Native Vulkan MRT");
+        if(!value)return D3DERR_INVALIDCALL;
+        D3DSURFACE_DESC desc{};const auto description=value->GetDesc(&desc);if(FAILED(description))return description;
+        const bool changed=color!=value;const auto result=setBinding(color,boundColor,value);if(FAILED(result))return result;if(changed)++pipelineVersion;
+        // D3D9 resets viewport state even when rebinding the same target.
+        viewport={0,0,desc.Width,desc.Height,0,1};return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* value) override {const bool changed=depth!=value;const auto result=setBinding(depth,boundDepth,value);if(SUCCEEDED(result)&&changed)++pipelineVersion;return result;}
     HRESULT STDMETHODCALLTYPE SetViewport(const D3DVIEWPORT9* value) override {if(!value)return E_POINTER;viewport=*value;return S_OK;}
     HRESULT STDMETHODCALLTYPE GetViewport(D3DVIEWPORT9* value) override {if(!value)return E_POINTER;*value=viewport;return S_OK;}
     HRESULT STDMETHODCALLTYPE SetScissorRect(const RECT* value) override {if(!value||value->right<value->left||value->bottom<value->top)return D3DERR_INVALIDCALL;scissor=*value;return S_OK;}
-    HRESULT STDMETHODCALLTYPE SetStreamSource(UINT stream,IDirect3DVertexBuffer9* value,UINT at,UINT stride) override {if(stream>=16)return D3DERR_INVALIDCALL;const auto result=setBinding(vertices[stream],boundVertices[stream],value);if(FAILED(result))return result;offsets[stream]=at;strides[stream]=stride;return S_OK;}
+    HRESULT STDMETHODCALLTYPE SetStreamSource(UINT stream,IDirect3DVertexBuffer9* value,UINT at,UINT stride) override {if(stream>=16)return D3DERR_INVALIDCALL;const auto result=setBinding(vertices[stream],boundVertices[stream],value);if(FAILED(result))return result;if(strides[stream]!=stride)++pipelineVersion;offsets[stream]=at;strides[stream]=stride;return S_OK;}
     HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer9* value) override {return setBinding(indices,boundIndices,value);}
-    HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DVertexShader9* value) override {return setBinding(vs,boundVs,value);}
-    HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DPixelShader9* value) override {return setBinding(ps,boundPs,value);}
-    HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DVertexDeclaration9* value) override {auto* d=dynamic_cast<Declaration*>(value);if(value&&!d)return D3DERR_INVALIDCALL;if(declaration!=d)++declarationRevision;bind(declaration,d);return S_OK;}
-    HRESULT STDMETHODCALLTYPE SetTexture(DWORD slot,IDirect3DBaseTexture9* value) override {if(slot>=16)return D3DERR_INVALIDCALL;const auto result=setBinding(textures[slot],boundTextures[slot],value);if(FAILED(result))return result;const auto image=boundTextures[slot]?dynamic_cast<ImageStorage*>(boundTextures[slot]->storage.get()):nullptr;depthTextures[slot]=image&&image->desc.format==ImageFormat::DepthStencil;return S_OK;}
+    HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DVertexShader9* value) override {const bool changed=vs!=value;const auto result=setBinding(vs,boundVs,value);if(SUCCEEDED(result)&&changed){++pipelineVersion;++descriptorVersion;}return result;}
+    HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DPixelShader9* value) override {const bool changed=ps!=value;const auto result=setBinding(ps,boundPs,value);if(SUCCEEDED(result)&&changed){++pipelineVersion;++descriptorVersion;}return result;}
+    HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DVertexDeclaration9* value) override {if(declaration==value)return S_OK;auto* d=dynamic_cast<Declaration*>(value);if(value&&!d)return D3DERR_INVALIDCALL;++declarationRevision;++pipelineVersion;bind(declaration,d);return S_OK;}
+    HRESULT STDMETHODCALLTYPE SetTexture(DWORD slot,IDirect3DBaseTexture9* value) override {if(slot>=16)return D3DERR_INVALIDCALL;if(textures[slot]==value)return S_OK;const auto result=setBinding(textures[slot],boundTextures[slot],value);if(FAILED(result))return result;++descriptorVersion;const auto image=boundTextures[slot]?dynamic_cast<ImageStorage*>(boundTextures[slot]->storage.get()):nullptr;const bool depthTexture=image&&image->desc.format==ImageFormat::DepthStencil;if(depthTextures[slot]!=depthTexture)++pipelineVersion;depthTextures[slot]=depthTexture;return S_OK;}
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstantF(UINT first,const float* value,UINT count) override {return vertexFloats.set(first,value,count,4);}
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstantF(UINT first,const float* value,UINT count) override {return pixelFloats.set(first,value,count,4);}
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstantI(UINT first,const int* value,UINT count) override {return vertexInts.set(first,value,count,4);}
@@ -404,7 +553,7 @@ public:
                 if(r.right>r.left&&r.bottom>r.top)clipped[used++]=r;}}
             else if(view.right>view.left&&view.bottom>view.top)clipped[used++]=view;
             if(!used)return;
-            auto& c=state->append(Operation::Clear);c.first=(flags&D3DCLEAR_TARGET)?resourceId(color):ResourceId{};c.second=(flags&(D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL))?resourceId(depth):ResourceId{};c.rgba={float((rgba>>16)&255)/255.f,float((rgba>>8)&255)/255.f,float(rgba&255)/255.f,float(rgba>>24)/255.f};c.depth=z;c.stencil=stencil;c.clearDepth=(flags&D3DCLEAR_ZBUFFER)!=0;c.clearStencil=(flags&D3DCLEAR_STENCIL)!=0;
+            auto& c=state->append(Operation::Clear);c.clearTarget=resourceId(color);c.first=(flags&D3DCLEAR_TARGET)?c.clearTarget:ResourceId{};c.second=(flags&(D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL))?resourceId(depth):ResourceId{};c.rgba={float((rgba>>16)&255)/255.f,float((rgba>>8)&255)/255.f,float(rgba&255)/255.f,float(rgba>>24)/255.f};c.depth=z;c.stencil=stencil;c.clearDepth=(flags&D3DCLEAR_ZBUFFER)!=0;c.clearStencil=(flags&D3DCLEAR_STENCIL)!=0;
             c.rectangles=state->copy<ClearRect>({clipped.data(),used});
             state->keep(c,color);state->keep(c,depth);
         });
@@ -431,7 +580,7 @@ HRESULT Device::SetRenderState(D3DRENDERSTATETYPE type,DWORD value) {
     case D3DRS_LIGHTING:case D3DRS_FOGENABLE:case D3DRS_SRGBWRITEENABLE:case D3DRS_ADAPTIVETESS_Y:if(value)return unsupported("Native Vulkan enabled fixed-function/sRGB/alpha-to-coverage state");break;
     default:return unsupported(("Stock render state "+std::to_string(unsigned(type))).c_str());
     }
-    renderStates[type]=value;return S_OK;
+    if(renderStates[type]!=value){renderStates[type]=value;materialDirty=true;++pipelineVersion;}return S_OK;
 }
 HRESULT Device::SetSamplerState(DWORD slot,D3DSAMPLERSTATETYPE type,DWORD value) {
     if(slot>=16||unsigned(type)>=14)return D3DERR_INVALIDCALL;auto& s=samplers[slot];
@@ -444,7 +593,7 @@ HRESULT Device::SetSamplerState(DWORD slot,D3DSAMPLERSTATETYPE type,DWORD value)
     case D3DSAMP_MAXANISOTROPY:s.maxAnisotropy=float(value);break;
     case D3DSAMP_BORDERCOLOR:case D3DSAMP_SRGBTEXTURE:if(value)return unsupported("Stock nonzero sampler border/sRGB state");break;
     default:return unsupported("Stock sampler state");
-    }samplerStates[slot][type]=value;return S_OK;
+    }if(samplerStates[slot][type]!=value)++descriptorVersion;samplerStates[slot][type]=value;return S_OK;
 }
 HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE type,INT base,UINT minimum,UINT count,UINT first,UINT primitives) {
     if(type!=D3DPT_TRIANGLELIST||!vs||!ps||!declaration||!indices||!color)return unsupported("Invalid native stock draw state or topology");
@@ -453,6 +602,8 @@ HRESULT Device::DrawIndexedPrimitive(D3DPRIMITIVETYPE type,INT base,UINT minimum
         if(capturedDeclarationEpoch!=state->packetEpoch||capturedDeclarationRevision!=declarationRevision){capturedDeclaration=state->copy<VertexElement>(declaration->elements);capturedDeclarationEpoch=state->packetEpoch;capturedDeclarationRevision=declarationRevision;}
         d.elements=capturedDeclaration;d.vertexConstants=vertexFloats.snapshot(*state);d.pixelConstants=pixelFloats.snapshot(*state);d.vertexIntegers=vertexInts.snapshot(*state);d.pixelIntegers=pixelInts.snapshot(*state);d.vertexBooleans=vertexBools.snapshot(*state);d.pixelBooleans=pixelBools.snapshot(*state);d.immutableConstants=true;d.zeroConstantTail=true;
         d.state=material();d.indexCount=primitives*3;d.firstIndex=first;d.vertexBase=base;d.vertexFirst=minimum;d.vertexCount=count;d.x=float(viewport.X);d.y=float(viewport.Y);d.width=float(viewport.Width);d.height=float(viewport.Height);d.minDepth=viewport.MinZ;d.maxDepth=viewport.MaxZ;
+        d.immutablePipelineVersion=state->config.cacheBindings?pipelineVersion:0;
+        d.immutableDescriptorVersion=state->config.cacheBindings?descriptorVersion:0;
         d.scissor=renderStates[D3DRS_SCISSORTESTENABLE]!=0;d.scissorX=scissor.left;d.scissorY=scissor.top;d.scissorWidth=scissor.right-scissor.left;d.scissorHeight=scissor.bottom-scissor.top;
         for(unsigned s=0;s<16;++s){d.vertexBuffers[s]=id(boundVertices[s]);d.textures[s]=id(boundTextures[s]);if(boundVertices[s])state->keep(boundVertices[s]->storage);if(boundTextures[s])state->keep(boundTextures[s]->storage);
             if(depthTextures[s]){d.samplers[s].compare=true;d.samplers[s].comparison=Compare::LessEqual;}}
@@ -479,14 +630,16 @@ public:
 };
 }
 IDirect3D9* createVulkanInterface(const Config& config) {try{return new Factory(config);}catch(const std::exception& e){unsupported(e.what());return nullptr;}}
-void nameResource(IUnknown* object,const char* name){if(!object||!name||!nativeObject(object))return;if(auto* resource=dynamic_cast<Resource*>(object)){if(std::strlen(name)>256)return;resource->storage->debugName=name;if(const auto state=std::dynamic_pointer_cast<State>(resource->storage->host)){std::lock_guard guard(state->mutex);if(state->reference)state->reference->name(resource->id(),name);}}}
+void nameResource(IUnknown* object,const char* name){if(!object||!name||!nativeObject(object))return;if(auto* resource=dynamic_cast<Resource*>(object)){if(std::strlen(name)>256)return;resource->storage->debugName=name;if(const auto state=std::dynamic_pointer_cast<State>(resource->storage->host)){std::lock_guard guard(state->mutex);std::lock_guard gpu(state->gpuMutex);if(state->reference)state->reference->name(resource->id(),name);}}}
 const char* frameTelemetry(){
-    thread_local char text[1024];
-    const char* names[]={"frames","draws","gpu_samples","gpu_us","warm_us","record_us","submit_us","acquire_us","present_us","recycle_us","owner_changes","owner_wait_us","submissions","prepare_us","commands_us","parallel_batches","parallel_draws"};
+    thread_local char text[2048];
+    const char* names[]={"frames","draws","gpu_samples","gpu_us","warm_us","record_us","submit_us","acquire_us","present_us","recycle_us","owner_changes","owner_wait_us","submissions","prepare_us","commands_us","parallel_batches","parallel_draws","parallel_prepare_batches","parallel_prepare_draws","geometry_copied_bytes","geometry_reused_bytes","batched_draws","queue_wait_us","queued_frames","execute_us","lease_retire_us","query_poll_us","query_polls"};
+    static_assert(std::size(names)==MetricCount);
     unsigned used=std::snprintf(text,sizeof(text),"{\"backend\":\"vulkan\",\"active\":%s,\"validation_errors\":%u",activeStates.load(std::memory_order_relaxed)?"true":"false",publishedValidationErrors.load(std::memory_order_relaxed));
     for(unsigned n=0;n<MetricCount;++n)used+=std::snprintf(text+used,sizeof(text)-used,",\"%s\":%llu",names[n],metrics[n].load(std::memory_order_relaxed));
     std::snprintf(text+used,sizeof(text)-used,",\"trace_clock_us\":%llu}",traceClockUs.load(std::memory_order_relaxed));return text;
 }
 unsigned validationErrors(IDirect3DDevice9* device){if(!nativeObject(device))return UINT32_MAX;const auto* native=dynamic_cast<Device*>(device);return native?native->validationErrorCount():UINT32_MAX;}
 bool writeFrameTimings(IDirect3DDevice9* device,const char* path){if(!nativeObject(device))return false;auto* native=dynamic_cast<Device*>(device);if(!native)return false;return SUCCEEDED(checked([&]{native->writeTimings(path);}));}
+void waitSubmissions(IDirect3DDevice9* device){if(!nativeObject(device))return;if(auto* native=dynamic_cast<Device*>(device))native->waitSubmissionOwner();}
 }

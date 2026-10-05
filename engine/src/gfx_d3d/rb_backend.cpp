@@ -2732,7 +2732,15 @@ GfxIndexBufferState *RB_SwapBuffers()
         Com_Error(ERR_FATAL, "Direct3DDevice9::Present failed: %s\n", R_ErrorDescription(hr));
     }
 
-    R_HW_InsertFence(&dx.swapFence);
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    // Vulkan snapshots mutable uploads and retires GPU resources against its
+    // timeline. Its frame-slot fence remains responsible for GPU reuse.
+    // Keep the extra DX9 fence available for matched development controls.
+    if (r_graphicsApi->current.integer == 1 && !Dvar_GetBool("r_vkLegacySwapFence"))
+        dx.swapFence = nullptr; // borrowed from fencePool, never owned here
+    else
+#endif
+        R_HW_InsertFence(&dx.swapFence);
     result = gfxBuf.dynamicIndexBuffer;
     gfxBuf.dynamicIndexBuffer->used = 0;
     return result;

@@ -5,6 +5,7 @@
 #include <script/scr_bytecode.h>
 #include <script/scr_parsetree.h>
 #include <script/scr_animtree.h>
+#include <script/scr_parser.h>
 #include <qcommon/qcommon.h>
 #include <universal/com_memory.h>
 #include <array>
@@ -16,6 +17,17 @@
 #define CHECK(value) do { if (!(value)) { std::fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #value); std::abort(); } } while (0)
 scrCompileGlob_t scrCompileGlob{};
 scrCompilePub_t scrCompilePub{};
+scrParserPub_t scrParserPub{};
+static VariableValue functionPosition{};
+uint32_t GetVariable(uint32_t parent, uint32_t name) {
+    CHECK(parent == 99 && name == 1); return 74;
+}
+VariableValue Scr_EvalVariable(uint32_t id) { CHECK(id == 74); return functionPosition; }
+void SetNewVariableValue(uint32_t id, VariableValue* value) {
+    CHECK(id == 74); functionPosition = *value;
+}
+void CompileError(uint32_t, const char*, ...) { std::abort(); }
+uint32_t Scr_GetSourceBuffer(const char*) { std::abort(); }
 static char *emitStart;
 static uint32_t emitBytes;
 char *TempMalloc(uint32_t bytes) { CHECK(emitBytes + bytes < 4096); auto *p = emitStart + emitBytes; emitBytes += bytes; return p; }
@@ -67,6 +79,14 @@ int main() {
     auto* memory = static_cast<char*>(VirtualAlloc(nullptr, 65536, MEM_RESERVE | MEM_COMMIT | MEM_TOP_DOWN, PAGE_READWRITE));
     CHECK(memory);
     if constexpr (sizeof(void*) == 8) CHECK(reinterpret_cast<uintptr_t>(memory) > UINT32_MAX);
+    // Undefined VM variables preserve freed payloads. Exercise the actual
+    // compiler's forward-function placeholder with poisoned high pointer bits.
+    for (Vartype_t kind : {VAR_CODEPOS, VAR_DEVELOPER_CODEPOS, VAR_INCLUDE_CODEPOS}) {
+        functionPosition.type = VAR_UNDEFINED;
+        functionPosition.u.codePosValue = memory + 4096;
+        CHECK(SpecifyThreadPosition(99, 17, 0, kind) == 74);
+        CHECK(functionPosition.type == kind && functionPosition.u.codePosValue == nullptr);
+    }
     std::array<VariableValue, 5> values{};
     values[0] = {VariableUnion(-123456), VAR_INTEGER};
     values[1] = {VariableUnion(0.375f), VAR_FLOAT};

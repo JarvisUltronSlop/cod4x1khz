@@ -127,6 +127,10 @@ void Backend::clear(ResourceId color,ResourceId depth,const std::array<float,4>&
     const auto flags=(color?D3DCLEAR_TARGET:0)|(depth&&clearDepth?D3DCLEAR_ZBUFFER:0)|(depth&&clearStencil?D3DCLEAR_STENCIL:0);
     if(flags)check(i.device->Clear(unsigned(rectangles.size()),rectangles.empty()?nullptr:rects.data(),flags,D3DCOLOR_ARGB(channel(rgba[3]),channel(rgba[0]),channel(rgba[1]),channel(rgba[2])),depthValue,stencilValue),"DX9 clear");
 }
+void Backend::bindClearTarget(ResourceId color) {
+    auto& i=*impl;i.assertOwner();
+    check(i.device->SetRenderTarget(0,i.resources.get(color).surface),"DX9 clear context target");
+}
 void Backend::draw(const DrawPacket& d) {
     auto& i=*impl; i.assertOwner(); if(!i.frame) throw std::runtime_error("DX9 draw outside frame");
     if(d.index32) throw std::runtime_error("Comparison adapter requires index-format creation support");

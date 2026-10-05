@@ -20,6 +20,10 @@ void __cdecl Sys_InitThread(ThreadContext_t threadContext);
 void Sys_InitClientSimulationThread();
 void Sys_ReleaseClientSimulationThread();
 bool Sys_IsClientSimulationThread();
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+void Sys_InitVulkanSubmissionThread();
+void Sys_ReleaseVulkanSubmissionThread();
+#endif
 #endif
 char __cdecl Sys_SpawnRenderThread(void(__cdecl* function)(uint32_t));
 void __cdecl Sys_CreateEvent(bool manualReset, bool initialState, void** event);

@@ -4,30 +4,49 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <cstdint>
 #include "debug_context.hpp"
 
 // A developer-only debugger for failures before the engine installs its handler.
-// It owns and terminates only the process it creates.
+// It owns and terminates only the process it creates. Attach diagnostics verify
+// the exact supplied executable and detach without terminating it on timeout.
 int wmain(int argc, wchar_t** argv) {
     std::setvbuf(stdout,nullptr,_IONBF,0);
-    if (argc != 4&&argc!=5) { std::puts("khz_launch_probe <executable> <cwd> <symbol directory> [extra arguments]"); return 2; }
+    if (argc != 4&&argc!=5) { std::puts("khz_launch_probe <executable> <cwd> <symbol directory> [extra arguments], or --attach <pid> <executable> <symbol directory>"); return 2; }
+    const bool attached=argc==5&&!std::wcscmp(argv[1],L"--attach");
+    const auto executable=attached?argv[3]:argv[1];
+    const auto symbols=attached?argv[4]:argv[3];
     wchar_t command[4096];
-    if (std::swprintf(command, 4096, L"\"%ls\" allowdupe +set r_fullscreen 0 +set net_port 28994 %ls", argv[1],argc==5?argv[4]:L"") < 0) return 2;
+    // Development GPU fixtures have their own CLI and must not receive game
+    // console arguments. The exact child ownership/debug/cleanup stays shared.
+    const bool rawCommand = std::getenv("KHZ_PROBE_RAW_COMMAND") != nullptr;
+    if (std::swprintf(command, 4096, rawCommand ? L"\"%ls\" %ls" : L"\"%ls\" allowdupe +set r_fullscreen 0 +set net_port 28994 %ls", argv[1],argc==5?argv[4]:L"") < 0) return 2;
     STARTUPINFOW startup{}; startup.cb = sizeof(startup);
     char hideWindow[2]{};
     if (GetEnvironmentVariableA("KHZ_PROBE_HIDE_WINDOW", hideWindow, sizeof(hideWindow)) && hideWindow[0] == '1') {
         startup.dwFlags |= STARTF_USESHOWWINDOW; startup.wShowWindow = SW_HIDE;
     }
     PROCESS_INFORMATION process{};
-    if (!CreateProcessW(argv[1], command, nullptr, nullptr, FALSE, DEBUG_ONLY_THIS_PROCESS,
+    if(attached){
+        wchar_t* end=nullptr;const auto pid=std::wcstoul(argv[2],&end,10);
+        if(!pid||!end||*end)return 2;
+        process.dwProcessId=pid;
+        process.hProcess=OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ|SYNCHRONIZE,FALSE,pid);
+        wchar_t actual[32768]{};DWORD length=32768;
+        if(!process.hProcess||!QueryFullProcessImageNameW(process.hProcess,0,actual,&length)||_wcsicmp(actual,executable)){
+            std::puts("Attach executable/PID verification failed.");if(process.hProcess)CloseHandle(process.hProcess);return 2;
+        }
+        if(!DebugActiveProcess(pid)){std::printf("Debug attach error=%lu\n",GetLastError());CloseHandle(process.hProcess);return 2;}
+    }else if (!CreateProcessW(executable, command, nullptr, nullptr, FALSE, DEBUG_ONLY_THIS_PROCESS,
         nullptr, argv[2], &startup, &process)) { std::printf("CreateProcess error=%lu\n", GetLastError()); return 2; }
+    if(!DebugSetProcessKillOnExit(!attached)){if(attached)DebugActiveProcessStop(process.dwProcessId);else TerminateProcess(process.hProcess,1);if(process.hThread)CloseHandle(process.hThread);CloseHandle(process.hProcess);return 2;}
     SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-    if (!SymInitializeW(process.hProcess, argv[3], FALSE)) std::printf("SymInitialize error=%lu\n", GetLastError());
+    if (!SymInitializeW(process.hProcess, symbols, FALSE)) std::printf("SymInitialize error=%lu\n", GetLastError());
     char duration[16]{};unsigned durationSeconds=15;
     if(GetEnvironmentVariableA("KHZ_PROBE_SECONDS",duration,sizeof(duration))) {
         const auto requested=std::strtoul(duration,nullptr,10);if(requested>=1&&requested<=360)durationSeconds=unsigned(requested);
     }
-    std::printf("Owned client PID=%lu\n",process.dwProcessId);std::fflush(stdout);
+    std::printf("%s PID=%lu\n",attached?"Verified attached server":"Owned client",process.dwProcessId);std::fflush(stdout);
     const auto until = GetTickCount64() + durationSeconds*1000;
     bool fault = false, exited = false, sawInitialBreakpoint = false;
 #if defined(_WIN64)
@@ -39,7 +58,7 @@ int wmain(int argc, wchar_t** argv) {
         DEBUG_EVENT event{};
         if (!WaitForDebugEvent(&event, 10)) {
 #if defined(_WIN64)
-            if ((watchHunk || watchSymbol) && !watchedHunk) {
+            if (!attached && (watchHunk || watchSymbol) && !watchedHunk) {
                 alignas(SYMBOL_INFO) char storage[sizeof(SYMBOL_INFO) + 256]{};
                 auto* symbol = reinterpret_cast<SYMBOL_INFO*>(storage);
                 symbol->SizeOfStruct = sizeof(SYMBOL_INFO); symbol->MaxNameLen = 255;
@@ -66,7 +85,7 @@ int wmain(int argc, wchar_t** argv) {
         }
         DWORD continuation = DBG_CONTINUE;
         if (event.dwDebugEventCode == CREATE_PROCESS_DEBUG_EVENT) {
-            SymLoadModuleExW(process.hProcess, event.u.CreateProcessInfo.hFile, argv[1], nullptr,
+            SymLoadModuleExW(process.hProcess, event.u.CreateProcessInfo.hFile, executable, nullptr,
                 reinterpret_cast<DWORD64>(event.u.CreateProcessInfo.lpBaseOfImage), 0, nullptr, 0);
             if (event.u.CreateProcessInfo.hFile) CloseHandle(event.u.CreateProcessInfo.hFile);
         }
@@ -122,6 +141,18 @@ int wmain(int argc, wchar_t** argv) {
                                     std::printf("  stack[%u]=%llx %s + %llu\n", n, stack[n], entry->Name, delta);
                             }
                         }
+                    } else if (context.machine == IMAGE_FILE_MACHINE_I386) {
+                        const auto& regs = context.wow64;
+                        std::printf("  eip=%lx esp=%lx ebp=%lx eax=%lx ecx=%lx edx=%lx\n", regs.Eip, regs.Esp, regs.Ebp, regs.Eax, regs.Ecx, regs.Edx);
+                        DWORD stack[96]{}; SIZE_T bytes = 0;
+                        if (ReadProcessMemory(process.hProcess, reinterpret_cast<void*>(std::uintptr_t(regs.Esp)), stack, sizeof(stack), &bytes))
+                            for (unsigned n = 0; n < bytes / sizeof(stack[0]); ++n) {
+                                alignas(SYMBOL_INFO) char data[sizeof(SYMBOL_INFO) + 1024]{};
+                                auto* entry = reinterpret_cast<SYMBOL_INFO*>(data); entry->SizeOfStruct = sizeof(SYMBOL_INFO); entry->MaxNameLen = 1023;
+                                DWORD64 delta = 0;
+                                if (SymFromAddr(process.hProcess, stack[n], &delta, entry))
+                                    std::printf("  stack[%u]=%lx %s + %llu\n", n, stack[n], entry->Name, delta);
+                            }
                     }
 #endif
                     auto& frame = context.frame;
@@ -138,7 +169,7 @@ int wmain(int argc, wchar_t** argv) {
                     }
                 }
                 if (thread) CloseHandle(thread);
-                if (fault) TerminateProcess(process.hProcess, code);
+                if (fault&&!attached) TerminateProcess(process.hProcess, code);
             }
         } else if(event.dwDebugEventCode==OUTPUT_DEBUG_STRING_EVENT) {
             const auto& message=event.u.DebugString;
@@ -151,17 +182,17 @@ int wmain(int argc, wchar_t** argv) {
         } else if (event.dwDebugEventCode == LOAD_DLL_DEBUG_EVENT && event.u.LoadDll.hFile) CloseHandle(event.u.LoadDll.hFile);
         ContinueDebugEvent(event.dwProcessId, event.dwThreadId, continuation);
     }
-    if (!exited) { std::printf("Startup probe reached %u seconds without a fatal exception.\n",durationSeconds); TerminateProcess(process.hProcess, 0); }
+    if (!exited) { std::printf("Startup probe reached %u seconds without a fatal exception.\n",durationSeconds);if(attached){if(!DebugActiveProcessStop(process.dwProcessId))fault=true;}else TerminateProcess(process.hProcess, 0); }
     // Debugger exit notifications must be continued before a terminating
     // debuggee can finish. A plain process wait leaves it locked on Windows.
     const auto cleanupDeadline=GetTickCount64()+10000;
-    while(!exited&&GetTickCount64()<cleanupDeadline) {
+    while(!attached&&!exited&&GetTickCount64()<cleanupDeadline) {
         DEBUG_EVENT end{};if(!WaitForDebugEvent(&end,100))continue;
         if(end.dwDebugEventCode==EXIT_PROCESS_DEBUG_EVENT)exited=true;
         if(end.dwDebugEventCode==LOAD_DLL_DEBUG_EVENT&&end.u.LoadDll.hFile)CloseHandle(end.u.LoadDll.hFile);
         ContinueDebugEvent(end.dwProcessId,end.dwThreadId,DBG_CONTINUE);
     }
-    if(WaitForSingleObject(process.hProcess,1000)!=WAIT_OBJECT_0){std::puts("Owned startup process did not exit within cleanup deadline.");fault=true;}
-    SymCleanup(process.hProcess); CloseHandle(process.hThread); CloseHandle(process.hProcess);
+    if(!attached&&WaitForSingleObject(process.hProcess,1000)!=WAIT_OBJECT_0){std::puts("Owned startup process did not exit within cleanup deadline.");fault=true;}
+    SymCleanup(process.hProcess);if(process.hThread)CloseHandle(process.hThread);CloseHandle(process.hProcess);
     return fault ? 1 : 0;
 }

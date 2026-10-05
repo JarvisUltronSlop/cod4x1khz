@@ -135,10 +135,12 @@ separate profile/home and restores the original runtime binary. Ordinary
 
 ## Remaining delivery gates
 
-Loaded-world material/effect coverage, stock options, cinematics, restarts and
-map lifetimes still need native validation. Parallel preparation and matched
-performance improvement remain open. Stock image comparison must reach SSIM 0.995
-without missing geometry or effects; fixture parity cannot substitute for it.
+Broader loaded-world material/effect coverage, stock options, cinematics and map
+lifetimes still need native validation. The final asynchronous native path passes
+one stock-world Backlot image comparison at SSIM 0.999461, the complete checked
+Backlot/Crash restart lifecycle, and 1,001.77 FPS average in the broad 1080p view.
+These results qualify their retained cases; fixture parity alone cannot
+substitute for stock-world comparison. Full GPU utilization remains open.
 Earlier match-start failures exposed idle event-query behavior, dynamic upload
 capacity, dirty volume transfers, depth bias and shadow image-view/comparison
 requirements. Their diagnostic results remain private under `results/`.
@@ -215,24 +217,45 @@ beyond measured run variability.
 
 The [x64 migration](X64.md) now builds the production client, server, updater and
 SDK3 plugin with native asset layouts, OpenAL, FFmpeg and the Vulkan adapter.
-Both architectures pass 58 core suites. The packaged native direct DX9 path
+The current core suite passes 60 x64 / 61 Win32 tests. The packaged native direct DX9 path
 completed an uncapped Backlot session, measuring 779.96 FPS over 30.88 seconds in
 the checked broad 1080p view with two bots and 1,000 Hz simulation. The packaged
 client also passed hosting, map change, fast/video/sound restart, leave and quit.
-The Vulkan path completed a
-90-second match but measured 243.56 FPS and displays black models. A mirrored
-DX9 reference also shows black models for the same immutable packets; the
-adapter/data path still needs investigation. Native Vulkan performance and
-visual acceptance remain open. Moving to x64 has not established 1,000 FPS or
-full GPU utilization.
+The earlier Vulkan path completed a 90-second match at 243.56 FPS with black
+models. Later viewport and reference depth-clear repairs passed a mirrored
+stock-world comparison at SSIM 0.999455. The bounded asynchronous submission
+experiment initially measured 741.93 FPS over a camera-checked 49.71-second broad
+1080p interval. The final package measures **1,001.77 FPS over 78.23 seconds**, with
+two active bots, approximately 1,000 Hz prediction/server simulation, ending
+debt 1/0 and zero input admission rejections. Its complete validation-enabled
+restart lifecycle passes after a full-width script compiler pointer repair.
+Final native GPU fixtures pass 162 exact image pairs per ABI, and the selected
+asynchronous path passes a mirrored stock-world frame at SSIM 0.999461.
+This is scoped evidence; broader visual acceptance and full GPU utilization
+remain open. GPU busy time in the final run is 55.82%.
 
 The subsequent [native rendering profile](RENDER_PROFILE.md) measures CPU
 submission and GPU command gaps, records unsuccessful IPO/BSP batching trials,
 and documents the Vulkan constant-prefix change with its validation and limits.
-More than 1,000 FPS and Vulkan stock-world visual parity remain unverified.
+The checked broad view now passes 1,000 FPS average. Broader stock-world visual
+coverage remains open. Use `./launch-client.ps1 -Throughput -Resolution 1080p`
+for the selected native Vulkan configuration.
 
-The current packaged DX9 build measured **766.02 FPS** over 56.22 seconds
+The earlier packaged DX9 build measured **766.02 FPS** over 56.22 seconds
 in the same broad 1080p view, **999.88 Hz** prediction and **1,000.00 Hz** server
 simulation, with zero ending debt and clean client/server exits. The separate
 eight-second profiling interval passed its sampled camera/bot and GPU capture
 checks: `results/x64-dx9-render-final.json`.
+
+The subsequent [Vulkan preparation pass](RENDER_PROFILE.md#vulkan-preparation-and-geometry-reuse)
+adds worker preparation of immutable shader/material state, bounded reuse of
+unchanged geometry and adjacent draw batching. Two comparisons measured roughly
+251-254 FPS with these controls disabled and 308-309 FPS enabled, with CPU
+preparation falling from 1.27-1.30 ms to 0.47-0.51 ms. Ordinary native Vulkan
+passed the packaged restart lifecycle. A subsequent validation-enabled lifecycle
+also passed Backlot/Crash, fast/video/sound restart, leave and quit with
+asynchronous stream decoding and the extra swap fence disabled. The newer
+frontend-upload, scene-fence and asynchronous GPU submission combination now
+passes its own complete validation-enabled lifecycle:
+`results/x64-vulkan-throughput-forward-pointer-lifecycle.json`.
+Broader model/effect visuals and full GPU utilization remain open.

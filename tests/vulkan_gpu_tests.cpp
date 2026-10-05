@@ -67,6 +67,79 @@ struct Fixture {
     }
     void release(gfx::Backend& b) { for(auto id:{target,texture,vertices,indices,vertex,pixel}) b.release(id); }
 };
+void clearTargetCases(gfx::d3d9::Backend& backend,Fixture& f){
+    auto d=f.packet;d.state.depthTest=d.state.depthWrite=true;
+    gfx::ImageDesc desc;desc.width=desc.height=64;desc.renderTarget=true;desc.sampled=false;desc.format=gfx::ImageFormat::DepthStencil;
+    d.depthTarget=backend.createImage(desc);
+    desc.width=desc.height=16;desc.format=gfx::ImageFormat::Bgra8;
+    const auto smallTarget=backend.createImage(desc);
+    const gfx::ClearRect full{0,0,64,64};
+    std::vector<std::byte> expected;
+    for(bool explicitBinding:{false,true}){
+        backend.beginFrame();
+        // Initialize the depth image to reject the quad everywhere, then
+        // leave a different, smaller color target bound in the replay.
+        backend.clear(f.target,d.depthTarget,{.1f,.2f,.3f,1},0,0,true,true,{&full,1});
+        backend.clear(smallTarget,{}, {.3f,.2f,.1f,1},1);
+        if(explicitBinding)backend.bindClearTarget(f.target);
+        backend.clear({},d.depthTarget,{},1,0,true,true,{&full,1});
+        backend.draw(d);backend.endFrame({});
+        auto actual=backend.readback(f.target);
+        if(explicitBinding){assert(actual!=expected);assert(actual[(48*64+48)*4+2]==std::byte(200));}
+        else {assert(actual[(48*64+48)*4+2]==std::byte(26));expected=std::move(actual);}
+    }
+    backend.release(d.depthTarget);backend.release(smallTarget);
+}
+void preparationCases(gfx::vk::Backend& backend,Fixture& f,unsigned flight){
+    // Stable per-draw snapshots cross clears, texture uploads, queries and
+    // DISCARD updates. Parallel planning may inspect materials/constants, but
+    // only ordered replay may choose a geometry version or issue a barrier.
+    constexpr unsigned count=256;
+    std::vector<gfx::DrawPacket> packets(count,f.packet);
+    std::vector<std::array<float,1024>> vertexConstants(count),pixelConstants(count);
+    std::vector<const gfx::DrawPacket*> pointers; pointers.reserve(count);
+    const float left[][6]={{-.8f,.8f,.5f,1,0,0},{0,.8f,.5f,1,1,0},{0,-.8f,.5f,1,1,1},{-.8f,-.8f,.5f,1,0,1}};
+    const float right[][6]={{0,.8f,.5f,1,0,0},{.8f,.8f,.5f,1,1,0},{.8f,-.8f,.5f,1,1,1},{0,-.8f,.5f,1,0,1}};
+    const auto geometry=backend.createBuffer(std::as_bytes(std::span(left)),false,true);
+    const auto query=backend.createQuery(gfx::QueryType::Occlusion);
+    for(unsigned n=0;n<count;++n){auto& d=packets[n];
+        std::copy(f.vc.begin(),f.vc.end(),vertexConstants[n].begin());std::copy(f.pc.begin(),f.pc.end(),pixelConstants[n].begin());
+        vertexConstants[n][16]=float(int(n%7)-3)*.025f;
+        pixelConstants[n][28]=float(n%5+1)/5;pixelConstants[n][29]=float(n%7+1)/7;pixelConstants[n][30]=float(n%3+1)/3;pixelConstants[n][31]=.2f;
+        d.vertexConstants=vertexConstants[n];d.pixelConstants=pixelConstants[n];d.immutableConstants=true;
+        d.vertexBuffers[0]=geometry;d.vertexCount=4;d.scissor=true;d.scissorX=int(n%9)-4;d.scissorWidth=60;d.scissorY=-3;d.scissorHeight=65;
+        d.state.blend=true;d.state.src=gfx::Blend::SrcAlpha;d.state.dst=gfx::Blend::InvSrcAlpha;
+        backend.warm(d);pointers.push_back(&d);
+    }
+    std::vector<std::byte> expected;
+    for(bool prepare:{false,true}){
+        backend.beginFrame();if(prepare)backend.prepareDraws(pointers);
+        backend.clear(f.target,{}, {.1f,.2f,.3f,1},1);
+        backend.updateBuffer(geometry,0,std::as_bytes(std::span(left)),true);
+        for(unsigned n=0;n<count;++n){
+            if(n==64)backend.updateBuffer(geometry,0,std::as_bytes(std::span(right)),true);
+            if(n==127)backend.clear(f.target,{}, {.3f,.2f,.1f,1},1);
+            if(n==128)backend.beginQuery(query);
+            backend.draw(packets[n]);
+            if(n==129)backend.endQuery(query);
+        }
+        const auto timing=backend.endFrame({});
+        if(prepare)assert(timing.parallelPrepareBatches==1&&timing.parallelPrepareDraws==count);
+        const auto actual=backend.readback(f.target);if(prepare)assert(actual==expected);else expected=actual;
+    }
+    // Unchanged versions are reused only after their frame slot completes.
+    auto d=f.packet;d.vertexBuffers[0]=geometry;
+    backend.warm(d);
+    for(unsigned n=0;n<flight*2+1;++n){backend.beginFrame();backend.clear(f.target,{}, {.1f,.2f,.3f,1},1);backend.draw(d);const auto timing=backend.endFrame({});if(n>=flight)assert(timing.geometryReusedBytes==sizeof(right)&&timing.geometryCopiedBytes==0);}
+    backend.beginFrame();backend.updateBuffer(geometry,0,std::as_bytes(std::span(left)),true);backend.draw(d);const auto changed=backend.endFrame({});assert(changed.geometryCopiedBytes==sizeof(left)&&changed.geometryReusedBytes==0);
+    backend.release(geometry);backend.release(query);backend.waitIdle();assert(backend.validationErrors()==0);
+    f.draw(backend,false);const auto whole=backend.readback(f.target);
+    std::array<gfx::DrawPacket,2> halves{f.packet,f.packet};
+    halves[0].immutableConstants=halves[1].immutableConstants=true;halves[0].indexCount=halves[1].indexCount=3;halves[1].firstIndex=3;
+    const std::array<const gfx::DrawPacket*,2> halfPointers{&halves[0],&halves[1]};
+    backend.beginFrame();backend.prepareDraws(halfPointers);backend.clear(f.target,{}, {.1f,.2f,.3f,1},1);backend.draw(halves[0]);backend.draw(halves[1]);
+    const auto merged=backend.endFrame({});assert(merged.batchedDraws==1&&merged.draws==2);assert(backend.readback(f.target)==whole);
+}
 LRESULT CALLBACK windowProc(HWND h,UINT m,WPARAM w,LPARAM l) { return DefWindowProcW(h,m,w,l); }
 std::uint64_t queryCases(gfx::Backend& b,Fixture& f) {
     const auto samples=b.createQuery(gfx::QueryType::Occlusion),event=b.createQuery(gfx::QueryType::Event),stamp=b.createQuery(gfx::QueryType::Timestamp);
@@ -312,6 +385,16 @@ struct Window {
         if(!hwnd) throw std::runtime_error("Graphics regression window creation failed"); if(visible) ShowWindow(hwnd,SW_SHOWNOACTIVATE);
     }
     ~Window() { if(hwnd) DestroyWindow(hwnd); UnregisterClassW(L"cod4x1khz Vulkan regression",GetModuleHandleW(nullptr)); }
+    void resizeClient(unsigned width,unsigned height){
+        // A captioned window enforces a minimum width larger than this target.
+        // The borderless regression window permits an exact 64x64 client area.
+        SetWindowLongW(hwnd,GWL_STYLE,WS_POPUP);
+        RECT outer{0,0,LONG(width),LONG(height)};
+        if(!AdjustWindowRect(&outer,DWORD(GetWindowLongW(hwnd,GWL_STYLE)),FALSE)||
+           !SetWindowPos(hwnd,nullptr,0,0,outer.right-outer.left,outer.bottom-outer.top,SWP_FRAMECHANGED|SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE))
+            throw std::runtime_error("Graphics regression client resize failed");
+        RECT actual{};assert(GetClientRect(hwnd,&actual)&&unsigned(actual.right)==width&&unsigned(actual.bottom)==height);
+    }
 };
 }
 int main(int argc,char** argv) {
@@ -323,14 +406,15 @@ int main(int argc,char** argv) {
         std::vector<std::vector<std::byte>> dxMaterials;
         std::uint64_t dxSampleCount=0;
         {
-            gfx::Config config; config.window=window.hwnd; gfx::d3d9::Backend backend(config); Fixture f(backend); f.draw(backend,false); dxPixels=backend.readback(f.target); capture(output/"d3d9.ppm",dxPixels);dxSampleCount=queryCases(backend,f);dxMaterials=materialCases(backend,f);f.release(backend);
+            gfx::Config config; config.window=window.hwnd; gfx::d3d9::Backend backend(config); Fixture f(backend); f.draw(backend,false); dxPixels=backend.readback(f.target); capture(output/"d3d9.ppm",dxPixels);dxSampleCount=queryCases(backend,f);clearTargetCases(backend,f);dxMaterials=materialCases(backend,f);f.release(backend);
         }
-        for(unsigned flight:{1u,2u}) {
+        for(unsigned flight:{1u,2u,3u}) {
             gfx::Config config; config.window=present?window.hwnd:nullptr; config.validation=validation; config.framesInFlight=flight; config.cacheDirectory=(output/"cache").string();
             config.recordingWorkers=4;config.dispatchRecording=dispatchRecording;
             gfx::vk::Backend backend(config); Fixture f(backend);
             for(unsigned n=0;n<32;++n) {
                 if(present) {
+                    if(n==4)window.resizeClient(64,64); // exact-size presentation copy
                     if(n==8) ShowWindow(window.hwnd,SW_MINIMIZE);
                     if(n==12) { ShowWindow(window.hwnd,SW_SHOWNOACTIVATE); SetWindowPos(window.hwnd,nullptr,0,0,400,300,SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE); }
                 }
@@ -338,6 +422,7 @@ int main(int argc,char** argv) {
             }
             vkPixels=backend.readback(f.target); capture(output/("vulkan-"+std::to_string(flight)+".ppm"),vkPixels);
             const auto center=(32*64+32)*4; assert(unsigned(vkPixels[center+2])==200&&unsigned(vkPixels[center+3])==255); assert(vkPixels.size()==dxPixels.size());
+            preparationCases(backend,f,flight);
             const auto vkMaterials=materialCases(backend,f);
             assert(recordingDispatches.load()>0);
             assert(queryCases(backend,f)==dxSampleCount);
@@ -354,6 +439,15 @@ int main(int argc,char** argv) {
             backend.beginFrame();backend.cancelFrame();backend.waitIdle();bool failedClosed=false;
             try{backend.beginFrame();}catch(const std::exception&){failedClosed=true;}assert(failedClosed);
             std::ofstream report(output/("device-"+std::to_string(flight)+".json")); report<<backend.deviceReport()<<'\n';
+        }
+        {
+            // A packing error on any worker must join the whole batch and reach
+            // the owner; cancelling must never wait for an unsubmitted serial.
+            gfx::Config config;config.validation=validation;config.recordingWorkers=4;config.dispatchRecording=dispatchRecording;
+            gfx::vk::Backend backend(config);Fixture f(backend);f.packet.immutableConstants=true;f.packet.pixelConstants={};backend.warm(f.packet);
+            std::array<const gfx::DrawPacket*,256> packets;packets.fill(&f.packet);
+            backend.beginFrame();bool rejected=false;try{backend.prepareDraws(packets);}catch(const std::exception&){rejected=true;}assert(rejected);
+            backend.cancelFrame();backend.waitIdle();assert(backend.validationErrors()==0);
         }
         std::size_t different=0; unsigned maximum=0; double mse=0;
         for(std::size_t n=0;n<dxPixels.size();++n) { const auto error=std::abs(int(dxPixels[n])-int(vkPixels[n])); different+=error!=0; maximum=(std::max)(maximum,unsigned(error)); mse+=double(error*error); } mse/=dxPixels.size();

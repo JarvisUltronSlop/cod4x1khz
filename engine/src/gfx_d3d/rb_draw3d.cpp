@@ -129,7 +129,15 @@ void __cdecl RB_FullbrightDrawCommands(const GfxViewInfo *viewInfo)
 
 void __cdecl RB_EndSceneRendering(GfxCmdBufContext context, const GfxCmdBufInput *input, const GfxViewInfo *viewInfo)
 {
-    R_HW_InsertFence((IDirect3DQuery9 **)&backEndData->endFence);
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+    // The native backend copies geometry into GPU versions protected by its
+    // frame timeline. Frontend CPU reuse waits for RenderCompleted; waiting
+    // for raster completion as well prevents useful frontend/backend overlap.
+    if (r_graphicsApi->current.integer == 1 && !Dvar_GetBool("r_vkLegacySceneFence"))
+        const_cast<GfxBackEndData*>(backEndData)->endFence = nullptr;
+    else
+#endif
+        R_HW_InsertFence((IDirect3DQuery9 **)&backEndData->endFence);
     R_InitCmdBufSourceState(context.source, input, 0);
     memcpy(context.state, &gfxCmdBufState, sizeof(GfxCmdBufState));
     memset((uint8_t *)context.state->vertexShaderConstState, 0, sizeof(context.state->vertexShaderConstState));

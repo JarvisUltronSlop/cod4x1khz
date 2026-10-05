@@ -184,6 +184,21 @@ void __cdecl RB_DrawSunQuerySprite(SunFlareDynamic *sunFlare)
             2);
     if (sunFlare->sunQuery[queryIndex])
     {
+        bool queryRead = false;
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+        if (sunFlare->sunQueryIssued[queryIndex] && r_graphicsApi->current.integer == 1 &&
+            Dvar_GetBool("r_asyncSunQueries"))
+        {
+            // This query belongs to an earlier frame. Pending visibility is
+            // cosmetic history, never a reason to stop constructing the next
+            // frame. Keep its previous measured value and do not reissue this
+            // query until its actual result can be consumed.
+            const auto result = sunFlare->sunQuery[queryIndex]->GetData(&drawnSampleCount, 4u, 0);
+            if (result == S_FALSE) return;
+            if (FAILED(result)) drawnSampleCount = UINT32_MAX;
+            queryRead = true;
+        }
+#endif
         PROF_SCOPED("RB_DrawSunQuerySprite");
         RB_SetTessTechnique(rgp.additiveMaterial, TECHNIQUE_UNLIT);
         R_TrackPrims(&gfxCmdBufState, GFX_PRIM_STATS_FX);
@@ -193,7 +208,7 @@ void __cdecl RB_DrawSunQuerySprite(SunFlareDynamic *sunFlare)
         RB_TessSunBillboard(widthInClipSpace, heightInClipSpace, (GfxColor)-16777216);
         if (sunFlare->sunQueryIssued[queryIndex])
         {
-            drawnSampleCount = RB_HW_ReadOcclusionQuery(sunFlare->sunQuery[queryIndex]);
+            if (!queryRead) drawnSampleCount = RB_HW_ReadOcclusionQuery(sunFlare->sunQuery[queryIndex]);
             if (drawnSampleCount == -1)
                 sunFlare->error = 1;
             sunSpriteSamples = dx.sunSpriteSamples;

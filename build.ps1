@@ -42,6 +42,7 @@ $targets += 'khz_dvar_values_native_tests'
 $targets += @('khz_player_use_native_tests', 'khz_filesystem_native_tests', 'khz_scoreboard_native_tests', 'khz_fx_archive_native_tests')
 $targets += 'khz_collision_lifetime_native_tests'
 $targets += @('khz_ui_values_native_tests','khz_render_commands_native_tests')
+$targets += @('khz_mark_context_native_tests','khz_pcm_prefetch_tests')
 if (!$CoreOnly) { $targets += @('khz_runtime','khz_vulkan_probe','khz_vulkan_shader_inventory','khz_vulkan_shader_link','khz_vulkan_shader_tests','khz_vulkan_backend') }
 & cmake --build $buildRoot --config $Configuration --target @targets --parallel 8
 if ($LASTEXITCODE) { throw 'Build failed' }

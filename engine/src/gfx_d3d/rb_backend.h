@@ -47,7 +47,8 @@ enum MaterialVertexDeclType : __int32
 #ifdef COD4X1KHZ_NATIVE_VULKAN
      THREAD_CONTEXT_WORKER2      = 0x8,
      THREAD_CONTEXT_WORKER3      = 0x9,
-     THREAD_CONTEXT_COUNT        = 0xA,
+     THREAD_CONTEXT_VULKAN       = 0xA,
+     THREAD_CONTEXT_COUNT        = 0xB,
 #else
      THREAD_CONTEXT_COUNT        = 0x8,
 #endif

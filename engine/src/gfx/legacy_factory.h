@@ -13,4 +13,6 @@ unsigned validationErrors(IDirect3DDevice9* device);
 const char* frameTelemetry();
 void nameResource(IUnknown* resource,const char* name);
 bool writeFrameTimings(IDirect3DDevice9* device,const char* path);
+// A CPU renderer/worker-pool lifetime barrier; ordinary frames do not call it.
+void waitSubmissions(IDirect3DDevice9* device);
 }

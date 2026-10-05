@@ -19,11 +19,15 @@
 #include <dr_libs/dr_mp3.h>
 #include <AL/efx-presets.h>
 #include <fstream>
+#include <memory>
+#include <pcm_prefetch.hpp>
 
 AlLocal alGlob;
 
 const dvar_t *snd_khz;
 const dvar_t *snd_outputConfiguration;
+static const dvar_t *snd_asyncStreams;
+static void SND_StopStreamDecoders();
 
 void __cdecl TRACK_snd_driver()
 {
@@ -37,6 +41,7 @@ bool __cdecl SND_IsMultiChannel()
 
 char __cdecl SND_InitDriver()
 {
+    snd_asyncStreams = Dvar_RegisterBool("snd_asyncStreams", false, DVAR_NOFLAG, "Decode ongoing audio streams outside presentation");
     snd_khz = Dvar_RegisterInt("snd_khz", 44, (DvarLimits)0x2C0000000BLL, DVAR_ARCHIVE | DVAR_LATCH, "The game sound frequency.");
     snd_outputConfiguration = Dvar_RegisterEnum(
         "snd_outputConfiguration",
@@ -71,6 +76,7 @@ void __cdecl SND_ShutdownDriver()
 {
     R_Cinematic_StopPlayback();
     R_Cinematic_SyncNow();
+    SND_StopStreamDecoders();
     MSS_ShutdownCleanup();
 }
 
@@ -137,6 +143,8 @@ static AlStreamState g_streamState[53];
 
 static const int AL_STREAM_BUFFER_COUNT = 4;
 static const int AL_STREAM_BUFFER_FRAMES = 8192;
+using StreamDecode = khz::PcmPrefetch<AL_STREAM_BUFFER_FRAMES>;
+static std::unique_ptr<StreamDecode> g_streamDecode[53];
 
 // Miles' MSS_File*Callback (snd_mss.cpp) bridges AIL's file I/O to FS_*; these do the same
 // for dr_wav/dr_mp3, since neither library has a concept of a game virtual filesystem.
@@ -198,6 +206,8 @@ static drmp3_bool32 AL_Mp3TellCallback(void *pUserData, drmp3_int64 *pCursor)
 static void SND_ReleaseStreamChannel(int index)
 {
     AlStreamState *stream = &g_streamState[index];
+    // Join the sole decoder owner before closing its file or decoder storage.
+    g_streamDecode[index].reset();
     if (!stream->active)
         return;
 
@@ -218,6 +228,26 @@ static void SND_ReleaseStreamChannel(int index)
         drwav_uninit(&stream->wav);
     FS_FCloseFile(stream->fsHandle);
     stream->active = false;
+}
+
+static void SND_StopStreamDecoders()
+{
+    for (int index = 0; index < 53; ++index) SND_ReleaseStreamChannel(index);
+}
+
+static void SND_DecodeStreamBlock(void *context, StreamDecode::Block& block)
+{
+    auto& stream = *static_cast<AlStreamState*>(context);
+    auto read = [&] {
+        return stream.isMp3 ? drmp3_read_pcm_frames_s16(&stream.mp3, AL_STREAM_BUFFER_FRAMES, block.samples.data())
+            : drwav_read_pcm_frames_s16(&stream.wav, AL_STREAM_BUFFER_FRAMES, block.samples.data());
+    };
+    block.frames = read(); block.loopRestart = false;
+    if (!block.frames && stream.looping) {
+        const bool sought = stream.isMp3 ? drmp3_seek_to_pcm_frame(&stream.mp3, 0) != 0
+            : drwav_seek_to_pcm_frame(&stream.wav, 0) != 0;
+        if (sought) { block.frames = read(); block.loopRestart = true; }
+    }
 }
 
 // Decodes and queues fresh PCM chunks to bring the channel's buffer queue back up to
@@ -247,40 +277,26 @@ static bool SND_FillStreamBuffers(int index)
 
     // Reused across calls rather than stack-allocated (32KB) each time; safe because stream
     // channels are always filled one at a time, never interleaved, on a single thread.
-    static int16_t chunk[AL_STREAM_BUFFER_FRAMES * 2]; // *2 for stereo worst case
+    static StreamDecode::Block chunk;
 
     for (int i = queued; i < AL_STREAM_BUFFER_COUNT; ++i)
     {
-        uint64_t framesRead = stream->isMp3
-            ? drmp3_read_pcm_frames_s16(&stream->mp3, AL_STREAM_BUFFER_FRAMES, chunk)
-            : drwav_read_pcm_frames_s16(&stream->wav, AL_STREAM_BUFFER_FRAMES, chunk);
-
-        if (framesRead == 0)
-        {
-            if (!stream->looping)
-                break;
-            if (stream->isMp3)
-                drmp3_seek_to_pcm_frame(&stream->mp3, 0);
-            else
-                drwav_seek_to_pcm_frame(&stream->wav, 0);
-            framesRead = stream->isMp3
-                ? drmp3_read_pcm_frames_s16(&stream->mp3, AL_STREAM_BUFFER_FRAMES, chunk)
-                : drwav_read_pcm_frames_s16(&stream->wav, AL_STREAM_BUFFER_FRAMES, chunk);
-            if (framesRead == 0)
-                break; // zero-length file - avoid spinning forever
-            stream->framesQueued = 0; // starting a fresh loop pass
-        }
+        if (g_streamDecode[index]) {
+            if (!g_streamDecode[index]->pop(chunk)) break;
+        } else SND_DecodeStreamBlock(stream, chunk);
+        if (!chunk.frames) break;
+        if (chunk.loopRestart) stream->framesQueued = 0;
 
         ALuint buffer;
         alGenBuffers(1, &buffer);
         ALenum format = (stream->channels == 2) ? AL_FORMAT_STEREO16 : AL_FORMAT_MONO16;
-        alBufferData(buffer, format, chunk, (ALsizei)(framesRead * stream->channels * sizeof(int16_t)), stream->sampleRate);
+        alBufferData(buffer, format, chunk.samples.data(), (ALsizei)(chunk.frames * stream->channels * sizeof(int16_t)), stream->sampleRate);
         alSourceQueueBuffers(source, 1, &buffer);
-        stream->framesQueued += framesRead;
+        stream->framesQueued += chunk.frames;
         ++queued;
     }
 
-    return queued > 0;
+    return queued > 0 || (g_streamDecode[index] && g_streamDecode[index]->pending());
 }
 #endif
 
@@ -740,6 +756,11 @@ int __cdecl SND_StartAliasStreamOnChannel(SndStartAliasInfo *startAliasInfo, int
     stream->sampleRate = stream->isMp3 ? stream->mp3.sampleRate : stream->wav.sampleRate;
     stream->looping = (startAliasInfo->alias0->flags & 1) != 0; // matches AIL_set_stream_loop_count's polarity above: flags bit 0 set == looping
     stream->active = true;
+    if (stream->channels < 1 || stream->channels > 2 || !stream->sampleRate) {
+        SND_ReleaseStreamChannel(index);
+        Com_PrintError(CON_CHANNEL_SOUND, "Unsupported stream channel count or sample rate in '%s'\n", realname);
+        return SND_SetPlaybackIdNotPlayed(index);
+    }
 
     int srcChannelCount = stream->channels;
     int baserate = stream->sampleRate;
@@ -820,6 +841,8 @@ int __cdecl SND_StartAliasStreamOnChannel(SndStartAliasInfo *startAliasInfo, int
     }
 
     SND_FillStreamBuffers(index);
+    if (snd_asyncStreams->current.enabled)
+        g_streamDecode[index] = std::make_unique<StreamDecode>(SND_DecodeStreamBlock, stream);
 
     if (!startAliasInfo->startDelay
         && (!g_snd.paused || !g_snd.pauseSettings[(startAliasInfo->alias0->flags & 0x3F00) >> 8]))
@@ -1443,6 +1466,13 @@ void __cdecl SND_UpdateStreamChannel(int i, int frametime)
         ALint state;
         alGetSourcei(alGlob.source[i], AL_SOURCE_STATE, &state);
         bool stillPlaying = g_snd.chaninfo[i].startDelay || hasMoreToPlay || state != AL_STOPPED;
+        // Recover a drained queue after a scheduling stall without losing the
+        // alias or replaying audio that already finished. Delayed starts stay delayed.
+        if (state == AL_STOPPED && hasMoreToPlay && !chaninfo->startDelay &&
+            (!g_snd.paused || !g_snd.pauseSettings[SNDALIASFLAGS_GET_CHANNEL(alias0->flags)])) {
+            ALint queued = 0; alGetSourcei(alGlob.source[i], AL_BUFFERS_QUEUED, &queued);
+            if (queued > 0) alSourcePlay(alGlob.source[i]);
+        }
         if (stillPlaying)
         {
             if (SND_IsAliasChannel3D(SNDALIASFLAGS_GET_CHANNEL(alias0->flags)))

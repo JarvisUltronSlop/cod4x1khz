@@ -472,6 +472,41 @@ const char* KHZ_UIProbe(const char* action) {
         return result;
     }
     if (!I_strnicmp(action, "renderprofile ", 14)) return KHZ_RenderProfileProbe(action + 14);
+    if (!I_strnicmp(action, "slider ", 7)) {
+        // Native test controls exercise mouse capture across actual paint frames.
+        // They operate only on a visible slider in the currently focused menu.
+        char name[96]{}, phase[16]{}; int index = -1; float fraction = 0;
+        const int parsed = std::sscanf(action + 7, "%95s %d %15s %f", name, &index, phase, &fraction);
+        auto* menu = Menu_GetFocused(storage.frontend);
+        if (parsed < 3 || !menu || !equal(menu->window.name, name) || index < 0 || index >= menu->itemCount || !menu->items)
+            return "{\"result\":\"invalid slider request\"}";
+        auto* item = menu->items[index];
+        if (!item || item->type != 10 || !item->dvar || !Item_IsVisible(0, item) ||
+            ((item->dvarFlags & 3) && !Item_EnableShowViaDvar(item, 1)))
+            return "{\"result\":\"slider unavailable\"}";
+        auto* edit = Item_GetEditFieldDef(item);
+        if (!edit || !std::isfinite(edit->minVal) || !std::isfinite(edit->maxVal) || edit->maxVal <= edit->minVal)
+            return "{\"result\":\"invalid slider range\"}";
+        const bool begin = equal(phase, "begin"), move = equal(phase, "move"), click = equal(phase, "click");
+        if ((move || click) && (parsed != 4 || !std::isfinite(fraction) || fraction < -0.25f || fraction > 1.25f))
+            return "{\"result\":\"invalid slider position\"}";
+        if (!begin && !move && !click && !equal(phase, "end") && !equal(phase, "status"))
+            return "{\"result\":\"invalid slider phase\"}";
+        if (begin || move || click) {
+            if (begin) fraction = std::clamp(static_cast<float>((Dvar_GetFloat(item->dvar) - edit->minVal) / (edit->maxVal - edit->minVal)), 0.0f, 1.0f);
+            float x = static_cast<float>(Item_GetRectPlacementX(item->textAlignMode & 3,
+                item->window.rect.x + item->textalignx, item->window.rect.w, 96.0)) + 6.0f + 84.0f * fraction;
+            float y = item->window.rect.y + 8.0f, w = 0, h = 0;
+            ScrPlace_ApplyRect(&scrPlaceView[0], &x, &y, &w, &h, item->window.rect.horzAlign, item->window.rect.vertAlign);
+            UI_MouseEvent(0, static_cast<int>(std::lround(x)), static_cast<int>(std::lround(y)));
+            if (begin || click) UI_KeyEvent(0, K_MOUSE1, 1);
+            if (click) UI_KeyEvent(0, K_MOUSE1, 0);
+        } else if (equal(phase, "end")) UI_KeyEvent(0, K_MOUSE1, 0);
+        extern itemDef_s* itemCapture;
+        std::snprintf(result, sizeof(result), "{\"result\":\"slider event dispatched\",\"phase\":\"%s\",\"dvar\":\"%s\",\"value\":%.6f,\"min\":%.6f,\"max\":%.6f,\"captured\":%s}",
+            phase, item->dvar, Dvar_GetFloat(item->dvar), edit->minVal, edit->maxVal, itemCapture == item ? "true" : "false");
+        return result;
+    }
     if (!I_strnicmp(action, "inspect ", 8) || !I_strnicmp(action, "details ", 8) || !I_strnicmp(action, "activate ", 9) || !I_strnicmp(action, "key ", 4)) {
         const bool inspect = !I_strnicmp(action, "inspect ", 8);
         const bool details = !I_strnicmp(action, "details ", 8);

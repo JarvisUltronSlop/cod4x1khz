@@ -182,6 +182,13 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
   target_compile_definitions(khz_entity_pose_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
   add_test(NAME khz_entity_pose_native COMMAND khz_entity_pose_native_tests)
+  add_executable(khz_ui_scroll_native_tests tests/ui_scroll_native_tests.cpp
+    engine/src/ui/ui_scroll_capture.cpp)
+  target_include_directories(khz_ui_scroll_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_ui_scroll_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_ui_scroll_native COMMAND khz_ui_scroll_native_tests)
   add_executable(khz_mark_context_native_tests tests/mark_context_native_tests.cpp
     engine/src/gfx_d3d/r_mark_model_callback.cpp)
   target_include_directories(khz_mark_context_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"

@@ -3,16 +3,67 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,895,808 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,898,368 bytes).
 SHA-256:
 
 ```text
-01baec598107b6cb3d23220c72dadc4c705e6af64ea18ac9592fa3de29157408
+003c11ca8a54798b02a8c0db0d0166635c62cb0b184c1b013ecefca840fe741b
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 volume slider capture fix
+
+- The user's volume crash reaches `Item_GetEditFieldDef` from
+  `Scroll_Slider_SetThumbPos` during menu painting. The capture callback treated
+  `scrollInfo_s` as an array of item pointers: index six addressed byte 48 on
+  x64, beyond the forty-byte capture, instead of the actual item at byte 24.
+  Slider capture now reads the named native member. The list-box drag and
+  repeat callbacks had the same pointer-array assumption and additionally
+  truncated item pointers; those now use typed members and window geometry.
+- A regression links the production callbacks and places capture data against
+  a guard page, with the real item allocated above 4 GiB on x64. The old slider
+  callback reproducibly faults; the fix passes on x64 and Win32. Coverage also
+  checks horizontal/vertical list thumb positions, bounds, cursor visibility,
+  unchanged cursor behavior, repeat timing and collapsed list rectangles.
+- Native suites passed **71/71 x64** and **69/69 Win32**. The installer regression
+  was rebuilt with this shipping CAB and passed extraction, repair and profile
+  preservation again. Its twenty payload files exclude retail assets,
+  benchmark executables and the benchmark RCON credential.
+- Tested and embedded SHA-256 hashes:
+
+  ```text
+  client 047374f6243e88f1e307c1dce95ee5cbcdfd8816c202f360f2cea6d6cbd8e068
+  server cc86b9b127669735123f6e4c03edbd98bdae982eb3a1aa0e7b2dcc496f81cc3e
+  ```
+
+- Both shipping renderers passed stock Sound-menu tests in a live match and the
+  disconnected frontend: ten captured drag positions per context, mute/full
+  volume and out-of-range clamping, release without further changes, clicking
+  the track and archived `snd_volume` persistence. All **4/4 contexts** passed.
+  The fixture dispatches native mouse events and holds capture across real
+  `Menu_PaintAll` calls; it does not substitute console volume assignments.
+- Separate **60-second** Killhouse DM runs with 15 Regular bots measured
+  **999.787 Hz** prediction / **1000.012 Hz** server simulation on Vulkan and
+  **999.825 Hz** / **999.998 Hz** on DX9, within 0.1%. Final client/server debt
+  was **0/0** and **1/0**, respectively. Final event/snapshot backlogs, queue
+  failures, GPU presentation failures and Vulkan validation errors were zero.
+  Both clients exited normally; Leave stopped their exact owned servers.
+
+Evidence is in `results/volume-slider-feedback/validation-report.json`, the user
+crash report, `old-capture-test.log`, suite/package logs, and
+`vulkan-mouse`/`dx9-mouse` native reports and menu screenshots. Earlier fixture
+failures are retained: the probe's expected server path and Sound-category
+selector were corrected before the successful runs. Those corrections changed
+the diagnostic script, not the slider implementation. This does not establish
+every map/effect or gameplay-stutter cause. No desktop automation or Internet
+test was performed. The updated installer is copied into `userTest`; close the
+game and repair the same output folder to apply it. The installed executable
+and player profiles were left untouched.
+
+The following sections describe earlier builds and their validation.
 
 ## October 6 visible Esc menu and Overgrown effects cleanup
 
@@ -62,8 +113,6 @@ These checks do not establish that every map/effect or gameplay stutter is fixed
 No desktop automation or Internet test was performed. The installer is copied to
 `userTest/cod4x1khz_setup.exe`; the installed game and player profiles were left
 untouched. Close the game and repair the same output folder to apply this build.
-
-The following sections describe earlier builds and their validation.
 
 ## Earlier October 6 pause, movement, impact and audio fixes
 

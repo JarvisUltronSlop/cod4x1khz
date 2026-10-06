@@ -527,6 +527,8 @@ set(UI
     "${SRC_DIR}/ui/ui_string_pool.cpp"
     "${SRC_DIR}/ui/ui_localvars.cpp"
     "${SRC_DIR}/ui/ui_shared.cpp"
+    "${SRC_DIR}/ui/ui_scroll_capture.cpp"
+    "${SRC_DIR}/ui/ui_scroll_capture.h"
     "${SRC_DIR}/ui/ui_shared_obj.cpp"
     "${SRC_DIR}/ui/ui_utils.cpp"
 )

@@ -499,7 +499,8 @@ def main():
             report["benchmark_cfg"] = {"path": str(cfg), "sha256": hashlib.sha256(cfg.read_bytes()).hexdigest()}
         arguments += ["+set", "com_maxfps", "0", "+set", "r_vsync", "0", "+setqport", str(args.client_port)]
         report["launch"] = {"arguments": arguments, "cwd": r"C:\Windows\Temp", "auto_connect": False}
-        client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp")
+        client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp",
+            env=os.environ | {"KHZ_BENCHMARK_RCON_PASSWORD": "local-khz-benchmark"})
         report["owned_client_pid"] = client.pid
         until = min(deadline, time.monotonic() + args.timeout)
         startup = []

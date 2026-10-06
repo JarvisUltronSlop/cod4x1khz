@@ -482,7 +482,8 @@ class ManagedHostFixture:
         for name, value in self.client_settings.items():
             arguments += ["+set", name, str(value)]
         self.report["launch"] = {"arguments": arguments, "cwd": r"C:\Windows\Temp", "auto_connect": False}
-        self.client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp")
+        self.client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp",
+            env=os.environ | {"KHZ_BENCHMARK_RCON_PASSWORD": "local-khz-benchmark"})
         self.report["owned_client_pid"] = self.client.pid
         until = min(self.deadline, time.monotonic() + 30)
         samples = self.report["startup_samples"] = []

@@ -1,3 +1,4 @@
+param([switch]$Production, [string]$OutputPath = "")
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourceRoot = Join-Path $projectRoot 'upstream/bot_warfare'
@@ -24,8 +25,16 @@ foreach ($file in Get-ChildItem -LiteralPath $overlayRoot -File -Recurse) {
 $files['notices/bot-warfare-README.md'] = Join-Path $sourceRoot 'README.md'
 $files['notices/upstream-lock.json'] = Join-Path $projectRoot 'upstream-lock.json'
 # Compiles/runs only with +set khz_plugin_tests 1 after loading its rebuilt DLL.
-$files['scripts/khz_plugin_fixture.gsc'] = Join-Path $projectRoot 'sdk/tests/plugin_fixture.gsc'
-$destination = Join-Path $runtimeRoot 'main/zz_cod4x1khz_bots.iwd'
+if (!$Production) { $files['scripts/khz_plugin_fixture.gsc'] = Join-Path $projectRoot 'sdk/tests/plugin_fixture.gsc' }
+if ($Production) {
+    foreach ($entry in $files.GetEnumerator()) {
+        if ($entry.Key -match '(khz_plugin_fixture|benchmark|regression)' -or
+            [IO.File]::ReadAllText($entry.Value).Contains('local-khz-benchmark')) {
+            throw "Development fixture is not permitted in production bots: $($entry.Key)"
+        }
+    }
+}
+$destination = if ($OutputPath) { [IO.Path]::GetFullPath($OutputPath) } else { Join-Path $runtimeRoot 'main/zz_cod4x1khz_bots.iwd' }
 $temporary = "$destination.tmp"
 $stream = [System.IO.File]::Create($temporary)
 $archive = [System.IO.Compression.ZipArchive]::new($stream,[System.IO.Compression.ZipArchiveMode]::Create)

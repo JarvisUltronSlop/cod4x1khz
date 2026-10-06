@@ -73,6 +73,10 @@ bool wait(khz::content::Completion* completion, unsigned timeout=5000) {
 }
 void basic(const std::filesystem::path& root) {
     using namespace khz;
+#ifdef _WIN64
+    check(update::IsInstalledExecutable(root,root/"cod4x1khz.exe"),"native standalone root game is accepted by startup path checks");
+    check(!update::IsInstalledExecutable(root,root/"elsewhere/cod4x1khz.exe"),"standalone launch path remains confined to project root");
+#endif
     content::Digest hash{};
     check(content::Sha256("abc",3,&hash) && hex(hash.data(),32)=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "SHA256 standard vector");
     check(content::Crc32("123456789",9)==0xcbf43926u,"stock CRC32 vector");

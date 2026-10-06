@@ -17,6 +17,9 @@
 #include <io.h>
 #include <conio.h>
 #include <qcommon/threads.h>
+#ifdef COD4X1KHZ
+#include <khz/khz_host.h>
+#endif
 
 #define COPY_ID			1
 #define QUIT_ID			2
@@ -258,6 +261,9 @@ void __cdecl Sys_DestroyConsole()
 */
 void __cdecl Sys_ShowConsole()
 {
+#ifdef COD4X1KHZ
+    if (KHZ_IsManagedHostProcess()) return;
+#endif
 	HMODULE module;
 
 	if (!s_wcd.hWnd)

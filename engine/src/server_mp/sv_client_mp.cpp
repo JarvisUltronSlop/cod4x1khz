@@ -1979,6 +1979,7 @@ gentity_s* KHZ_AddBotClient(const char* requestedName)
     if (index >= (std::min)(KHZ_MaxMatchClients, sv_maxclients->current.integer)) return nullptr;
     auto* client = &svs.clients[index];
     KHZ_BotResetSlot(client);
+    KHZ_AdminResetClient(client); // Every bot admission gets an ID for stale GUI actions.
     memset(client, 0, sizeof(*client));
     netadr_t address{};
     address.type = NA_BOT;

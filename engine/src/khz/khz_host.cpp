@@ -14,6 +14,7 @@
 #include <win32/win_local.h>
 #include <core.hpp>
 #include <host_checkpoint_policy.hpp>
+#include <host_transport.hpp>
 #include <Windows.h>
 #include <sddl.h>
 #include <bcrypt.h>
@@ -33,42 +34,8 @@
 #endif
 
 namespace {
-constexpr std::uint32_t WireMagic = 0x484B4831;
-constexpr std::uint32_t WireVersion = 1;
-constexpr unsigned MaxRules = 48;
-constexpr unsigned QueueCapacity = 8;
-constexpr ULONGLONG ReadyTimeout = 30000;
-constexpr ULONGLONG StopTimeout = 2000;
-constexpr const wchar_t* PipePrefix = L"\\\\.\\pipe\\cod4x1khz-host-";
-enum class HostMessage : std::uint32_t { Hello = 1, Configure, Ready, Map, Restart, Stop, Failure, Command, CommandResult, CheckpointPause, CheckpointResume, CheckpointFence };
+using namespace khz::hosting;
 enum class Phase { Idle, Starting, Loading, Ready, Stopping, Failed };
-struct Rule { char name[64]; char value[128]; };
-struct Packet {
-    std::uint32_t magic;
-    std::uint32_t version;
-    HostMessage message;
-    std::uint32_t sequence;
-    std::uint32_t protocol;
-    std::uint32_t pid;
-    std::uint32_t request;
-    char token[33];
-    char map[64];
-    char gametype[32];
-    char error[160];
-    std::uint32_t port;
-    std::uint32_t dedicated;
-    std::uint32_t bots;
-    std::uint32_t difficulty;
-    std::uint32_t ruleCount;
-    Rule rules[MaxRules];
-    char command[1024];
-    char output[2048];
-    std::uint64_t fixture;
-    std::uint64_t session;
-    std::uint64_t tick;
-};
-static_assert(sizeof(Packet) < 16384);
-
 const char* const commonRules[] = {
     "sv_hostname", "g_password", "g_allowvote", "sv_voice", "sv_minPing", "sv_maxPing",
     "scr_teambalance", "scr_oldschool", "scr_hardcore", "scr_game_spectatetype", "scr_game_allowkillcam",
@@ -82,22 +49,6 @@ const char* const modeSuffixes[] = {
     "spawntime", "kothmode", "delayPlayer", "delayHot", "delayNeutral", "spawnDelay", "neutral"
 };
 
-struct Channel {
-    HANDLE pipe = INVALID_HANDLE_VALUE;
-    OVERLAPPED read{};
-    OVERLAPPED write{};
-    OVERLAPPED connect{};
-    bool reading = false;
-    bool writing = false;
-    bool connecting = false;
-    bool connected = false;
-    bool peerVerified = false;
-    bool failed = false;
-    Packet incoming{};
-    std::array<Packet, QueueCapacity> outgoing{};
-    unsigned readIndex = 0;
-    unsigned writeIndex = 0;
-};
 struct HostState {
     Channel channel;
     HANDLE process = nullptr;
@@ -185,21 +136,7 @@ void closeHandle(HANDLE& handle) {
     if (handle && handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
     handle = nullptr;
 }
-void closeChannel() {
-    auto& channel = host.channel;
-    if (channel.pipe != INVALID_HANDLE_VALUE) {
-        CancelIoEx(channel.pipe, nullptr);
-        // Teardown runs outside gameplay. Complete cancellation before reusing
-        // the static OVERLAPPED records and their buffers for another session.
-        DWORD ignored = 0;
-        if (channel.reading) GetOverlappedResult(channel.pipe, &channel.read, &ignored, TRUE);
-        if (channel.writing) GetOverlappedResult(channel.pipe, &channel.write, &ignored, TRUE);
-        if (channel.connecting) GetOverlappedResult(channel.pipe, &channel.connect, &ignored, TRUE);
-        CloseHandle(channel.pipe);
-    }
-    closeHandle(channel.read.hEvent); closeHandle(channel.write.hEvent); closeHandle(channel.connect.hEvent);
-    channel = {};
-}
+void closeChannel() { khz::hosting::Close(host.channel); }
 void closeOwnedProcess() {
     // This handle refers solely to the child created by this controller. Closing
     // the job cannot affect an independently launched or remote server.
@@ -208,12 +145,7 @@ void closeOwnedProcess() {
     host.childPid = 0;
     host.authenticated = false;
 }
-bool makeEvents(Channel& channel) {
-    channel.read.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    channel.write.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    channel.connect.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    return channel.read.hEvent && channel.write.hEvent && channel.connect.hEvent;
-}
+bool makeEvents(Channel& channel) { return khz::hosting::MakeEvents(channel); }
 Packet packet(HostMessage type) {
     Packet result{};
     result.magic = WireMagic; result.version = WireVersion; result.message = type;
@@ -278,104 +210,11 @@ void fail(const char* message) {
         reportFrontendError(message);
     }
 }
-bool pumpConnect() {
-    auto& channel = host.channel;
-    if (channel.connecting) {
-        DWORD bytes = 0;
-        if (!GetOverlappedResult(channel.pipe, &channel.connect, &bytes, FALSE)) {
-            if (GetLastError() == ERROR_IO_INCOMPLETE) return false;
-            channel.failed = true; return false;
-        }
-        channel.connecting = false; channel.connected = true;
-    }
-    if (!channel.connected || channel.failed) return false;
-    if (!channel.peerVerified) {
-        ULONG peer = 0;
-        if (!host.childPid || !GetNamedPipeClientProcessId(channel.pipe, &peer) || peer != host.childPid) channel.failed = true;
-        else channel.peerVerified = true;
-    }
-    return channel.peerVerified && !channel.failed;
-}
-void pumpWrite() {
-    auto& channel = host.channel;
-    if (!channel.connected || channel.failed) return;
-    DWORD bytes = 0;
-    if (channel.writing) {
-        if (!GetOverlappedResult(channel.pipe, &channel.write, &bytes, FALSE)) {
-            if (GetLastError() == ERROR_IO_INCOMPLETE) return;
-            channel.failed = true; return;
-        }
-        channel.writing = false;
-        if (bytes != sizeof(Packet)) { channel.failed = true; return; }
-        ++channel.readIndex;
-    }
-    if (channel.readIndex == channel.writeIndex) return;
-    ResetEvent(channel.write.hEvent);
-    const auto& value = channel.outgoing[channel.readIndex % QueueCapacity];
-    if (WriteFile(channel.pipe, &value, sizeof(value), &bytes, &channel.write)) {
-        if (bytes != sizeof(value)) channel.failed = true;
-        else ++channel.readIndex;
-    } else if (GetLastError() == ERROR_IO_PENDING) channel.writing = true;
-    else channel.failed = true;
-}
-bool receive(Packet& value) {
-    auto& channel = host.channel;
-    if (!channel.connected || channel.failed) return false;
-    DWORD bytes = 0;
-    if (channel.reading) {
-        if (!GetOverlappedResult(channel.pipe, &channel.read, &bytes, FALSE)) {
-            if (GetLastError() == ERROR_IO_INCOMPLETE) return false;
-            channel.failed = true; return false;
-        }
-        channel.reading = false;
-    } else {
-        ResetEvent(channel.read.hEvent);
-        if (!ReadFile(channel.pipe, &channel.incoming, sizeof(Packet), &bytes, &channel.read)) {
-            if (GetLastError() == ERROR_IO_PENDING) { channel.reading = true; return false; }
-            channel.failed = true; return false;
-        }
-    }
-    if (bytes != sizeof(Packet)) { channel.failed = true; return false; }
-    value = channel.incoming;
-    if (!validPacket(value)) { channel.failed = true; return false; }
-    return true;
-}
-bool createPrivatePipe() {
-    HANDLE token = nullptr;
-    alignas(TOKEN_USER) BYTE info[256]{};
-    DWORD needed = 0;
-    wchar_t* sid = nullptr;
-    PSECURITY_DESCRIPTOR descriptor = nullptr;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return false;
-    const bool gotUser = GetTokenInformation(token, TokenUser, info, sizeof(info), &needed) != FALSE;
-    CloseHandle(token);
-    if (!gotUser || !ConvertSidToStringSidW(reinterpret_cast<TOKEN_USER*>(info)->User.Sid, &sid)) return false;
-    wchar_t sddl[256];
-    std::swprintf(sddl, ARRAY_COUNT(sddl), L"D:P(A;;GA;;;%ls)(A;;GA;;;SY)", sid);
-    LocalFree(sid);
-    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1, &descriptor, nullptr)) return false;
-    SECURITY_ATTRIBUTES attributes{sizeof(attributes), descriptor, FALSE};
-    host.channel.pipe = CreateNamedPipeW(host.pipeName, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-        PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1,
-        sizeof(Packet) * 2, sizeof(Packet) * 2, 0, &attributes);
-    LocalFree(descriptor);
-    if (host.channel.pipe == INVALID_HANDLE_VALUE || !makeEvents(host.channel)) return false;
-    if (ConnectNamedPipe(host.channel.pipe, &host.channel.connect)) host.channel.connected = true;
-    else if (GetLastError() == ERROR_IO_PENDING) host.channel.connecting = true;
-    else if (GetLastError() == ERROR_PIPE_CONNECTED) host.channel.connected = true;
-    else return false;
-    return true;
-}
-bool newToken() {
-    BYTE random[16];
-    if (BCryptGenRandom(nullptr, random, sizeof(random), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0) return false;
-    constexpr char hex[] = "0123456789abcdef";
-    for (unsigned i = 0; i < sizeof(random); ++i) {
-        host.token[i * 2] = hex[random[i] >> 4]; host.token[i * 2 + 1] = hex[random[i] & 15];
-    }
-    host.token[32] = 0;
-    return true;
-}
+bool pumpConnect() { return khz::hosting::PumpConnect(host.channel, host.childPid); }
+void pumpWrite() { khz::hosting::PumpWrite(host.channel); }
+bool receive(Packet& value) { if (!khz::hosting::Receive(host.channel, value)) return false; if (!validPacket(value)) { host.channel.failed = true; return false; } return true; }
+bool createPrivatePipe() { return khz::hosting::OpenServer(host.channel, host.pipeName); }
+bool newToken() { return khz::hosting::NewToken(host.token); }
 bool captureRules(Packet& value) {
     auto capture = [&](const char* name) {
         if (!Dvar_FindVar(name)) return true;
@@ -396,7 +235,7 @@ bool captureRules(Packet& value) {
 }
 bool validConfiguration(const Packet& value) {
     if (!identifier(value.map, sizeof(value.map), true) || !identifier(value.gametype, sizeof(value.gametype)) ||
-        value.port < 1024 || value.port > 65535 || value.dedicated > 2 || value.bots > 15 || value.difficulty > 3) return false;
+        value.port < 1024 || value.port > 65535 || value.dedicated > 2 || value.bots > 15 || value.difficulty > 3 || value.maxClients < 1 || value.maxClients > 16 || value.manager > 1) return false;
     for (unsigned i = 0; i < value.ruleCount; ++i) {
         const auto& rule = value.rules[i];
         if (!terminated(rule.name) || !terminated(rule.value) || !allowedRule(rule.name, value.gametype)) return false;
@@ -428,21 +267,32 @@ void handleServer(const Packet& value) {
         host.configuration = value;
         for (unsigned i = 0; i < value.ruleCount; ++i)
             Dvar_SetFromStringByNameFromSource(value.rules[i].name, value.rules[i].value, DVAR_SOURCE_INTERNAL);
-        Dvar_SetIntByName("sv_maxclients", 16); Dvar_SetIntByName("ui_maxclients", 16);
+        Dvar_SetIntByName("sv_maxclients", int(value.maxClients)); Dvar_SetIntByName("ui_maxclients", int(value.maxClients));
         Dvar_SetIntByName("sv_fps", 1000); Dvar_SetIntByName("sv_maxRate", 2000000);
         Dvar_SetIntByName("net_lanauthorize", 0); Dvar_SetIntByName("sv_punkbuster", 0);
         Dvar_SetIntByName("khz_bot_count", static_cast<int>(value.bots));
         Dvar_SetIntByName("khz_bot_difficulty", static_cast<int>(value.difficulty));
         Dvar_SetBoolByName("khz_bots", true);
-        // Isolated localhost benchmarks expose the same paced diagnostics as
-        // launch-server.ps1. Interactive hosting keeps its normal RCON setting.
-        if (Dvar_GetBool("khz_benchmark") && !I_stricmp(Dvar_GetString("net_ip"), "127.0.0.1")) {
-            Dvar_SetStringByName("rcon_password", "local-khz-benchmark");
+        // Developer fixtures explicitly supply their credential in the child's
+        // environment. No benchmark password is compiled into distributed engines.
+        if (Dvar_GetBool("khz_benchmark") && Dvar_GetBool("khz_test_controls") &&
+            !I_stricmp(Dvar_GetString("net_ip"), "127.0.0.1")) {
+            char password[128]{};
+            const auto length = GetEnvironmentVariableA("KHZ_BENCHMARK_RCON_PASSWORD", password, sizeof(password));
+            if (length && length < sizeof(password)) Dvar_SetStringByName("rcon_password", password);
             Dvar_SetBoolByName("sv_pure", true);
         }
         host.configured = true;
         host.pendingRequest = value.sequence;
-        requestMap(value.map, value.gametype, false);
+        if (value.manager) {
+            char map[64]{}, mode[64]{};
+            if (!KHZ_AdminTakeNextRotation(map, sizeof(map), mode, sizeof(mode)) || !mapAvailable(map)) {
+                fail("The configured map/mode rotation is invalid or unavailable."); return;
+            }
+            I_strncpyz(host.configuration.map, map, sizeof(host.configuration.map));
+            I_strncpyz(host.configuration.gametype, mode, sizeof(host.configuration.gametype));
+            requestMap(map, mode, false);
+        } else requestMap(value.map, value.gametype, false);
         break;
     case HostMessage::Map:
         if (host.checkpointPaused) { fail("Discard the benchmark checkpoint before changing maps."); return; }
@@ -461,11 +311,82 @@ void handleServer(const Packet& value) {
         host.checkpointPaused = false;
         host.phase = Phase::Stopping;
         host.quitQueued = true; host.deadline = GetTickCount64() + 100; break;
+    case HostMessage::Status: {
+        auto reply = packet(HostMessage::StatusResult); reply.request = value.sequence;
+        reply.tick = KHZ_ServerTickNumber(); reply.session = KHZ_CurrentServerSession();
+        reply.fixture = GetTickCount64(); // Status clock belongs to the server, independent of GUI polling jitter.
+        reply.port = static_cast<unsigned>(Dvar_GetInt("net_port"));
+        reply.maxClients = sv_maxclients ? sv_maxclients->current.integer : 0;
+        for (const auto* name : {"sv_fps", "net_ip", "scr_hardcore", "scr_player_maxhealth", "scr_dm_scorelimit", "scr_dm_timelimit", "scr_war_scorelimit", "scr_war_timelimit", "sv_mapRotationCurrent"}) {
+            auto& rule = reply.rules[reply.ruleCount++];
+            I_strncpyz(rule.name, name, sizeof(rule.name));
+            I_strncpyz(rule.value, Dvar_GetVariantString(name), sizeof(rule.value));
+        }
+        I_strncpyz(reply.map, Dvar_GetString("mapname"), sizeof(reply.map));
+        I_strncpyz(reply.gametype, Dvar_GetString("g_gametype"), sizeof(reply.gametype));
+        reply.bots = Dvar_GetInt("khz_bot_count"); reply.difficulty = Dvar_GetInt("khz_bot_difficulty");
+        if (svs.clients && sv_maxclients) for (int i = 0; i < (std::min)(16, sv_maxclients->current.integer); ++i) {
+            const auto& client = svs.clients[i]; if (client.header.state < CS_CONNECTED) continue;
+            auto& player = reply.players[reply.playerCount++]; player.slot = i;
+            player.generation = KHZ_AdminClientGeneration(&client); player.bot = KHZ_IsNativeBot(&client);
+            player.power = KHZ_AdminClientPower(&client); player.ping = client.ping;
+            I_strncpyz(player.name, client.name, sizeof(player.name));
+            if (const auto* identity = KHZ_AdminClientIdentity(&client))
+                khz::identity::EncodeHex(identity->data(), identity->size(), player.identity, sizeof(player.identity));
+        }
+        enqueue(reply, false); break;
+    }
+    case HostMessage::Bots:
+        if (value.bots > 15 || value.difficulty > 3 || value.bots >= host.configuration.maxClients) break;
+        Dvar_SetIntByName("khz_bot_count", int(value.bots));
+        Dvar_SetIntByName("khz_bot_difficulty", int(value.difficulty));
+        if (svs.clients) {
+            int bots = 0;
+            for (unsigned i = 0; i < host.configuration.maxClients; ++i)
+                if (svs.clients[i].header.state >= CS_CONNECTED && KHZ_IsNativeBot(&svs.clients[i])) ++bots;
+            if (bots > int(value.bots)) {
+                Dvar_SetIntByName("bots_manage_add", 0);
+                KHZ_RemoveBotClients(bots - int(value.bots));
+            }
+        }
+        break;
+    case HostMessage::PlayerAction: {
+        auto reply = packet(HostMessage::CommandResult); reply.request = value.sequence;
+        if (!svs.clients || value.targetSlot < 0 || value.targetSlot >= int(host.configuration.maxClients) ||
+            svs.clients[value.targetSlot].header.state < CS_CONNECTED || !value.admission ||
+            value.session != KHZ_CurrentServerSession() || KHZ_AdminClientGeneration(&svs.clients[value.targetSlot]) != value.admission) {
+            I_strncpyz(reply.output, "Player left or slot was reused; refresh the player list.\n", sizeof(reply.output));
+            enqueue(reply, false); break;
+        }
+        char reason[128]; I_strncpyz(reason, value.command, sizeof(reason));
+        if (KHZ_IsNativeBot(&svs.clients[value.targetSlot]) && value.action != khz::hosting::PlayerAction::Kick) {
+            I_strncpyz(reply.output, "Bots cannot receive identity bans or administrator privileges.\n", sizeof(reply.output));
+            enqueue(reply, false); break;
+        }
+        for (auto* p = reason; *p; ++p) if (*p == '"' || *p == '\\' || *p == ';' || unsigned(char(*p)) < 32) *p = ' ';
+        char command[256]{}; const auto slot = value.targetSlot;
+        switch (value.action) {
+        case khz::hosting::PlayerAction::Kick: std::snprintf(command, sizeof(command), "onlykick %d %s", slot, reason); break;
+        case khz::hosting::PlayerAction::TemporaryBan:
+            if (value.minutes < 1 || value.minutes > 525600) break;
+            std::snprintf(command, sizeof(command), "tempban %d %um %s", slot, value.minutes, reason); break;
+        case khz::hosting::PlayerAction::PermanentBan: std::snprintf(command, sizeof(command), "permban %d %s", slot, reason); break;
+        case khz::hosting::PlayerAction::AddAdmin:
+            if (value.power > 100) break;
+            std::snprintf(command, sizeof(command), "AdminAddAdmin %d %u", slot, value.power); break;
+        default: command[0] = 0; break;
+        }
+        if (*command) { auto action = value; action.message = HostMessage::Command;
+            I_strncpyz(action.command, command, sizeof(action.command)); handleServer(action); }
+        break;
+    }
     case HostMessage::Command: {
         char name[64];
         if (host.checkpointPaused || !host.configured || host.phase != Phase::Ready ||
             !khz::admin::ValidateCommand(value.command, name, sizeof(name)) || !KHZ_AdminIsOwnedConsoleCommand(name)) {
-            fail("Invalid owned-server console command."); return;
+            auto rejected = packet(HostMessage::CommandResult); rejected.request = value.sequence;
+            I_strncpyz(rejected.output, "Command is unavailable or unsupported. Use profile settings for configuration changes.\n", sizeof(rejected.output));
+            enqueue(rejected, false); return;
         }
         iassert(!com_inServerFrame);
         char redirect[1024]{};
@@ -587,6 +508,7 @@ void handleFrontend(const Packet& value) {
             fail("Unmatched owned-server console response."); return;
         }
         Com_Printf(CON_CHANNEL_DONT_FILTER, "%s", value.output); break;
+    case HostMessage::StatusResult: break;
     case HostMessage::CheckpointFence:
         if (!host.authenticated || !host.checkpointRequest || value.request != host.checkpointRequest ||
             value.fixture != host.checkpointFixture || value.session != host.checkpointSession ||
@@ -718,25 +640,10 @@ bool KHZ_StartLocalHost(int localClientNum, const char* map, const char* gametyp
         Dvar_GetBool("khz_benchmark") && Dvar_GetBool("khz_profile_scripts") ? 1u : 0u,
         Dvar_GetBool("khz_benchmark") && Dvar_GetBool("khz_profile_scripts") ? 1u : 0u);
     if (commandLength <= 0 || commandLength >= 1000) { fail("The local host startup path is too long."); return false; }
-    host.job = CreateJobObjectW(nullptr, nullptr);
-    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-    if (!host.job || !SetInformationJobObject(host.job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) {
-        fail("Could not create the owned local server job."); return false;
+    std::string spawnError;
+    if (!khz::hosting::SpawnOwned(executable, command, runtime, host.job, host.process, host.childPid, spawnError)) {
+        fail(spawnError.c_str()); return false;
     }
-    STARTUPINFOW startup{}; startup.cb = sizeof(startup); startup.dwFlags = STARTF_USESHOWWINDOW; startup.wShowWindow = SW_HIDE;
-    PROCESS_INFORMATION process{};
-    if (!CreateProcessW(executable, command, nullptr, nullptr, FALSE, CREATE_SUSPENDED | CREATE_NO_WINDOW,
-        nullptr, runtime, &startup, &process)) { fail("Could not start the project dedicated server."); return false; }
-    host.process = process.hProcess; host.childPid = process.dwProcessId;
-    if (!AssignProcessToJobObject(host.job, host.process)) {
-        TerminateProcess(host.process, 1); CloseHandle(process.hThread);
-        fail("Could not bind the dedicated server to this client."); return false;
-    }
-    if (ResumeThread(process.hThread) == static_cast<DWORD>(-1)) {
-        CloseHandle(process.hThread); fail("Could not resume the dedicated server."); return false;
-    }
-    CloseHandle(process.hThread);
     host.deadline = GetTickCount64() + ReadyTimeout;
     host.nextPoll = 0;
     Com_Printf(CON_CHANNEL_UI, "Starting local %s on %s with up to %u bots.\n", gametype, map, configuration.bots);
@@ -792,7 +699,7 @@ void KHZ_HostPoll() {
     if (host.channel.failed && host.phase != Phase::Stopping && host.phase != Phase::Failed) fail("The private local server channel closed.");
     if (host.managedServer) KHZ_HostServerTick();
     pumpWrite();
-    if ((host.phase == Phase::Starting || host.phase == Phase::Loading) && now >= host.deadline) fail("The local match did not become ready within 30 seconds.");
+    if ((host.phase == Phase::Starting || host.phase == Phase::Loading) && now >= host.deadline) fail("The server did not become ready within 120 seconds.");
     if (host.phase == Phase::Stopping && !host.managedServer && now >= host.deadline) {
         closeOwnedProcess(); closeChannel(); host.phase = Phase::Idle;
     }

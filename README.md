@@ -22,6 +22,12 @@ owned retail data; they are personal backups, not redistributable game packages.
 See [Windows build instructions](docs/BUILD.md), [release 0.1 state](docs/RELEASE-0.1.md),
 [backup and restoration](docs/BACKUP.md), and [Vulkan development status](docs/VULKAN.md).
 
+The `vulkan-testing` branch also includes the native x64 **Windows installer and
+Server Manager**. Run `./scripts/package-installer.ps1` to build the local installer,
+then select the installed Steam CoD4 folder and a separate standalone output folder.
+It produces the blue-icon game and hosting GUI and embeds no retail assets.
+See [installation, repair, and hosting instructions](docs/INSTALLER.md).
+
 ## Build and run
 
 Use PowerShell from the project directory with Git, Python 3, CMake 3.25 or newer,

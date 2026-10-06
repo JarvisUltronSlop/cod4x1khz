@@ -14,6 +14,7 @@ else { $buildOptions += '-DCOD4X1KHZ_INSTRUMENT=OFF' }
 if (!$CoreOnly -and $Architecture -eq 'x64') {
     $nativeVideoPackage = & (Join-Path $PSScriptRoot 'scripts/prepare-native-video.ps1')
     $buildOptions += "-DKHZ_FFMPEG_ROOT=$nativeVideoPackage"
+    $buildOptions += '-DCOD4X1KHZ_CLIENT_IPO=ON'
 }
 & cmake @buildOptions
 if ($LASTEXITCODE) { throw 'Configure failed' }
@@ -43,6 +44,12 @@ $targets += @('khz_player_use_native_tests', 'khz_filesystem_native_tests', 'khz
 $targets += 'khz_collision_lifetime_native_tests'
 $targets += @('khz_ui_values_native_tests','khz_render_commands_native_tests')
 $targets += @('khz_mark_context_native_tests','khz_pcm_prefetch_tests')
+$targets += 'khz_server_profile_tests'
+if ($Architecture -eq 'x64' -and (Test-Path (Join-Path $buildRoot 'CMakeCache.txt')) -and
+    (Select-String -LiteralPath (Join-Path $buildRoot 'CMakeCache.txt') -Pattern '^KHZ_INSTALLER_PAYLOAD:FILEPATH=.+')) {
+    $targets += 'khz_install_package_tests'
+}
+if (!$CoreOnly -and $Architecture -eq 'x64') { $targets += @('cod4x1khz_server_manager','cod4x1khz_network') }
 if (!$CoreOnly) { $targets += @('khz_runtime','khz_vulkan_probe','khz_vulkan_shader_inventory','khz_vulkan_shader_link','khz_vulkan_shader_tests','khz_vulkan_backend') }
 & cmake --build $buildRoot --config $Configuration --target @targets --parallel 8
 if ($LASTEXITCODE) { throw 'Build failed' }

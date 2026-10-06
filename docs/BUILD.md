@@ -25,6 +25,9 @@ For the native game on this branch, use:
 ```
 
 The x64 build prepares its verified native FFmpeg dependency automatically.
+It also builds the native Server Manager and networking helper. To create the
+standalone installer with its embedded project-only payload, run
+`./scripts/package-installer.ps1`; see [INSTALLER.md](INSTALLER.md).
 `launch-server.ps1` and `launch-bench.ps1` also accept `-Architecture x64`.
 The regular client renders the game; the headless benchmark executable is for
 simulation/network probes. Use `/com_maxfps 0` for uncapped rendering and

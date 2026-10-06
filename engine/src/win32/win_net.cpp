@@ -600,16 +600,31 @@ uint32_t __cdecl NET_IPSocket(const char *net_interface, int port)
 		}
 		return 0;
 	}
+#ifdef COD4X1KHZ
+    // A wildcard client socket must not share a port with a separate owned
+    // server bound to one adapter. Windows otherwise permits that overlap and
+    // routes loopback replies to the more specific server socket.
+    // The legacy Winsock 1 header lacks the Winsock 2 spelling of this option.
+    else if (setsockopt(newsocket, SOL_SOCKET, static_cast<int>(~SO_REUSEADDR),
+        reinterpret_cast<const char*>(&_true), sizeof(_true)) == SOCKET_ERROR)
+    {
+        Com_PrintWarning(CON_CHANNEL_SYSTEM, "WARNING: UDP_OpenSocket: exclusive ownership: %s\n", NET_ErrorString());
+        closesocket(newsocket);
+        return 0;
+    }
+#endif
 	else if (ioctlsocket(newsocket, 0x8004667E, (unsigned long*)&_true) == -1)
 	{
 		v4 = NET_ErrorString();
 		Com_PrintWarning(CON_CHANNEL_SYSTEM, "WARNING: UDP_OpenSocket: ioctl FIONBIO: %s\n", v4);
+		closesocket(newsocket);
 		return 0;
 	}
 	else if (setsockopt(newsocket, 0xFFFF, 32, (const char*)&i, 4) == -1)
 	{
 		v5 = NET_ErrorString();
 		Com_PrintWarning(CON_CHANNEL_SYSTEM, "WARNING: UDP_OpenSocket: setsockopt SO_BROADCAST: %s\n", v5);
+		closesocket(newsocket);
 		return 0;
 	}
 	else

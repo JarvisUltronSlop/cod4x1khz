@@ -1,5 +1,7 @@
 #include <universal/q_shared.h>
 #include "khz_admin_server.h"
+#include <sstream>
+#include <vector>
 #include "khz_admin.h"
 #include "khz_bots.h"
 #include "khz_paths.h"
@@ -95,7 +97,7 @@ Registration registrations[] = {
     {"consay",100,chatCommand}, {"screensay",70,chatCommand},
     {"contell",100,chatCommand}, {"screentell",70,chatCommand},
     {"ministatus",1,statusCommand}, {"khz_admin_status",80,statusCommand},
-    {"khz_admin_reload",100,statusCommand}, {"getss",45,screenshotCommand}
+    {"khz_admin_reload",100,statusCommand}, {"khz_manager_bans",100,statusCommand}, {"getss",45,screenshotCommand}
 };
 void owner() { iassert(Sys_IsMainThread()); }
 std::int64_t unixTime() { return static_cast<std::int64_t>(std::time(nullptr)); }
@@ -348,6 +350,13 @@ void screenshotCommand() {
 }
 void statusCommand() {
     owner(); if (!allowed(Cmd_Argv(0))) return;
+    if (!I_stricmp(Cmd_Argv(0), "khz_manager_bans")) {
+        for (const auto& record : store.Data().bans) if (record.active) {
+            char full[65]; id::EncodeHex(record.identity.data(), record.identity.size(), full, sizeof(full));
+            Com_Printf(CON_CHANNEL_SERVER, "%s identity=%s reason=%s expires=%lld\n", record.name, full, record.reason, record.expires);
+        }
+        return;
+    }
     if (!I_stricmp(Cmd_Argv(0), "khz_admin_reload")) {
         storageReady = store.Load(storagePath.c_str()); Com_Printf(CON_CHANNEL_SERVER, "Policy reload: %s\n", storageReady ? "ok" : "failed; administration and admission are closed"); return;
     }
@@ -409,6 +418,7 @@ void KHZ_AdminInit() {
     appealHours = Dvar_RegisterInt("sv_banappealminhours", 4, 0, 336, DVAR_ARCHIVE, "Minimum remaining ban hours before showing appeal URL");
     legacyAppealUrl = Dvar_RegisterString("banlist_appealurl", "", DVAR_ARCHIVE, "Earlier project alias of sv_banappealurl");
     legacyAppealHours = Dvar_RegisterInt("banlist_appealminhours", 4, 0, 336, DVAR_ARCHIVE, "Earlier project alias of sv_banappealminhours");
+    Dvar_RegisterString("khz_rotationGametypePool", "", DVAR_ARCHIVE, "Random game modes chosen for each map when a rotation cycle resets");
     randomRotation = Dvar_RegisterBool("sv_randomMapRotation", false, DVAR_ARCHIVE, "Shuffle complete map/gametype pairs when rotation resets");
     initWebadmin();
     try {
@@ -537,6 +547,20 @@ bool KHZ_AdminTakeNextRotation(char* map, std::size_t mapCapacity, char* gametyp
     policy::Rotation rotation; const bool reset = !sv_mapRotationCurrent->current.string[0];
     const char* text = reset ? sv_mapRotation->current.string : sv_mapRotationCurrent->current.string;
     if (!policy::ParseRotation(text, sv_gametype->current.string, rotation)) return false;
+    if (reset && Dvar_GetString("khz_rotationGametypePool")[0]) {
+        std::istringstream input(Dvar_GetString("khz_rotationGametypePool"));
+        std::vector<std::string> modes; std::string mode;
+        while (input >> mode) {
+            if (mode != "dm" && mode != "war" && mode != "sd" && mode != "sab" && mode != "dom" && mode != "koth") return false;
+            if (modes.size() >= 6) return false;
+            modes.push_back(mode);
+        }
+        if (modes.empty()) return false;
+        for (unsigned i = 0; i < rotation.count; ++i) {
+            unsigned random = 0; if (!id::RandomBytes(&random, sizeof(random))) return false;
+            I_strncpyz(rotation.maps[i].gametype, modes[random % modes.size()].c_str(), sizeof(rotation.maps[i].gametype));
+        }
+    }
     if (reset && randomRotation && randomRotation->current.enabled && !policy::ShuffleRotation(rotation)) return false;
     char remaining[8192]; if (!policy::SerializeRotation(rotation, 1, remaining, sizeof(remaining))) return false;
     I_strncpyz(map, rotation.maps[0].map, int(mapCapacity)); I_strncpyz(gametype, rotation.maps[0].gametype, int(gametypeCapacity));

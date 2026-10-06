@@ -84,7 +84,8 @@ int modeIndex(const char* name) {
 }
 bool selected(const menuDef_t* menu) {
     return modeIndex(menu->window.name) >= 0 || equal(menu->window.name, "main") ||
-        equal(menu->window.name, "main_text") || equal(menu->window.name, "single_popmenu");
+        equal(menu->window.name, "main_text") || equal(menu->window.name, "single_popmenu") ||
+        equal(menu->window.name, "options_graphics") || equal(menu->window.name, "createserver");
 }
 void failure(const char* menu, const char* reason) {
     ++storage.failures;
@@ -93,12 +94,15 @@ void failure(const char* menu, const char* reason) {
 
 bool copyTypeData(itemDef_s& target, OwnedTypeData& data, const itemDef_s& source) {
     if (!source.typeData.data) return true;
+    // Match the fastfile loader's visual-type dispatch. Owner-draw widgets leave
+    // this unused union as a serialized word, even when dataType says edit field.
     switch (source.type) {
     case 6: data.list = *source.typeData.listBox; target.typeData.listBox = &data.list; return true;
     case 12: data.multi = *source.typeData.multi; target.typeData.multi = &data.multi; return true;
     case 4: case 9: case 16: case 18: case 11: case 14: case 10: case 0: case 17:
         data.edit = *source.typeData.editField; target.typeData.editField = &data.edit; return true;
     case 13: return true; // Immutable enum dvar name; this union member is a string.
+    case 8: return true; // Owner-draw does not load or use a mutable typeData payload.
     default: return false;
     }
 }
@@ -228,6 +232,69 @@ bool addBotRows(OwnedMenu& owned, int mode) {
     Menu_UpdatePosition(storage.frontend->localClientNum, &owned.menu);
     return true;
 }
+void addRendererRows(OwnedMenu& owned) {
+    itemDef_s* stockControl = nullptr;
+    itemDef_s* stockLabel = nullptr;
+    for (int i = 0; i < owned.menu.itemCount; ++i) {
+        auto* item = owned.pointers[i];
+        if (item->type == 12 && equal(item->dvar, "ui_r_aasamples") && item->typeData.multi)
+            stockControl = item;
+    }
+    if (stockControl) for (int i = 0; i < owned.menu.itemCount; ++i) {
+        auto* item = owned.pointers[i];
+        if (item->type == 1 && (item->text || item->textExp.numEntries) && (!item->dvar || !item->dvar[0]) && item->window.rectClient.x == stockControl->window.rectClient.x &&
+            item->window.rectClient.y == stockControl->window.rectClient.y) stockLabel = item;
+    }
+    if (!stockControl || !stockLabel || owned.menu.itemCount + 4 > MaxItems + AddedItems) {
+        failure(owned.menu.window.name, "renderer control layout unavailable"); return;
+    }
+    // Stock graphics rows are 22 pixels apart. Twenty preserves the stock
+    // widget height and makes room for both controls above the bottom toolbar.
+    const float column = stockControl->window.rectClient.x;
+    for (int i = 0; i < owned.menu.itemCount; ++i) {
+        auto& rect = owned.items[i].window.rectClient;
+        if (rect.x >= column && rect.x <= column + 175 && rect.y >= 32 && rect.y <= 406 && rect.h == 20)
+            rect.y = 32 + (rect.y - 32) * (20.0f / 22.0f);
+    }
+    static const char* rendererLabels[]{"Automatic (DX9)", "Vulkan", "DX9"};
+    static const char* rendererValues[]{"auto", "vulkan", "d3d9"};
+    static const char* presetLabels[]{"Conservative", "Throughput"};
+    for (unsigned row = 0; row < 2; ++row) {
+        const int labelIndex = owned.menu.itemCount++, controlIndex = owned.menu.itemCount++;
+        auto& label = owned.items[labelIndex]; auto& control = owned.items[controlIndex];
+        newRowItem(label, *stockLabel, owned.menu, row ? "khz_preset_label" : "khz_renderer_label", 392 + row * 20.0f);
+        label.text = row ? "Rendering preset" : "Renderer";
+        label.typeData.data = nullptr; label.window.staticFlags |= 0x100000;
+        newRowItem(control, *stockControl, owned.menu, row ? "khz_render_preset" : "khz_renderer", 392 + row * 20.0f);
+        control.text = nullptr; control.dvar = row ? "khz_renderPreset" : "r_graphicsApi";
+        control.window.staticFlags &= ~0x100000;
+        control.action = row ? "\"uiScript\" \"khzApplyRenderPreset\" ; " : "\"exec\" \"vid_restart\" ; ";
+        control.onFocus = "\"play\" \"mouse_over\" ; ";
+        control.type = control.dataType = 12;
+        auto& choices = owned.data[controlIndex].multi; choices = {};
+        choices.count = row ? 2 : 3; choices.strDef = row ? 0 : 1;
+        for (int choice = 0; choice < choices.count; ++choice) {
+            choices.dvarList[choice] = row ? presetLabels[choice] : rendererLabels[choice];
+            if (row) choices.dvarValue[choice] = static_cast<float>(choice);
+            else choices.dvarStr[choice] = rendererValues[choice];
+        }
+        control.typeData.multi = &choices;
+        owned.pointers[labelIndex] = &label; owned.pointers[controlIndex] = &control;
+    }
+    Menu_UpdatePosition(storage.frontend->localClientNum, &owned.menu);
+}
+void showLocalhostHosting(OwnedMenu& owned) {
+    Dvar_SetIntByName("ui_dedicated", 0);
+    for (int i = 0; i < owned.menu.itemCount; ++i) {
+        auto& item = owned.items[i];
+        if (item.type == 12 && equal(item.dvar, "ui_dedicated")) {
+            auto& choices = owned.data[i].multi;
+            choices = {}; choices.count = 1;
+            choices.dvarList[0] = "Localhost";
+            item.action = item.onAccept = item.onFocus = nullptr;
+        } else if (contains(item.text, "MENU_DEDICATED")) item.text = "Hosting:";
+    }
+}
 }
 
 void KHZ_UIBegin(UiContext* frontend) {
@@ -237,7 +304,9 @@ void KHZ_UIBegin(UiContext* frontend) {
     storage.count = storage.modes = storage.disabledSP = storage.addedRows = storage.failures = 0;
     Dvar_RegisterBool("khz_singleplayer_available", false, DVAR_ROM, "Single-player is not part of the multiplayer client");
     Dvar_RegisterInt("ui_khz_botCount", 15, 0, 15, DVAR_ARCHIVE, "Desired bots, yielding slots to joining humans");
+    Dvar_SetIntByName("ui_dedicated", 0);
     Dvar_RegisterInt("ui_khz_botDifficulty", 1, 0, 3, DVAR_ARCHIVE, "Recruit, Regular, Hardened or Veteran");
+    Dvar_RegisterInt("khz_renderPreset", 0, 0, 1, DVAR_ARCHIVE, "Conservative or tested throughput rendering settings");
 }
 void KHZ_UIEnd(UiContext* frontend) {
     iassert(Sys_IsMainThread());
@@ -252,11 +321,20 @@ menuDef_t* KHZ_UIAdaptMenu(UiContext* context, menuDef_t* original) {
     disableSP(*owned);
     const int mode = modeIndex(original->window.name);
     if (mode >= 0) addBotRows(*owned, mode);
+    if (equal(original->window.name, "options_graphics")) addRendererRows(*owned);
+    if (equal(original->window.name, "createserver")) showLocalhostHosting(*owned);
     return &owned->menu;
 }
 bool KHZ_UIRunMenuScript(UiContext* context, const char* verb, const char**) {
     iassert(Sys_IsMainThread());
     if (context != storage.frontend || !verb) return false;
+    if (equal(verb, "khzApplyRenderPreset")) {
+        const bool throughput = Dvar_GetInt("khz_renderPreset") == 1;
+        Cbuf_AddText(context->localClientNum, throughput ?
+            "seta com_maxfps 0; seta r_vsync 0; seta r_vkFramesInFlight 3; seta r_vkLegacySwapFence 0; seta r_vkLegacySceneFence 0; seta r_vkOverlapUploads 1; seta r_vkAsyncSubmit 1; seta r_overlapFrontend 1; seta r_asyncSunQueries 1; seta snd_asyncStreams 1; seta winvoice_capturePollMs 5; seta r_altModelLightingUpdate 1; vid_restart\n" :
+            "seta com_maxfps 0; seta r_vsync 0; seta r_vkFramesInFlight 2; seta r_vkLegacySwapFence 1; seta r_vkLegacySceneFence 1; seta r_vkOverlapUploads 0; seta r_vkAsyncSubmit 0; seta r_overlapFrontend 0; seta r_asyncSunQueries 0; seta snd_asyncStreams 0; seta winvoice_capturePollMs 1; seta r_altModelLightingUpdate 0; vid_restart\n");
+        return true;
+    }
     if (equal(verb, "startSingleplayer")) {
         KHZ_UIRecordSingleplayerBlock();
         Com_Printf(CON_CHANNEL_UI, "Single-player is unavailable in cod4x1khz.\n"); return true;
@@ -272,7 +350,7 @@ bool KHZ_UIRunMenuScript(UiContext* context, const char* verb, const char**) {
         UI_SetActiveMenu(context->localClientNum, UIMENU_MAIN); return true;
     }
     KHZ_StartLocalHost(context->localClientNum, sharedUiInfo.mapList[mapIndex].mapLoadName,
-        sharedUiInfo.gameTypes[typeIndex].gameType, Dvar_GetInt("ui_dedicated"));
+        sharedUiInfo.gameTypes[typeIndex].gameType, 0);
     return true;
 }
 const char* KHZ_UIStatusJSON() {

@@ -3231,6 +3231,11 @@ char __cdecl R_PreCreateWindow()
             config.recordFrameTimings=Dvar_GetBool("khz_benchmark")&&Dvar_GetBool("khz_test_controls")&&Dvar_GetBool("r_vkProfile");
             dx.d3d9=gfx::legacy::createVulkanInterface(config);
             Com_Printf(CON_CHANNEL_GFX,"Native Vulkan selected (experimental)\n");
+            if (!dx.d3d9 && !Dvar_GetBool("khz_benchmark")) {
+                Com_PrintError(CON_CHANNEL_GFX, "Vulkan initialization failed: %s. Falling back to DX9.\n", gfx::legacy::lastError());
+                Dvar_SetInt(r_graphicsApi, 2);
+                dx.d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+            }
         } else
 #endif
             dx.d3d9 = Direct3DCreate9(0x20u);
@@ -4086,6 +4091,19 @@ HRESULT __cdecl R_CreateDeviceInternal(HWND__ *hwnd, uint32_t behavior, _D3DPRES
         Sleep(100);
         if (++attempt == 20)
         {
+#ifdef COD4X1KHZ_NATIVE_VULKAN
+            if (r_graphicsApi->current.integer == 1 && !Dvar_GetBool("khz_benchmark")) {
+                Com_PrintError(CON_CHANNEL_GFX, "Vulkan device initialization failed: %s. Falling back to DX9.\n", gfx::legacy::lastError());
+                if (dx.device) { dx.device->Release(); dx.device = nullptr; }
+                dx.d3d9->Release(); dx.d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
+                if (!dx.d3d9) return hr;
+                Dvar_SetInt(r_graphicsApi, 2);
+                dx.adapterIndex = R_ChooseAdapter();
+                R_StoreDirect3DCaps(dx.adapterIndex);
+                R_EnumDisplayModes(dx.adapterIndex);
+                return R_CreateDeviceInternal(hwnd, behavior, d3dpp);
+            }
+#endif
             if (!dx.adapterIndex)
                 return hr;
             dx.adapterIndex = 0;

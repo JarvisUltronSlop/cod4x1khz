@@ -259,7 +259,8 @@ class MatrixFixture(ManagedHostFixture):
             arguments += ["+exec", "client.cfg"]
         arguments += ["+set", "com_maxfps", "0", "+set", "r_vsync", "0", "+setqport", str(self.port),
                       "+set", "developer", "0", "+set", "khz_profile_scripts", "0"]
-        self.client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp")
+        self.client = subprocess.Popen(subprocess.list2cmdline(arguments), cwd=r"C:\Windows\Temp",
+            env=os.environ | {"KHZ_BENCHMARK_RCON_PASSWORD": "local-khz-benchmark"})
         launch = {"pid": self.client.pid, "arguments": arguments, "cwd": r"C:\Windows\Temp", "auto_connect": False,
                   "same_existing_profile": not preserve_home}
         self.report.setdefault("launches", []).append(launch)

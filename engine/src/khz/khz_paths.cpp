@@ -86,11 +86,16 @@ bool KHZ_BootstrapPaths(const char* commandLine) {
         const auto project = runtime.parent_path();
         benchmarkHome = _stricmp(executable.filename().string().c_str(), "cod4x1khz_bench.exe") == 0;
         unsigned port = 28962;
+        std::string serverProfile;
         const auto args = arguments(commandLine);
         for (size_t i = 0; i + 2 < args.size(); ++i) {
             if (_stricmp(args[i].c_str(), "+set")) continue;
             if (!_stricmp(args[i + 1].c_str(), "khz_benchmark"))
                 benchmarkHome = benchmarkHome || std::atoi(args[i + 2].c_str()) != 0;
+            if (!_stricmp(args[i + 1].c_str(), "khz_serverProfile")) {
+                serverProfile = args[i + 2];
+                if (serverProfile.size() != 32 || serverProfile.find_first_not_of("0123456789abcdef") != std::string::npos) return false;
+            }
             if (!_stricmp(args[i + 1].c_str(), "net_port")) {
                 const int candidate = std::atoi(args[i + 2].c_str());
                 if (candidate >= 1024 && candidate <= 65535) port = candidate;
@@ -98,7 +103,7 @@ bool KHZ_BootstrapPaths(const char* commandLine) {
         }
 #ifdef DEDICATED
         const auto home = benchmarkHome ? runtime / "benchmarks" / ("server-" + std::to_string(port))
-                                        : runtime / "servers" / ("server-" + std::to_string(port));
+                                        : runtime / "servers" / (serverProfile.empty() ? "server-" + std::to_string(port) : serverProfile);
 #else
         const auto home = benchmarkHome ? runtime / "benchmarks" / ("client-" + std::to_string(port))
                                         : runtime / "interactive";
@@ -110,8 +115,15 @@ bool KHZ_BootstrapPaths(const char* commandLine) {
         const char* profileName = benchmarkHome ? "khz" : "cod4x1khz";
         std::filesystem::create_directories(profiles / profileName);
         // Only initial defaults differ from stock. Existing files are never overwritten.
-        if (!createFileOnce(profiles / profileName / "config_mp.cfg",
-            "seta com_maxfps \"0\"\r\nseta r_vsync \"0\"\r\n")) return false;
+        const bool installed = std::filesystem::is_regular_file(project / "cod4x1khz-install.txt");
+        const char* defaults = installed && !benchmarkHome ?
+            "seta com_maxfps \"0\"\r\nseta r_vsync \"0\"\r\nseta r_graphicsApi \"vulkan\"\r\n"
+            "seta r_vkFramesInFlight \"3\"\r\nseta r_vkLegacySwapFence \"0\"\r\nseta r_vkLegacySceneFence \"0\"\r\n"
+            "seta r_vkOverlapUploads \"1\"\r\nseta r_vkAsyncSubmit \"1\"\r\nseta r_overlapFrontend \"1\"\r\n"
+            "seta r_asyncSunQueries \"1\"\r\nseta snd_asyncStreams \"1\"\r\nseta winvoice_capturePollMs \"5\"\r\n"
+            "seta r_altModelLightingUpdate \"1\"\r\nseta khz_renderPreset \"1\"\r\n" :
+            "seta com_maxfps \"0\"\r\nseta r_vsync \"0\"\r\n";
+        if (!createFileOnce(profiles / profileName / "config_mp.cfg", defaults)) return false;
         const std::string active = std::string(profileName) + "\r\n";
         if (!createFileOnce(profiles / "active.txt", active.c_str())) return false;
 #else

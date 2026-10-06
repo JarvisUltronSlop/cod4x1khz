@@ -58,6 +58,8 @@ bool consumeTicket(const std::filesystem::path& root) {
 std::filesystem::path CurrentExecutable(){std::wstring value(32768,L'\0');const DWORD length=GetModuleFileNameW(nullptr,value.data(),DWORD(value.size()));if(!length||length>=value.size())return {};value.resize(length);return value;}
 bool IsInstalledExecutable(const std::filesystem::path& root,const std::filesystem::path& image){const auto actual=normalized(image);if(actual.empty())return false;for(const auto* path:InstalledPaths)if(actual==normalized(root/path))return true;
 #ifdef _WIN64
+    // The standalone installer places the native game at the output root.
+    if(actual==normalized(root/"cod4x1khz.exe"))return true;
     for(const auto* path:{"bin/x64/Release/cod4x1khz.exe","bin/x64/Release/cod4x1khz_server.exe"})if(actual==normalized(root/path))return true;
 #endif
     return false;}
@@ -84,6 +86,7 @@ bool WaitForStopped(const std::filesystem::path& root,DWORD ownerPid,unsigned ti
     if(owner)CloseHandle(owner);return fail(reason,"Timed out waiting for all project games to exit; no replacement attempted");
 }
 bool SpawnHelper(const std::filesystem::path& root,const char* action,std::uint64_t version,bool relaunch,std::string* reason,const content::Digest* expectedManifest) {
+    if(std::filesystem::is_regular_file(root/"cod4x1khz-install.txt"))return fail(reason,"Update this standalone installation by running cod4x1khz_setup.exe again. Server and player profiles are preserved.");
     if(!action||(std::string_view(action)!="recover"&&std::string_view(action)!="apply"&&std::string_view(action)!="rollback"))return fail(reason,"Invalid update action");
     if(std::string_view(action)=="apply"&&(!version||!expectedManifest))return fail(reason,"Apply requires the checked signed manifest digest and version");
     const auto image=CurrentExecutable();std::filesystem::path helper;

@@ -36,6 +36,7 @@ $targets += 'khz_pool_allocator_native_tests'
 $targets += 'khz_asset_wire_tests'
 $targets += 'khz_asset_stream_native_tests'
 $targets += @('khz_model_skin_native_tests','khz_movement_friction_native_tests','khz_fx_mark_mesh_native_tests')
+$targets += 'khz_entity_pose_native_tests'
 $targets += 'khz_hunk_memory_native_tests'
 $targets += 'khz_plugin_sdk_native_tests'
 $targets += 'khz_script_value_native_tests'

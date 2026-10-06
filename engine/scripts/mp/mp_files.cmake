@@ -20,6 +20,7 @@ set(CGAME_MP
     "${SRC_DIR}/cgame_mp/cg_draw_mp.cpp"
     "${SRC_DIR}/cgame_mp/cg_draw_net_mp.cpp"
     "${SRC_DIR}/cgame_mp/cg_ents_mp.cpp"
+    "${SRC_DIR}/cgame_mp/cg_entity_pose.cpp"
     "${SRC_DIR}/cgame_mp/cg_local_mp.h"
     "${SRC_DIR}/cgame_mp/cg_main_mp.cpp"
     "${SRC_DIR}/cgame_mp/cg_newDraw_mp.cpp"

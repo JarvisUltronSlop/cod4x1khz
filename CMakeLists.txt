@@ -175,6 +175,13 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
   target_compile_definitions(khz_movement_friction_native_tests PRIVATE KISAK_MP=1 COD4X1KHZ=1 RELEASE_ASSERTS=1)
   add_test(NAME khz_movement_friction_native COMMAND khz_movement_friction_native_tests)
+  add_executable(khz_entity_pose_native_tests tests/entity_pose_native_tests.cpp
+    engine/src/cgame_mp/cg_entity_pose.cpp)
+  target_include_directories(khz_entity_pose_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_entity_pose_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_entity_pose_native COMMAND khz_entity_pose_native_tests)
   add_executable(khz_mark_context_native_tests tests/mark_context_native_tests.cpp
     engine/src/gfx_d3d/r_mark_model_callback.cpp)
   target_include_directories(khz_mark_context_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"

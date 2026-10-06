@@ -354,6 +354,10 @@ bool KHZ_UIOpenPauseMenu(UiContext* frontend) {
         owned.menu.items = owned.pointers;
         owned.menu.itemCount = 10;
         owned.menu.cursorItem[0] = -1;
+        // Keep text and focus opaque without relying on the template menu's
+        // opening script to initialize the owned rows.
+        const float focusColor[] = {1.0f, 0.8f, 0.45f, 1.0f};
+        std::copy_n(focusColor, 4, owned.menu.focusColor);
         for (int i = 0; i < 4; ++i) {
             owned.items[i] = *stock->items[i];
             owned.items[i].parent = &owned.menu;
@@ -369,7 +373,17 @@ bool KHZ_UIOpenPauseMenu(UiContext* frontend) {
             auto& item = owned.items[4 + row];
             newRowItem(item, *button, owned.menu, names[row], 148.0f + row * 38.0f);
             item.window.rectClient.x = 48.0f; item.window.rectClient.w = 240.0f; item.window.rectClient.h = 30.0f;
+            // Back is anchored to the bottom edge. Rows use the same screen
+            // placement as the menu title, so positive y stays on screen.
+            item.window.rectClient.horzAlign = owned.items[3].window.rectClient.horzAlign;
+            item.window.rectClient.vertAlign = owned.items[3].window.rectClient.vertAlign;
             item.window.staticFlags &= ~0x100000;
+            const float textColor[] = {0.9f, 0.9f, 0.9f, 1.0f};
+            std::copy_n(textColor, 4, item.window.foreColor);
+            // The Back template aligns text near the bottom of the screen.
+            // Position each label inside its own row instead of inheriting it.
+            item.textAlignMode = 0;
+            item.textalignx = 8.0f; item.textaligny = 22.0f;
             item.text = texts[row]; item.action = actions[row]; item.onAccept = nullptr;
             owned.pointers[4 + row] = &item;
         }
@@ -519,7 +533,7 @@ const char* KHZ_UIProbe(const char* action) {
             }
             return "{\"result\":\"stock action executed\"}";
         }
-        int used = std::snprintf(result, sizeof(result), "{\"result\":\"inspected\",\"menu\":\"%s\",\"item_count\":%d,\"offset\":%d,\"items\":[", name, menu->itemCount, index);
+        int used = std::snprintf(result, sizeof(result), "{\"result\":\"inspected\",\"menu\":\"%s\",\"visible\":%s,\"item_count\":%d,\"offset\":%d,\"items\":[", name, Menu_IsVisible(storage.frontend, menu) ? "true" : "false", menu->itemCount, index);
         bool first = true;
         for (int i = index; i < menu->itemCount && i < index + 16 && used + 2000 < sizeof(result); ++i) {
             auto* item = menu->items[i]; if (!item) continue;
@@ -528,11 +542,22 @@ const char* KHZ_UIProbe(const char* action) {
             if (!displayedText && item->textExp.numEntries)
                 displayedText = GetExpressionResultString(storage.frontend->localClientNum, &item->textExp);
             diagnosticString(item->window.name, itemName, sizeof(itemName)); diagnosticString(displayedText, text, sizeof(text)); diagnosticString(item->dvar, dvar, sizeof(dvar));
-            used += std::snprintf(result + used, sizeof(result) - used,
-                "%s{\"index\":%d,\"name\":\"%s\",\"text\":\"%s\",\"type\":%d,\"dvar\":\"%s\",\"visible\":%s,\"enabled\":%s,\"action\":%s,\"rect\":[%.3f,%.3f,%.3f,%.3f]}",
+            auto physicalText = item->textRect[0];
+            ScrPlace_ApplyRect(&scrPlaceView[0], &physicalText.x, &physicalText.y, &physicalText.w, &physicalText.h,
+                item->window.rect.horzAlign, item->window.rect.vertAlign);
+            const int written = std::snprintf(result + used, sizeof(result) - used,
+                "%s{\"index\":%d,\"name\":\"%s\",\"text\":\"%s\",\"type\":%d,\"dvar\":\"%s\",\"visible\":%s,\"enabled\":%s,\"action\":%s,\"style\":%d,\"item_flags\":%d,\"owner_draw_flags\":%d,\"font\":%d,\"text_scale\":%.3f,\"text_alpha\":%.3f,\"focus_alpha\":%.3f,\"alignment\":[%d,%d],\"rect\":[%.3f,%.3f,%.3f,%.3f],\"screen_rect\":[%.3f,%.3f,%.3f,%.3f],\"text_rect\":[%.3f,%.3f,%.3f,%.3f],\"physical_text_rect\":[%.3f,%.3f,%.3f,%.3f]}",
                 first ? "" : ",", i, itemName, text, item->type, dvar, Item_IsVisible(0, item) ? "true" : "false",
                 (!(item->dvarFlags & 3) || Item_EnableShowViaDvar(item, 1)) ? "true" : "false", item->action ? "true" : "false",
-                item->window.rectClient.x, item->window.rectClient.y, item->window.rectClient.w, item->window.rectClient.h);
+                item->window.style, item->itemFlags, item->window.ownerDrawFlags, item->fontEnum, item->textscale,
+                item->window.foreColor[3], menu->focusColor[3], item->window.rect.horzAlign, item->window.rect.vertAlign,
+                item->window.rectClient.x, item->window.rectClient.y, item->window.rectClient.w, item->window.rectClient.h,
+                item->window.rect.x, item->window.rect.y, item->window.rect.w, item->window.rect.h,
+                item->textRect[0].x, item->textRect[0].y, item->textRect[0].w, item->textRect[0].h,
+                physicalText.x, physicalText.y, physicalText.w, physicalText.h);
+            if (written < 0 || static_cast<size_t>(written) >= sizeof(result) - used)
+                return "{\"result\":\"menu diagnostic exceeds bound\"}";
+            used += written;
             first = false;
         }
         std::snprintf(result + used, sizeof(result) - used, "]}"); return result;

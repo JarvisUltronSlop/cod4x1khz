@@ -1350,64 +1350,6 @@ void __cdecl CG_DObjCalcBone(const cpose_t *pose, DObj_s *obj, int32_t boneIndex
     }
 }
 
-void __cdecl CG_ClearUnion(int32_t localClientNum, centity_s *cent)
-{
-    switch (cent->pose.eTypeUnion)
-    {
-    case ET_PLAYER:
-        *(_QWORD *)&cent->pose.player.control = 0;
-        cent->pose.turret.barrelPitch = 0.0;
-        break;
-    case ET_FX:
-    case ET_LOOP_FX:
-        if (cent->pose.fx.effect)
-            FX_ThroughWithEffect(localClientNum, cent->pose.fx.effect);
-        *(_QWORD *)&cent->pose.player.control = 0;
-        break;
-    case ET_MG42:
-        *(_QWORD *)&cent->pose.player.control = 0;
-        *((_QWORD *)&cent->pose.fx + 1) = 0;
-        break;
-    case ET_HELICOPTER:
-    case ET_VEHICLE:
-        *(_QWORD *)&cent->pose.player.control = 0;
-        *((_QWORD *)&cent->pose.fx + 1) = 0;
-        *((_QWORD *)&cent->pose.fx + 2) = 0;
-        *((_QWORD *)&cent->pose.fx + 3) = 0;
-        *((uint32_t *)&cent->pose.fx + 8) = 0;
-        break;
-    default:
-        break;
-    }
-    cent->pose.eTypeUnion = ET_GENERAL;
-}
-
-void __cdecl CG_SetUnionType(int32_t localClientNum, centity_s *cent)
-{
-    switch (cent->nextState.eType)
-    {
-    case ET_PLAYER:
-    case ET_FX:
-    case ET_LOOP_FX:
-    case ET_MG42:
-    case ET_HELICOPTER:
-    case ET_VEHICLE:
-        cent->pose.eTypeUnion = cent->nextState.eType;
-        if (cent->pose.eTypeUnion != cent->nextState.eType)
-            MyAssertHandler(".\\cgame_mp\\cg_ents_mp.cpp", 1674, 0, "%s", "cent->pose.eTypeUnion == cent->nextState.eType");
-        break;
-    default:
-        cent->pose.eTypeUnion = ET_GENERAL;
-        break;
-    }
-}
-
-void __cdecl CG_UpdatePoseUnion(int32_t localClientNum, centity_s *cent)
-{
-    CG_ClearUnion(localClientNum, cent);
-    CG_SetUnionType(localClientNum, cent);
-}
-
 void __cdecl CG_ProcessEntity(int32_t localClientNum, centity_s *cent)
 {
     CG_EntityEffects(localClientNum, cent);
@@ -1751,7 +1693,7 @@ void __cdecl CG_Fx(int32_t localClientNum, centity_s *cent)
             FX_AssertAllocatedEffect(localClientNum, cent->pose.fx.effect);
             FX_ThroughWithEffect(localClientNum, cent->pose.fx.effect);
         }
-        *(_QWORD *)&cent->pose.player.control = 0;
+        cent->pose.fx = {};
         cent->pose.fx.effect = CG_StartFx(localClientNum, cent, cent->nextState.time2);
         if (cent->pose.fx.effect)
             cent->pose.fx.triggerTime = cent->nextState.time2;

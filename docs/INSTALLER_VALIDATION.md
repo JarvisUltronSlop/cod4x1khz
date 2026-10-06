@@ -3,18 +3,69 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,897,344 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,895,808 bytes).
 SHA-256:
 
 ```text
-51cba29027bfd181367b3e82b10e47bf17b1c7ef3afc0a4105d9d66053dfa671
+01baec598107b6cb3d23220c72dadc4c705e6af64ea18ac9592fa3de29157408
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
 
-## October 6 pause, movement, impact and audio fixes
+## October 6 visible Esc menu and Overgrown effects cleanup
+
+- The stock team menu's Back row uses a bottom screen anchor. Cloning that row
+  for Game Menu retained its anchor, putting all six labels below the screen.
+  Owned rows now use the title's screen placement, with explicit text offsets
+  and opaque text/focus colors. Native screenshots from both Vulkan and DX9
+  show Resume, Change Team, Change Class, Options, Leave Game and Quit.
+- The earlier menu test checked flags and actions but missed actual painting.
+  `scripts/native_pause_menu_probe.py` now checks physical text bounds, captures
+  the rendered menus, dispatches Esc through the engine, enters Options and
+  Resume, and activates the stock Leave confirmation's Yes action. Leave stopped
+  the exact owned server and returned to the frontend in both shipping runs.
+- The user's Overgrown crash report reaches `FX_FreeElem` through `CG_Fx` and
+  effect release. Entity pose cleanup used a retail eight-byte clear; on x64
+  the effects pointer lives at offset eight in a sixteen-byte member, so the
+  pointer survived after its reference was released. Cleanup now clears each
+  native typed pose member, clearing the effects reference before releasing it.
+  The production cleanup is linked directly into a regression exercising an
+  allocation above 4 GiB, retirement, reuse and prevention of a second release.
+  The previous implementation fails that regression; the fix passes x64 and
+  Win32, including player, turret, helicopter and vehicle pose resets.
+- Native regression suites passed **70/70 x64** and **68/68 Win32**. The installer
+  extraction/repair/preservation suite was rebuilt with the shipping embedded
+  CAB and passed again. Its twenty payload files exclude retail assets,
+  benchmark executables and the benchmark RCON credential.
+- The exact shipping binaries completed separate **60-second** Overgrown TDM
+  runs with 15 Regular bots and the Performance preset. Vulkan measured
+  **999.902 Hz** prediction and **1000.002 Hz** server simulation; DX9 measured
+  **999.916 Hz** and **999.997 Hz**, respectively. Both remain within 0.1%.
+  Final client/server tick debt was **1/0** in each run. Final event/snapshot
+  backlogs, queue failures, GPU presentation failures and Vulkan validation
+  errors were zero. Both clients exited normally and both owned servers stopped.
+- Tested and embedded SHA-256 hashes:
+
+  ```text
+  client 18105c8db71a0d032b8b97cdb234bcd0863b614a36f100b74fc869c2b11a2023
+  server e9bdeab515a0866157f39381af0c6b55628dee8198b92b4d88a4dfb4212f28e9
+  ```
+
+Evidence is under `results/pause-overgrown-feedback`: `validation-report.json`,
+`user-overgrown-crash.txt`, `entity-pose-before.log`, native suite logs,
+`shipping-package-tests.log`, and `shipping-vulkan`/`shipping-dx9` reports and
+menu screenshots. Fixed-view bot runs did not reproduce the user's exact crash;
+the production regression reproduces the stale effects reference defect.
+These checks do not establish that every map/effect or gameplay stutter is fixed.
+No desktop automation or Internet test was performed. The installer is copied to
+`userTest/cod4x1khz_setup.exe`; the installed game and player profiles were left
+untouched. Close the game and repair the same output folder to apply this build.
+
+The following sections describe earlier builds and their validation.
+
+## Earlier October 6 pause, movement, impact and audio fixes
 
 - Esc opens **Game Menu** with Resume, Change Team, Change Class, Options,
   Leave Game and Quit. Native diagnostic key events and stock item actions
@@ -76,8 +127,6 @@ stutter causes are not fully verified by these tests. No desktop automation or
 Internet test was performed. The updated installer is also copied into
 `userTest/cod4x1khz_setup.exe`; repairing the user's installed output remains a
 manual action that preserves profiles.
-
-The following sections describe earlier builds and their validation.
 
 ## October 6 airstrike and mouse fixes
 

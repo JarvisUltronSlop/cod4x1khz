@@ -12,7 +12,6 @@ enum {
     Destination,
     BrowseDestination,
     Next,
-    Back,
     Cancel,
     LaunchGame,
     LaunchManager
@@ -23,11 +22,10 @@ struct Progress {
     std::string text;
 };
 struct Wizard {
-    HWND window{}, source{}, destination{}, description{}, progress{}, status{}, next{}, back{},
+    HWND window{}, source{}, destination{}, description{}, progress{}, status{}, next{},
         cancel{};
     HFONT font{}, titleFont{};
     unsigned dpi = 96;
-    int step = 0;
     bool busy = false, finished = false;
     std::atomic_bool cancellation = false;
     std::thread worker;
@@ -43,6 +41,7 @@ struct Wizard {
         return Control(window, type, text, id, x, y, w, h, style, font, dpi);
     }
     void Create() {
+        DarkTitleBar(window);
         dpi = GetDpiForWindow(window);
         font = CreateFontW(-MulDiv(15, dpi, 96), 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0,
                            CLEARTYPE_QUALITY, 0, L"Segoe UI");
@@ -65,41 +64,41 @@ struct Wizard {
         C(L"STATIC", L"Standalone output folder", 0, 28, 220, 600, 22);
         progress = C(PROGRESS_CLASSW, L"", 0, 28, 299, 612, 22);
         status = C(L"STATIC", L"", 0, 28, 333, 612, 30);
-        back = C(L"BUTTON", L"Back", Back, 285, 416, 105, 32, WS_TABSTOP);
-        next = C(L"BUTTON", L"Next", Next, 405, 416, 115, 32, WS_TABSTOP | BS_DEFPUSHBUTTON);
+        next = C(L"BUTTON", L"Install", Next, 405, 416, 115, 32, WS_TABSTOP | BS_DEFPUSHBUTTON);
         cancel = C(L"BUTTON", L"Cancel", Cancel, 535, 416, 105, 32, WS_TABSTOP);
-        ShowStep();
+        ShowFolders();
     }
-    void ShowStep() {
-        const wchar_t *text =
-            step == 0
-                ? L"1 / 3 — Select your installed Steam copy of Call of Duty 4.\r\nThe installer "
-                  L"copies game assets and leaves the original installation untouched."
-            : step == 1 ? L"2 / 3 — Choose the standalone output folder.\r\nIt will contain the "
-                          L"blue-icon game and the included Server Manager."
-                        : L"3 / 3 — Ready to install.\r\nExisting cod4x1khz profiles, "
-                          L"administration data and custom config are preserved.";
-        SetWindowTextW(description, text);
-        EnableWindow(source, step == 0);
-        EnableWindow(GetDlgItem(window, BrowseSource), step == 0);
-        EnableWindow(destination, step == 1);
-        EnableWindow(GetDlgItem(window, BrowseDestination), step == 1);
-        EnableWindow(back, step > 0);
-        SetWindowTextW(next, step == 2 ? L"Install" : L"Next");
+    void ShowFolders() {
+        SetWindowTextW(description,
+                       L"Select your Steam Call of Duty 4 installation and an output folder.\r\n"
+                       L"Your original game installation will remain unchanged.");
+        EnableWindow(source, TRUE);
+        EnableWindow(GetDlgItem(window, BrowseSource), TRUE);
+        EnableWindow(destination, TRUE);
+        EnableWindow(GetDlgItem(window, BrowseDestination), TRUE);
+        SetWindowTextW(next, L"Install");
     }
     void Start() {
         error.clear();
         if (!khz::setup::Inspect(Text(source), Text(destination), plan, error)) {
-            MessageBoxW(window, Wide(error).c_str(), L"Installation folder check",
+            DarkMessageBox(window, Wide(error).c_str(), L"Installation folder check",
                         MB_OK | MB_ICONWARNING);
             return;
         }
+        const std::wstring confirmation =
+            std::wstring(plan.repair ? L"Repair cod4x1khz in this folder?\n\n"
+                                    : L"Install cod4x1khz in this folder?\n\n") +
+            plan.destination.wstring();
+        if (DarkMessageBox(window, confirmation.c_str(), L"cod4x1khz Setup",
+                        MB_OKCANCEL | MB_ICONQUESTION) != IDOK)
+            return;
         busy = true;
         cancellation = false;
         EnableWindow(next, FALSE);
-        EnableWindow(back, FALSE);
         EnableWindow(source, FALSE);
         EnableWindow(destination, FALSE);
+        EnableWindow(GetDlgItem(window, BrowseSource), FALSE);
+        EnableWindow(GetDlgItem(window, BrowseDestination), FALSE);
         SetWindowTextW(description, plan.repair
                                         ? L"Repairing the installed project files…"
                                         : L"Installing the standalone game and Server Manager…");
@@ -117,15 +116,11 @@ struct Wizard {
     }
     void Command(int id) {
         if (id == BrowseSource || id == BrowseDestination) {
+            if (busy || finished)
+                return;
             auto folder = Pick(window, true);
             if (!folder.empty())
                 SetWindowTextW(id == BrowseSource ? source : destination, folder.c_str());
-            return;
-        }
-        if (id == Back && !busy) {
-            if (step > 0)
-                --step;
-            ShowStep();
             return;
         }
         if (id == Next && !busy) {
@@ -133,11 +128,7 @@ struct Wizard {
                 DestroyWindow(window);
                 return;
             }
-            if (step < 2) {
-                ++step;
-                ShowStep();
-            } else
-                Start();
+            Start();
             return;
         }
         if (id == Cancel) {
@@ -157,6 +148,8 @@ struct Wizard {
     }
 } wizard;
 LRESULT CALLBACK Proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
+    LRESULT themeResult;
+    if (DarkMessage(window, msg, w, l, themeResult)) return themeResult;
     switch (msg) {
     case WM_CREATE:
         wizard.window = window;
@@ -167,10 +160,6 @@ LRESULT CALLBACK Proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
                  *reinterpret_cast<RECT *>(l));
         wizard.dpi = HIWORD(w);
         return 0;
-    case WM_CTLCOLORSTATIC:
-        SetBkColor(reinterpret_cast<HDC>(w), RGB(255, 255, 255));
-        SetTextColor(reinterpret_cast<HDC>(w), RGB(35, 58, 91));
-        return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
     case WM_COMMAND:
         wizard.Command(LOWORD(w));
         return 0;
@@ -198,8 +187,7 @@ LRESULT CALLBACK Proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
                      WS_TABSTOP);
         } else {
             SetText(wizard.status, wizard.error);
-            wizard.step = 2;
-            wizard.ShowStep();
+            wizard.ShowFolders();
         }
         return 0;
     case WM_CLOSE:
@@ -224,7 +212,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int show) {
     cls.lpfnWndProc = Proc;
     cls.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     cls.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(1));
-    cls.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    cls.hbrBackground = DarkBrush();
     RegisterClassW(&cls);
     auto dpi = GetDpiForSystem();
     auto window = CreateWindowExW(WS_EX_CONTROLPARENT, cls.lpszClassName, L"cod4x1khz Setup",

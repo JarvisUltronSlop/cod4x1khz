@@ -71,6 +71,20 @@ if(BUILD_TESTING)
   target_link_options(khz_render_commands_native_tests PRIVATE /OPT:REF)
   add_test(NAME khz_ui_values_native COMMAND khz_ui_values_native_tests)
   add_test(NAME khz_render_commands_native COMMAND khz_render_commands_native_tests)
+  add_executable(khz_dpvs_entity_native_tests tests/dpvs_entity_native_tests.cpp engine/src/gfx_d3d/r_dpvs_entity_storage.cpp)
+  target_include_directories(khz_dpvs_entity_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_dpvs_entity_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_dpvs_entity_native_tests PRIVATE /Gy)
+  target_link_options(khz_dpvs_entity_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_dpvs_entity_native COMMAND khz_dpvs_entity_native_tests)
+  add_executable(khz_hud_boolean_native_tests tests/hud_boolean_native_tests.cpp engine/src/game/g_hudelem_boolean.cpp)
+  target_include_directories(khz_hud_boolean_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_hud_boolean_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_hud_boolean_native COMMAND khz_hud_boolean_native_tests)
   add_executable(khz_fx_archive_native_tests tests/fx_archive_native_tests.cpp
     engine/src/EffectsCore/fx_archive.cpp engine/src/EffectsCore/fx_system_storage.cpp)
   target_include_directories(khz_fx_archive_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"

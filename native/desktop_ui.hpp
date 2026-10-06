@@ -1,5 +1,6 @@
 #pragma once
 #include "host_transport.hpp"
+#include "desktop_theme.hpp"
 #include <commctrl.h>
 #include <shobjidl.h>
 #include <filesystem>
@@ -45,11 +46,13 @@ inline void SetText(HWND control, std::string_view text) {
 inline HWND Control(HWND parent, const wchar_t *type, const wchar_t *text, int id, int x, int y,
                     int w, int h, DWORD style, HFONT font, unsigned dpi = 96) {
     auto scale = [&](int n) { return MulDiv(n, dpi, 96); };
+    if (std::wstring_view(type) == L"COMBOBOX") style |= CBS_OWNERDRAWFIXED | CBS_HASSTRINGS;
     HWND result = CreateWindowExW(type == std::wstring_view(L"EDIT") ? WS_EX_CLIENTEDGE : 0, type,
-                                  text, WS_CHILD | WS_VISIBLE | style, scale(x), scale(y), scale(w),
+                                  text, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | style, scale(x), scale(y), scale(w),
                                   scale(h), parent, reinterpret_cast<HMENU>(INT_PTR(id)),
                                   GetModuleHandleW(nullptr), nullptr);
     SendMessageW(result, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+    DarkControl(result);
     return result;
 }
 inline std::filesystem::path Pick(HWND parent, bool folder, bool save = false) {
@@ -155,6 +158,10 @@ inline void ScaleDpi(HWND window, unsigned oldDpi, unsigned newDpi, HFONT &font,
                      reinterpret_cast<WPARAM>(child.title ? newTitle : newFont), TRUE);
         wchar_t name[64];
         GetClassNameW(child.window, name, 64);
+        if (std::wstring_view(name) == L"ComboBox") {
+            SendMessageW(child.window, CB_SETITEMHEIGHT, 0, MulDiv(23, newDpi, 96));
+            SendMessageW(child.window, CB_SETITEMHEIGHT, WPARAM(-1), MulDiv(23, newDpi, 96));
+        }
         if (std::wstring_view(name) == WC_LISTVIEWW)
             for (int column = 0; column < Header_GetItemCount(ListView_GetHeader(child.window));
                  ++column)

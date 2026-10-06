@@ -14,7 +14,9 @@ installer, Git, and redistributable packages.
 3. Select a separate output folder. Its parent must exist and be writable. Use a
    short Windows path; paths with spaces work. Linked/reparse folders and paths
    the legacy asset loader cannot represent are rejected.
-4. Install, then open the blue-icon **cod4x1khz.exe** for ordinary multiplayer or
+   Both folder fields can be edited in any order.
+4. Click **Install** and confirm the selected output folder, then open
+   **cod4x1khz.exe** for ordinary multiplayer or
    **cod4x1khz_server_manager.exe** to host a dedicated server.
 
 The output has two main applications at its root, with client DLLs beside the
@@ -22,13 +24,23 @@ game. Assets are under `runtime/main` and `runtime/zone`; the dedicated engine i
 under `runtime/x64`. Helpers live under `runtime/tools/x64`. No .NET, Qt, Electron,
 Python, compiler, or development environment is required to run either application.
 A graphics driver providing Vulkan is required for Vulkan rendering.
+The installer and Server Manager use a fixed dark theme with blue accents.
 
-Fresh installed player profiles select Vulkan with the tested throughput preset
+Fresh installed player profiles select Vulkan with the Performance preset
 and uncapped rendering. A Vulkan initialization failure falls back to DX9.
 **Options → Graphics** includes renderer and preset controls; changing either
 restarts graphics. Subsequent choices are saved. Uncapped rendering does not
 guarantee a particular FPS or GPU utilization. Simulation and prediction retain
 the fixed 1 ms step.
+
+**Performance** overlaps frontend preparation, geometry uploads and submission,
+uses three Vulkan frames in flight, and enables asynchronous sun queries and
+audio streaming. **Reduced Overlap** adds synchronization, uses two Vulkan frames
+in flight, and disables those overlap paths. Both disable VSync and leave FPS
+uncapped. These are scheduling presets; texture quality and resolution remain
+separate settings. More queued frames can improve throughput while adding latency.
+The gameplay build label shows the version, architecture, active renderer,
+rendering preset and fixed simulation rate.
 
 In-game **Start Server** uses localhost regardless of an older profile's
 dedicated/network selection. Use the normal map, game mode, rule, bot-count, and

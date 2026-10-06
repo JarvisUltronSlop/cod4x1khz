@@ -1,18 +1,59 @@
 # Windows installer validation
 
-Local validation on October 5, 2026, for `vulkan-testing`, using Windows,
+Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,871,744 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,895,296 bytes).
 SHA-256:
 
 ```text
-46e8604c65dd67cd83e8d4eb37b803ae56fdf577855b57dcc59947204d1086c5
+d997afd66978fb63e3ff811e8f84ef10128639dbf9430799ed0f4e5f01489431
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 user-test fixes
+
+- Both installer folder fields are editable immediately. **Install** opens one
+  brief confirmation; the staged install/repair behavior is unchanged.
+- Installer and Server Manager use a fixed dark palette, including controls,
+  tabs, tables, app-owned notices and the tray menu. There is no light-mode option.
+  Windows-owned file/folder pickers retain the operating system theme.
+- Rendering presets are **Performance** and **Reduced Overlap**. Their saved
+  numeric values and scheduling behavior are unchanged. The gameplay build label
+  includes `cod4x1khz`, `v0.2.0`, architecture, active renderer, preset and 1,000 Hz.
+- The user's renderer crash was an undersized x64 entity-cell allocation:
+  `GfxEntCellRefInfo` requires eight bytes per entry, while the old allocation and
+  clearing assumed four. Native guard-page coverage exercises all 1,024 IDs.
+- Setting a HUD archival flag also stored an eight-byte `VariableUnion` in a
+  four-byte field, overwriting the next live HUD element. The native setter now
+  writes the actual field width; adjacent-element regression coverage verifies it.
+- A fresh localhost Vulkan/Performance Showdown TDM match with 15 Regular bots
+  completed **120.936 seconds**, with no process crash or HUD script errors.
+  A steady **117.736-second** telemetry interval measured **999.909 Hz** prediction
+  and **999.999 Hz** server simulation. Client/server debt was **0 / 0** at both
+  interval endpoints, within the existing 0.1% frequency tolerance. Leave and Quit
+  stopped the exact owned server and exited the client normally.
+- The x64 native suites passed **65/65** and the Win32 core suites **63/63**.
+  The final embedded-CAB installation suite was rebuilt against this payload.
+  Repair, cancellation, dependency recovery, profile/admin/ban preservation and
+  running-process refusal are covered by that suite.
+
+The updated installer is also copied to `userTest/cod4x1khz_setup.exe` for manual
+repair/retesting. The user's installed `userTest/output` was not automatically
+replaced. Logs and exact gameplay binary hashes are in
+`results/user-test-feedback/gameplay-summary.json`, `showdown-final/report.json`,
+`x64-tests.log`, `win32-tests.log`, and `package-tests.log` under that result folder.
+
+The dark appearance and revised wizard interactions were source-reviewed and
+built; no new GUI automation was performed after the user stopped computer use.
+The localhost stress run confirms the two corruption fixes and clock behavior;
+it does not establish that every cause of perceived stutter is eliminated.
+
+The following interface checks and matched rendering measurements were performed
+on October 5, before these feedback fixes.
 
 ## Installation and application checks
 
@@ -46,7 +87,7 @@ The package inventory and individual payload hashes are recorded in
   credential explicitly through a child-process environment; that round trip
   was tested successfully. Production RCON defaults to disabled.
 
-The final x64 regression run passed **63/63** checks; the Win32 core run passed
+The October 5 x64 regression run passed **63/63** checks; the Win32 core run passed
 **61/61**. Local logs include `results/installer-final-regression.log`,
 `results/installer-win32-regression.log`, `results/hosting-integration/report.txt`,
 and `results/installer-credential-report.json`.

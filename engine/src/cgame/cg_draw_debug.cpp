@@ -655,17 +655,25 @@ void CG_DrawVersion()
     float color[4] = { 0.40000001f, 0.69999999f, 1.0f, 0.69999999f };
     float shadowColor[4] = { 0.0f, 0.0f, 0.0f, 0.69f};
 
+    const char* buildText = version->current.string;
+#ifdef COD4X1KHZ
+    char detail[256];
+    sprintf_s(detail, "%s - %s - %s", buildText,
+        Dvar_GetInt("r_graphicsApi") == 1 ? "Vulkan" : "DX9",
+        Dvar_GetInt("khz_renderPreset") == 1 ? "Performance" : "Reduced Overlap");
+    buildText = detail;
+#endif
     font = UI_GetFontHandle(&scrPlaceFullUnsafe, 0, 0.5f);
-    w = (float)UI_TextWidth(version->current.string, 0, font, 0.25f);
+    w = (float)UI_TextWidth(buildText, 0, font, 0.25f);
     h = (float)UI_TextHeight(font, 0.25);
     y = -h - cg_drawVersionY->current.value + 1.0f;
     x = -w - cg_drawVersionX->current.value + 1.0f;
-    UI_DrawText(&scrPlaceFullUnsafe, (char *)version->current.string, 0x7FFFFFFF, font, x, y, 3, 3, 0.25f, shadowColor, 0);
+    UI_DrawText(&scrPlaceFullUnsafe, (char *)buildText, 0x7FFFFFFF, font, x, y, 3, 3, 0.25f, shadowColor, 0);
     v1 = -h - cg_drawVersionY->current.value;
     v0 = -w - cg_drawVersionX->current.value;
     UI_DrawText(
         &scrPlaceFullUnsafe,
-        (char *)version->current.string,
+        (char *)buildText,
         0x7FFFFFFF,
         font,
         v0,

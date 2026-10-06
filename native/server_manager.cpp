@@ -85,7 +85,7 @@ struct App {
     HWND window{}, tab{}, address{}, status{}, pages[5]{}, controls[650]{};
     HFONT font{}, titleFont{};
     unsigned dpi = 96;
-    HBRUSH background = CreateSolidBrush(RGB(247, 249, 252));
+    HBRUSH background = DarkBrush();
     std::filesystem::path root;
     Profile profile, runningProfile, networkProfile;
     std::vector<Profile> profiles, cleanupProfiles;
@@ -108,7 +108,7 @@ struct App {
     bool cleanupPending = false;
     std::string publicIp, networkNote = "Internet connectivity has not been verified";
     void Error(const std::string &text) {
-        MessageBoxW(window, Wide(text).c_str(), L"cod4x1khz Server Manager",
+        DarkMessageBox(window, Wide(text).c_str(), L"cod4x1khz Server Manager",
                     MB_OK | MB_ICONWARNING);
     }
     HWND C(HWND parent, const wchar_t *type, const wchar_t *text, int id, int x, int y, int w,
@@ -266,6 +266,7 @@ struct App {
                            CLEARTYPE_QUALITY, 0, L"Segoe UI");
         titleFont = CreateFontW(-MulDiv(24, dpi, 96), 0, 0, 0, FW_SEMIBOLD, 0, 0, 0,
                                 DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
+        SendMessageW(window, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
         auto title = C(window, L"STATIC", L"cod4x1khz  /  Server Manager", 0, 22, 16, 590, 36);
         SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(titleFont), TRUE);
         Button(window, TrayExit, L"Exit", 774, 20, 120);
@@ -1030,15 +1031,19 @@ struct App {
     }
 } app;
 LRESULT CALLBACK PageProc(HWND window, UINT msg, WPARAM w, LPARAM l) {
-    if (msg == WM_COMMAND || msg == WM_NOTIFY || msg == WM_CTLCOLORSTATIC || msg == WM_CTLCOLOREDIT)
+    if (msg == WM_COMMAND || msg == WM_NOTIFY || msg == WM_DRAWITEM || msg == WM_MEASUREITEM ||
+        (msg >= WM_CTLCOLORMSGBOX && msg <= WM_CTLCOLORSTATIC))
         return SendMessageW(GetParent(window), msg, w, l);
     return DefWindowProcW(window, msg, w, l);
 }
 LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM w, LPARAM l) {
+    LRESULT themeResult;
+    if (DarkMessage(window, message, w, l, themeResult)) return themeResult;
     try {
         switch (message) {
         case WM_CREATE:
             app.window = window;
+            DarkTitleBar(window);
             app.Create();
             return 0;
         case WM_COMMAND:
@@ -1078,9 +1083,9 @@ LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM w, LPARAM l) {
                 POINT point;
                 GetCursorPos(&point);
                 auto menu = CreatePopupMenu();
-                AppendMenuW(menu, MF_STRING, TrayOpen, L"Open Server Manager");
-                AppendMenuW(menu, MF_STRING, TrayStop, L"Stop server");
-                AppendMenuW(menu, MF_STRING, TrayExit, L"Exit and stop server");
+                AppendMenuW(menu, MF_OWNERDRAW, TrayOpen, L"Open Server Manager");
+                AppendMenuW(menu, MF_OWNERDRAW, TrayStop, L"Stop server");
+                AppendMenuW(menu, MF_OWNERDRAW, TrayExit, L"Exit and stop server");
                 SetForegroundWindow(window);
                 auto selected = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x,
                                                point.y, 0, window, nullptr);
@@ -1089,10 +1094,6 @@ LRESULT CALLBACK Proc(HWND window, UINT message, WPARAM w, LPARAM l) {
                     app.CommandEvent(selected);
             }
             return 0;
-        case WM_CTLCOLORSTATIC:
-            SetBkColor(reinterpret_cast<HDC>(w), RGB(247, 249, 252));
-            SetTextColor(reinterpret_cast<HDC>(w), RGB(35, 58, 91));
-            return reinterpret_cast<LRESULT>(app.background);
         case WM_DESTROY:
             KillTimer(window, 1);
             Shell_NotifyIconW(NIM_DELETE, &app.tray);
@@ -1123,7 +1124,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int show) {
         L"Local\\cod4x1khz-manager-" + std::to_wstring(std::hash<std::wstring>{}(identity));
     HANDLE mutex = CreateMutexW(nullptr, FALSE, mutexName.c_str());
     if (!mutex) {
-        MessageBoxW(nullptr, L"Cannot acquire Server Manager ownership.", L"cod4x1khz", MB_OK);
+        DarkMessageBox(nullptr, L"Cannot acquire Server Manager ownership.", L"cod4x1khz", MB_OK);
         return 1;
     }
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -1159,7 +1160,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int show) {
             ShowWindow(search.found, SW_RESTORE);
             SetForegroundWindow(search.found);
         } else
-            MessageBoxW(nullptr,
+            DarkMessageBox(nullptr,
                         L"Server Manager is already starting. Open it from the system tray.",
                         L"cod4x1khz", MB_OK);
         CloseHandle(mutex);

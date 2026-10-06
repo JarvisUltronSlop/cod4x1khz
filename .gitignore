@@ -22,6 +22,7 @@ __pycache__/
 *.log
 **/build/
 /service-test-results/
+/userTest/
 # Existing local nested checkouts otherwise appear as untracked repositories.
 # backup.ps1 explicitly stages each vendored source file as a Git blob; tracked
 # source modifications remain visible to Git despite these directory patterns.

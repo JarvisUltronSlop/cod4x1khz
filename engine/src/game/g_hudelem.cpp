@@ -26,7 +26,7 @@ const char *g_he_vertalign[8] = { "subtop", "top", "middle", "bottom", "fullscre
 
 #define HEOFS(member) ((int32_t)offsetof(game_hudelem_s, member))
 
-const game_hudelem_field_t fields_0[] = // LWSS: should be called "fields"
+extern const game_hudelem_field_t fields_0[] = // LWSS: should be called "fields"
 {
   { "x", HEOFS(elem.x), F_FLOAT, 0, 0, NULL, NULL },
   { "y", HEOFS(elem.y), F_FLOAT, 0, 0, NULL, NULL },
@@ -297,11 +297,6 @@ void __cdecl HudElem_GetFlagHideWhenInMenu(game_hudelem_s *hud, int32_t offset)
         Scr_AddBool(1);
     else
         Scr_AddBool(0);
-}
-
-void __cdecl HudElem_SetBoolean(game_hudelem_s *hud, int32_t offset)
-{
-    *(VariableUnion *)((char *)&hud->elem.type + fields_0[offset].ofs) = Scr_GetInt(0);
 }
 
 void __cdecl HudElem_SetColor(game_hudelem_s *hud, int32_t offset)

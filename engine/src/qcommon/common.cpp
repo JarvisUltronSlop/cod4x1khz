@@ -1437,14 +1437,20 @@ void __cdecl Com_Init_Try_Block_Function(char* commandLine)
     Cmd_AddCommandInternal("quit", Com_Quit_f, &Com_Quit_f_VAR);
     Cmd_AddCommandInternal("writeconfig", Com_WriteConfig_f, &Com_WriteConfig_f_VAR);
     Cmd_AddCommandInternal("writedefaults", Com_WriteDefaults_f, &Com_WriteDefaults_f_VAR);
-#ifdef KISAK_MP
+#if defined(COD4X1KHZ)
+    s = va("cod4x1khz - v0.2.0 - %s - 1000 Hz", CPUSTRING);
+#elif defined(KISAK_MP)
     s = va("%s %s build %s %s", "CoD4 MP", "1.0", getBuildNumber(), CPUSTRING);
 #elif KISAK_SP
     s = va("%s %s build %s %s", "CoD4", "1.0", getBuildNumber(), CPUSTRING);
 #endif
     version = Dvar_RegisterString("version", "", DVAR_ROM, "Game version");
     Dvar_SetString(version, s);
+#ifdef COD4X1KHZ
+    shortversion = Dvar_RegisterString("shortversion", "0.2.0", DVAR_ROM | DVAR_SERVERINFO, "Short game version");
+#else
     shortversion = Dvar_RegisterString("shortversion", "1.0", DVAR_ROM | DVAR_SERVERINFO, "Short game version");
+#endif
     Sys_Init();
 #ifdef KISAK_MP
     Netchan_Init(__rdtsc());

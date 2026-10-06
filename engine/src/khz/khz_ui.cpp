@@ -258,7 +258,7 @@ void addRendererRows(OwnedMenu& owned) {
     }
     static const char* rendererLabels[]{"Automatic (DX9)", "Vulkan", "DX9"};
     static const char* rendererValues[]{"auto", "vulkan", "d3d9"};
-    static const char* presetLabels[]{"Conservative", "Throughput"};
+    static const char* presetLabels[]{"Reduced Overlap", "Performance"};
     for (unsigned row = 0; row < 2; ++row) {
         const int labelIndex = owned.menu.itemCount++, controlIndex = owned.menu.itemCount++;
         auto& label = owned.items[labelIndex]; auto& control = owned.items[controlIndex];
@@ -306,7 +306,7 @@ void KHZ_UIBegin(UiContext* frontend) {
     Dvar_RegisterInt("ui_khz_botCount", 15, 0, 15, DVAR_ARCHIVE, "Desired bots, yielding slots to joining humans");
     Dvar_SetIntByName("ui_dedicated", 0);
     Dvar_RegisterInt("ui_khz_botDifficulty", 1, 0, 3, DVAR_ARCHIVE, "Recruit, Regular, Hardened or Veteran");
-    Dvar_RegisterInt("khz_renderPreset", 0, 0, 1, DVAR_ARCHIVE, "Conservative or tested throughput rendering settings");
+    Dvar_RegisterInt("khz_renderPreset", 0, 0, 1, DVAR_ARCHIVE, "Reduced Overlap or Performance rendering settings");
 }
 void KHZ_UIEnd(UiContext* frontend) {
     iassert(Sys_IsMainThread());

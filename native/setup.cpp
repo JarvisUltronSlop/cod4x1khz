@@ -49,7 +49,7 @@ struct Wizard {
                                 DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
         auto title = C(L"STATIC", L"Install cod4x1khz", 0, 28, 24, 610, 42);
         SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(titleFont), TRUE);
-        description = C(L"STATIC", L"", 0, 28, 84, 615, 76);
+        description = C(L"STATIC", L"", 0, 28, 84, 615, 60);
         source = C(L"EDIT", khz::setup::DetectSteam().c_str(), Source, 28, 178, 495, 29,
                    WS_TABSTOP | ES_AUTOHSCROLL);
         C(L"BUTTON", L"Browse…", BrowseSource, 535, 178, 105, 30, WS_TABSTOP);

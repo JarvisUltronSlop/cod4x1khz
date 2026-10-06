@@ -85,6 +85,15 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
   target_compile_definitions(khz_hud_boolean_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
   add_test(NAME khz_hud_boolean_native COMMAND khz_hud_boolean_native_tests)
+  add_executable(khz_fx_model_physics_native_tests tests/fx_model_physics_native_tests.cpp engine/src/EffectsCore/fx_model_physics.cpp)
+  target_include_directories(khz_fx_model_physics_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_fx_model_physics_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_fx_model_physics_native COMMAND khz_fx_model_physics_native_tests)
+  add_executable(khz_mouse_capture_tests tests/mouse_capture_tests.cpp)
+  target_include_directories(khz_mouse_capture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/native")
+  add_test(NAME khz_mouse_capture COMMAND khz_mouse_capture_tests)
   add_executable(khz_fx_archive_native_tests tests/fx_archive_native_tests.cpp
     engine/src/EffectsCore/fx_archive.cpp engine/src/EffectsCore/fx_system_storage.cpp)
   target_include_directories(khz_fx_archive_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"

@@ -40,7 +40,9 @@ in flight, and disables those overlap paths. Both disable VSync and leave FPS
 uncapped. These are scheduling presets; texture quality and resolution remain
 separate settings. More queued frames can improve throughput while adding latency.
 The gameplay build label shows the version, architecture, active renderer,
-rendering preset and fixed simulation rate.
+rendering preset and fixed simulation rate. While aiming in a focused game, the
+mouse stays inside the game area in windowed and fullscreen modes. Menus, the
+console, switching applications, and minimizing release it.
 
 In-game **Start Server** uses localhost regardless of an older profile's
 dedicated/network selection. Use the normal map, game mode, rule, bot-count, and

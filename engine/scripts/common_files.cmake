@@ -30,6 +30,7 @@ set(EFFECTSCORE
     "${SRC_DIR}/EffectsCore/fx_sort.cpp"
     "${SRC_DIR}/EffectsCore/fx_sprite.cpp"
     "${SRC_DIR}/EffectsCore/fx_system.cpp"
+    "${SRC_DIR}/EffectsCore/fx_model_physics.cpp"
     "${SRC_DIR}/EffectsCore/fx_system_storage.cpp"
     "${SRC_DIR}/EffectsCore/fx_system.h"
     "${SRC_DIR}/EffectsCore/fx_update.cpp"

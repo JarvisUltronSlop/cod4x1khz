@@ -19,6 +19,42 @@
 #endif
 
 
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+#include <khz/khz_client_input.h>
+#include "mouse_capture.hpp"
+namespace {
+struct CursorApi {
+    using Window = HWND;
+    HWND Foreground() { return GetForegroundWindow(); }
+    bool Minimized(HWND window) { return IsIconic(window) != FALSE; }
+    bool ClientBounds(HWND window, khz::mouse::Rect& out) {
+        RECT client;
+        if (!GetClientRect(window, &client)) return false;
+        POINT topLeft{client.left, client.top}, bottomRight{client.right, client.bottom};
+        if (!ClientToScreen(window, &topLeft) || !ClientToScreen(window, &bottomRight)) return false;
+        out = {topLeft.x, topLeft.y, bottomRight.x, bottomRight.y};
+        return true;
+    }
+    bool GetClip(khz::mouse::Rect& out) {
+        RECT rect;
+        if (!GetClipCursor(&rect)) return false;
+        out = {rect.left, rect.top, rect.right, rect.bottom}; return true;
+    }
+    bool Clip(const khz::mouse::Rect* rect) {
+        if (!rect) return ClipCursor(nullptr) != FALSE;
+        RECT native{rect->left, rect->top, rect->right, rect->bottom};
+        return ClipCursor(&native) != FALSE;
+    }
+    HWND Captured() { return GetCapture(); }
+    void Acquire(HWND window) { SetCapture(window); }
+    void Release() { ReleaseCapture(); }
+};
+CursorApi cursorApi;
+khz::mouse::Capture<CursorApi> gameplayMouseCapture;
+}
+void IN_InvalidateMouseCapture() { gameplayMouseCapture.Invalidate(); }
+#endif
+
 struct WinMouseVars_t // sizeof=0x10
 {                                       // ...
 	int oldButtonState;                 // ...
@@ -153,8 +189,12 @@ IN_DeactivateWin32Mouse
 */
 void IN_DeactivateWin32Mouse( void ) 
 {
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+    gameplayMouseCapture.Release(cursorApi);
+#else
 	ClipCursor (NULL);
 	ReleaseCapture ();
+#endif
 	while (ShowCursor (TRUE) < 0)
 		;
 }
@@ -293,6 +333,9 @@ Called when the window loses focus
 */
 void __cdecl IN_DeactivateMouse()
 {
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+    gameplayMouseCapture.Release(cursorApi);
+#endif
 	if (s_wmv.mouseInitialized && s_wmv.mouseActive)
 	{
 		s_wmv.mouseActive = 0;
@@ -524,6 +567,13 @@ Called every frame, even if not generating commands
 */
 void __cdecl IN_Frame()
 {
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+    // The presentation thread owns Windows capture. Relative aiming remains
+    // with Raw Input, even when the visible cursor reaches a client edge.
+    gameplayMouseCapture.Update(cursorApi, g_wv.hWnd,
+        s_wmv.mouseInitialized && in_mouse->current.enabled && in_appactive &&
+        clientUIActives[0].connectionState == CA_ACTIVE && KHZ_ClientGameplayInputAllowed());
+#endif
 	if (Dvar_GetBool("ClickToContinue"))
 		PostMessageA(g_wv.hWnd, 0x201u, 1u, 0);
 	if (s_wmv.mouseInitialized)

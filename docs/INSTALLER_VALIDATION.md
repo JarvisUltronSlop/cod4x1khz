@@ -3,16 +3,62 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,895,296 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,897,856 bytes).
 SHA-256:
 
 ```text
-d997afd66978fb63e3ff811e8f84ef10128639dbf9430799ed0f4e5f01489431
+d1dde092e0a3631bd7cb0d68da986c6c023dd3e9f4a05074f2841793be65da84
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 airstrike and mouse fixes
+
+- The installer description ended below the first folder caption, covering its
+  upper edge. Its bounds now leave a gap before that caption, including at the
+  125% scaling shown in the user's screenshot.
+- The new user crash report identifies `FX_SpawnModelPhysics` during bolted
+  airstrike effects. That code read the physics preset using pointer index 53
+  from a former 32-bit model layout. Native x64 models store that field at a
+  different offset; the code now accesses `XModel::physPreset` by name.
+  A guard-page regression links the actual production function and exercises
+  successful creation, native body-pointer retention, and allocation exhaustion.
+- Focused gameplay confines the Windows cursor to the client area while Raw
+  Input continues relative aiming. Menus, the console, focus loss, minimization,
+  window sizing, and shutdown release capture. Moving or resizing recomputes
+  bounds, including negative coordinates and secondary monitors. Capture stays
+  on the presentation thread; it adds no Windows API work to simulation ticks.
+  Regression coverage checks those transitions and preserves another window's
+  capture/clip ownership during focus loss.
+- Native suites passed **67/67 x64** and **65/65 Win32**. The embedded-CAB
+  installation suite was rebuilt against this installer and passed again.
+- A localhost Vulkan/Performance Showdown TDM match with 15 Regular bots remained
+  alive for **123.136 seconds**. A temporary development fixture invoked the
+  stock airstrike function three times; all **3/3** completed, with no script
+  runtime errors, Vulkan validation errors, or GPU presentation failures.
+  This tests the stock effect path without automating the target-selection menu.
+- The **119.837-second** telemetry interval measured
+  **999.837 Hz** prediction and **1000.003 Hz** server
+  simulation, within the 0.1% tolerance. Client/server debt was **0 / 0** at both
+  endpoints; final event and snapshot backlogs and queue failures were zero.
+  Leave stopped the exact owned server; Quit exited the client normally.
+- The tested client/server hashes match the embedded payload. The temporary
+  airstrike fixture was removed and the original development bot package restored.
+  The installer rebuild uses production bot sources and excludes fixture scripts.
+
+Exact telemetry, binary hashes, and gameplay logs are retained in
+`results/airstrike-feedback/gameplay-summary.json` and
+`stock-airstrike-final/report.json` under that result folder; test logs are
+`x64-tests.log`, `win32-tests.log`, and `package-tests.log` there.
+The installer in `userTest/cod4x1khz_setup.exe` has the SHA-256 recorded above.
+Repairing the existing output remains a manual user action and preserves profiles.
+
+No new desktop UI automation was performed. Visual confirmation of the revised
+caption and hands-on cursor/Alt-Tab testing remain for the user's retest.
+The localhost run does not establish every map/effect or perceived-stutter cause.
+The earlier user-test and interface measurements below describe prior builds.
 
 ## October 6 user-test fixes
 

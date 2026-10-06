@@ -468,9 +468,15 @@ LRESULT WINAPI MainWndProc(
 		MSH_MOUSEWHEEL = RegisterWindowMessageA("MSWHEEL_ROLLMSG");
 		return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 	case WM_DESTROY:
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+        IN_Activate(0);
+#endif
 		g_wv.hWnd = NULL;
 		return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 	case WM_MOVE:
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+        IN_InvalidateMouseCapture();
+#endif
 		if (r_fullscreen->current.enabled)
 		{
 			IN_ActivateMouse(0);
@@ -496,12 +502,28 @@ LRESULT WINAPI MainWndProc(
 	case WM_ACTIVATE:
 		VID_AppActivate((unsigned __int16)wParam, HIWORD(wParam));
 		return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+    case WM_SIZE:
+        IN_InvalidateMouseCapture();
+        if (wParam == SIZE_MINIMIZED) IN_Activate(0);
+        return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+    case WM_ENTERSIZEMOVE:
+        IN_Activate(0);
+        return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+    case WM_EXITSIZEMOVE:
+        IN_InvalidateMouseCapture();
+        if (GetForegroundWindow() == hWnd && !IsIconic(hWnd)) IN_Activate(1);
+        return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+#endif
 	case WM_SETFOCUS:
 		if (!r_autopriority->current.enabled)
 			return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 		SetPriorityClass(GetCurrentProcess(), 0x20u);
 		return 0;
 	case WM_KILLFOCUS:
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+        IN_Activate(0);
+#endif
 		if (!r_autopriority->current.enabled)
 			return DefWindowProcA(hWnd, uMsg, wParam, lParam);
 		SetPriorityClass(GetCurrentProcess(), 0x40u);

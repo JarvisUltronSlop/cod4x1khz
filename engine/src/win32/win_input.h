@@ -30,6 +30,9 @@ void __cdecl IN_SetForegroundWindow();
 bool __cdecl IN_IsForegroundWindow();
 
 void IN_ActivateMouse(qboolean force);
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+void IN_InvalidateMouseCapture();
+#endif
 void __cdecl IN_RecenterMouse();
 void __cdecl IN_SetCursorPos(tagPOINT x);
 // LWSS end

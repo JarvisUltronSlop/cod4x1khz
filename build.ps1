@@ -45,6 +45,7 @@ $targets += 'khz_collision_lifetime_native_tests'
 $targets += @('khz_ui_values_native_tests','khz_render_commands_native_tests')
 $targets += 'khz_dpvs_entity_native_tests'
 $targets += 'khz_hud_boolean_native_tests'
+$targets += @('khz_fx_model_physics_native_tests','khz_mouse_capture_tests')
 $targets += @('khz_mark_context_native_tests','khz_pcm_prefetch_tests')
 $targets += 'khz_server_profile_tests'
 if ($Architecture -eq 'x64' -and (Test-Path (Join-Path $buildRoot 'CMakeCache.txt')) -and

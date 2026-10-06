@@ -168,6 +168,13 @@ if(BUILD_TESTING)
   target_compile_definitions(khz_model_skin_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
   target_compile_options(khz_model_skin_native_tests PRIVATE /fp:precise)
   add_test(NAME khz_model_skin_native COMMAND khz_model_skin_native_tests)
+  add_executable(khz_movement_friction_native_tests tests/movement_friction_native_tests.cpp
+    engine/src/bgame/bg_movement_friction.cpp)
+  target_include_directories(khz_movement_friction_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_movement_friction_native_tests PRIVATE KISAK_MP=1 COD4X1KHZ=1 RELEASE_ASSERTS=1)
+  add_test(NAME khz_movement_friction_native COMMAND khz_movement_friction_native_tests)
   add_executable(khz_mark_context_native_tests tests/mark_context_native_tests.cpp
     engine/src/gfx_d3d/r_mark_model_callback.cpp)
   target_include_directories(khz_mark_context_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
@@ -176,6 +183,15 @@ if(BUILD_TESTING)
   target_compile_definitions(khz_mark_context_native_tests PRIVATE KISAK_MP=1)
   target_compile_options(khz_mark_context_native_tests PRIVATE /UNDEBUG)
   add_test(NAME khz_mark_context_native COMMAND khz_mark_context_native_tests)
+  add_executable(khz_fx_mark_mesh_native_tests tests/fx_mark_mesh_native_tests.cpp
+    engine/src/gfx_d3d/r_mesh_reserve.cpp)
+  target_include_directories(khz_fx_mark_mesh_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_fx_mark_mesh_native_tests PRIVATE KISAK_MP=1 COD4X1KHZ=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_fx_mark_mesh_native_tests PRIVATE /Gy /GL /UNDEBUG)
+  target_link_options(khz_fx_mark_mesh_native_tests PRIVATE /OPT:REF /LTCG)
+  add_test(NAME khz_fx_mark_mesh_native COMMAND khz_fx_mark_mesh_native_tests)
   add_executable(khz_asset_stream_native_tests tests/asset_stream_native_tests.cpp
     engine/src/database/db_stream.cpp engine/src/database/db_stream_load.cpp
     engine/src/database/db_assetnames.cpp)

@@ -573,6 +573,11 @@ void __cdecl SND_DisconnectListener(int localClientNum)
 {
     bcassert(localClientNum, 1);
 
+#ifdef COD4X1KHZ
+    Sys_EnterCriticalSection(CRITSECT_AUDIO_PHYSICS);
+    g_sndPhysics.count = 0;
+    Sys_LeaveCriticalSection(CRITSECT_AUDIO_PHYSICS);
+#endif
     memset((uint8_t *)&g_snd.listeners[localClientNum], 0, sizeof(g_snd.listeners[localClientNum]));
 }
 

@@ -8,6 +8,7 @@
 #include "khz_controls.h"
 #include "khz_admin.h"
 #include <client_mp/client_mp.h>
+#include <client/client.h>
 #include <qcommon/cmd.h>
 #include <qcommon/qcommon.h>
 #include <qcommon/threads.h>
@@ -20,6 +21,8 @@
 
 #if defined(KISAK_MP) && !defined(KISAK_DEDICATED)
 #include <ui_mp/ui_mp.h>
+#include <cgame_mp/cg_local_mp.h>
+#include <sound/snd_local.h>
 
 namespace {
 constexpr unsigned MaxMenus = 16;
@@ -56,6 +59,8 @@ struct UIStorage {
     unsigned addedRows;
     unsigned failures;
     OwnedMenu menus[MaxMenus];
+    OwnedMenu pause;
+    bool pauseAdded;
 };
 // Bounded owned menu records. No UI_Alloc/hunk allocations, and no mutation of
 // fastfile database assets or other UiContexts such as the cgame HUD.
@@ -300,6 +305,7 @@ void showLocalhostHosting(OwnedMenu& owned) {
 void KHZ_UIBegin(UiContext* frontend) {
     iassert(Sys_IsMainThread());
     storage.frontend = frontend;
+    storage.pauseAdded = false;
     ++storage.generation;
     storage.count = storage.modes = storage.disabledSP = storage.addedRows = storage.failures = 0;
     Dvar_RegisterBool("khz_singleplayer_available", false, DVAR_ROM, "Single-player is not part of the multiplayer client");
@@ -325,9 +331,72 @@ menuDef_t* KHZ_UIAdaptMenu(UiContext* context, menuDef_t* original) {
     if (equal(original->window.name, "createserver")) showLocalhostHosting(*owned);
     return &owned->menu;
 }
+bool KHZ_UIOpenPauseMenu(UiContext* frontend) {
+    iassert(Sys_IsMainThread());
+    if (frontend != storage.frontend || CL_GetLocalClientConnectionState(frontend->localClientNum) != CA_ACTIVE)
+        return false;
+    if (!storage.pauseAdded) {
+        auto* stock = Menus_FindByName(frontend, "team_marinesopfor");
+        itemDef_s* button = nullptr;
+        if (!stock || stock->itemCount < 4 || !stock->items) return false;
+        for (int i = 0; i < stock->itemCount; ++i)
+            if (stock->items[i] && equal(stock->items[i]->window.name, "back")) button = stock->items[i];
+        if (!button || frontend->menuCount >= ARRAY_COUNT(frontend->Menus)) return false;
+        auto& owned = storage.pause;
+        owned.menu = *stock;
+        owned.menu.window.name = "khz_pause";
+        owned.menu.window.dynamicFlags[0] = 0;
+        owned.menu.onOpen = "\"setfocus\" \"khz_resume\" ; ";
+        owned.menu.onClose = nullptr;
+        owned.menu.onESC = "\"uiScript\" \"khzResume\" ; ";
+        owned.menu.onKey = nullptr;
+        owned.menu.visibleExp = {}; owned.menu.rectXExp = {}; owned.menu.rectYExp = {};
+        owned.menu.items = owned.pointers;
+        owned.menu.itemCount = 10;
+        owned.menu.cursorItem[0] = -1;
+        for (int i = 0; i < 4; ++i) {
+            owned.items[i] = *stock->items[i];
+            owned.items[i].parent = &owned.menu;
+            owned.pointers[i] = &owned.items[i];
+            clearExpressions(owned.items[i]);
+        }
+        owned.items[3].text = "Game Menu";
+        const char* names[] = {"khz_resume", "khz_team", "khz_class", "khz_options", "khz_leave", "khz_quit"};
+        const char* texts[] = {"Resume", "Change Team", "Change Class", "Options", "Leave Game", "Quit"};
+        const char* actions[] = {"\"uiScript\" \"khzResume\" ; ", "\"uiScript\" \"khzChangeTeam\" ; ", "\"uiScript\" \"khzChangeClass\" ; ",
+            "\"uiScript\" \"khzOptions\" ; ", "\"open\" \"popup_leavegame\" ; ", "\"uiScript\" \"khzQuit\" ; "};
+        for (int row = 0; row < 6; ++row) {
+            auto& item = owned.items[4 + row];
+            newRowItem(item, *button, owned.menu, names[row], 148.0f + row * 38.0f);
+            item.window.rectClient.x = 48.0f; item.window.rectClient.w = 240.0f; item.window.rectClient.h = 30.0f;
+            item.window.staticFlags &= ~0x100000;
+            item.text = texts[row]; item.action = actions[row]; item.onAccept = nullptr;
+            owned.pointers[4 + row] = &item;
+        }
+        frontend->Menus[frontend->menuCount++] = &owned.menu;
+        storage.pauseAdded = true;
+    }
+    return Menus_OpenByName(frontend, "khz_pause") != 0;
+}
 bool KHZ_UIRunMenuScript(UiContext* context, const char* verb, const char**) {
     iassert(Sys_IsMainThread());
     if (context != storage.frontend || !verb) return false;
+    if (equal(verb, "khzResume")) { UI_SetActiveMenu(context->localClientNum, UIMENU_NONE); return true; }
+    if (equal(verb, "khzQuit")) { KHZ_StopOwnedHost(true); Cbuf_AddText(context->localClientNum, "quit\n"); return true; }
+    if (equal(verb, "khzOptions") || equal(verb, "khzChangeTeam") || equal(verb, "khzChangeClass")) {
+        const char* name = "main_options";
+        if (equal(verb, "khzChangeTeam")) name = "team_marinesopfor";
+        if (equal(verb, "khzChangeClass")) {
+            const auto* game = CG_GetLocalClientGlobals(context->localClientNum);
+            const int client = game->predictedPlayerState.clientNum;
+            const auto team = client >= 0 && client < MAX_CLIENTS ? game->bgs.clientinfo[client].team : TEAM_SPECTATOR;
+            name = team == TEAM_AXIS ? "changeclass_opfor" : team == TEAM_ALLIES ? "changeclass_marines" : "changeclass";
+        }
+        Menus_CloseAll(context);
+        Dvar_SetBoolByName("ui_allow_graphic_change", true);
+        if (!Menus_OpenByName(context, name)) KHZ_UIOpenPauseMenu(context);
+        return true;
+    }
     if (equal(verb, "khzApplyRenderPreset")) {
         const bool throughput = Dvar_GetInt("khz_renderPreset") == 1;
         Cbuf_AddText(context->localClientNum, throughput ?
@@ -366,8 +435,29 @@ const char* KHZ_UIProbe(const char* action) {
     static char result[16384];
     iassert(Sys_IsMainThread());
     if (!Dvar_GetBool("khz_test_controls") || !storage.frontend || !action) return "{\"error\":\"frontend test controls unavailable\"}";
-    if (!I_strnicmp(action, "renderprofile ", 14)) return KHZ_RenderProfileProbe(action + 14);
     KHZ_CommandControlScope controls;
+    if (equal(action, "audio")) {
+        unsigned active = 0, game = 0, streams = 0;
+        for (unsigned i = 0; i < ARRAY_COUNT(g_snd.chaninfo); ++i) {
+            const auto& channel = g_snd.chaninfo[i];
+            if (!channel.alias0) continue;
+            ++active;
+            if (channel.system == SASYS_CGAME) ++game;
+            if (i >= SND_FIRST_STREAM_CHANNEL) ++streams;
+        }
+        std::snprintf(result, sizeof(result), "{\"active_channels\":%u,\"game_channels\":%u,\"stream_channels\":%u,\"developer\":%d,\"statmon\":%s}",
+            active, game, streams, Dvar_GetInt("developer"), Dvar_GetBool("com_statmon") ? "true" : "false");
+        return result;
+    }
+    if (equal(action, "escape")) {
+        const auto connection = CL_GetLocalClientConnectionState(0);
+        const int catchers = CL_GetLocalClientUIGlobals(0)->keyCatchers;
+        CL_KeyEvent(0, K_ESCAPE, 1, Sys_Milliseconds()); CL_KeyEvent(0, K_ESCAPE, 0, Sys_Milliseconds());
+        std::snprintf(result, sizeof(result), "{\"result\":\"escape dispatched\",\"connection\":%d,\"catchers_before\":%d,\"catchers_after\":%d,\"pause_added\":%s}",
+            static_cast<int>(connection), catchers, CL_GetLocalClientUIGlobals(0)->keyCatchers, storage.pauseAdded ? "true" : "false");
+        return result;
+    }
+    if (!I_strnicmp(action, "renderprofile ", 14)) return KHZ_RenderProfileProbe(action + 14);
     if (!I_strnicmp(action, "inspect ", 8) || !I_strnicmp(action, "details ", 8) || !I_strnicmp(action, "activate ", 9) || !I_strnicmp(action, "key ", 4)) {
         const bool inspect = !I_strnicmp(action, "inspect ", 8);
         const bool details = !I_strnicmp(action, "details ", 8);
@@ -524,6 +614,7 @@ const char* KHZ_UIProbe(const char* action) {
 void KHZ_UIBegin(UiContext*) {}
 void KHZ_UIEnd(UiContext*) {}
 menuDef_t* KHZ_UIAdaptMenu(UiContext*, menuDef_t* original) { return original; }
+bool KHZ_UIOpenPauseMenu(UiContext*) { return false; }
 bool KHZ_UIRunMenuScript(UiContext*, const char*, const char**) { return false; }
 const char* KHZ_UIStatusJSON() { return "{\"active\":false}"; }
 const char* KHZ_UIProbe(const char*) { return "{\"error\":\"dedicated process\"}"; }

@@ -25,7 +25,9 @@
 #include <aim_assist/aim_assist.h>
 #include <universal/profile.h>
 
-FxMarkPoint g_fxMarkPoints[765];
+// Effects jobs can generate impacts concurrently. Clipping scratch must not be
+// overwritten by another impact before its callback copies the geometry.
+static thread_local FxMarkPoint g_fxMarkPoints[765];
 
 static uint g_markThread[1];
 
@@ -56,7 +58,7 @@ FxMark *__cdecl FX_MarkFromHandle(FxMarksSystem *marksSystem, uint16_t handle)
 
 static FxTriGroupPool *__cdecl FX_TriGroupFromHandle(FxMarksSystem *marksSystem, uint32_t handle)
 {
-    bcassert(handle, FX_TRI_GROUP_LIMIT * sizeof(FxTriGroup));
+    bcassert(handle, sizeof(marksSystem->triGroups));
     iassert(marksSystem);
 
     return (FxTriGroupPool *)((char *)marksSystem->triGroups + handle);
@@ -64,7 +66,7 @@ static FxTriGroupPool *__cdecl FX_TriGroupFromHandle(FxMarksSystem *marksSystem,
 
 static FxPointGroupPool *__cdecl FX_PointGroupFromHandle(FxMarksSystem *marksSystem, uint32_t handle)
 {
-    bcassert(handle, FX_POINT_GROUP_LIMIT * sizeof(FxPointGroup));
+    bcassert(handle, sizeof(marksSystem->pointGroups));
     iassert(marksSystem);
     return (FxPointGroupPool *)((char *)marksSystem->pointGroups + handle);
 }
@@ -75,7 +77,7 @@ static int32_t __cdecl FX_TriGroupToHandle(FxMarksSystem *marksSystem, FxTriGrou
     iassert(group);
 
     uint handle = (char *)group - (char *)marksSystem->triGroups;
-    bcassert(handle, FX_TRI_GROUP_LIMIT * sizeof(FxTriGroup));
+    bcassert(handle, sizeof(marksSystem->triGroups));
 
     return handle;
 }
@@ -86,7 +88,7 @@ static int32_t __cdecl FX_PointGroupToHandle(FxMarksSystem *marksSystem, FxPoint
     iassert(group);
 
     uint handle = (char *)group - (char *)marksSystem->pointGroups;
-    bcassert(handle, FX_POINT_GROUP_LIMIT * sizeof(FxPointGroup));
+    bcassert(handle, sizeof(marksSystem->pointGroups));
     
     return (char *)group - (char *)marksSystem->pointGroups;
 }
@@ -246,7 +248,7 @@ static void __cdecl FX_FreeLruMark(FxMarksSystem *marksSystem)
     iassert(marksSystem);
 
     lruMark = 0;
-    for (mark = marksSystem->marks; mark != (FxMark *)marksSystem->triGroups; ++mark)
+    for (mark = marksSystem->marks; mark != marksSystem->marks + FX_MARKS_LIMIT; ++mark)
     {
         if (mark->frameCountDrawn != -1
             && (!lruMark
@@ -427,7 +429,7 @@ static void __cdecl FX_CopyMarkPoints(
 
 static uint16_t __cdecl FX_FindModelHead(FxMarksSystem *marksSystem, uint16_t modelIndex, int32_t type)
 {
-    for (FxMark *mark = marksSystem->marks; mark != (FxMark *)marksSystem->triGroups; ++mark)
+    for (FxMark *mark = marksSystem->marks; mark != marksSystem->marks + FX_MARKS_LIMIT; ++mark)
     {
         if (mark->frameCountDrawn != -1
             && mark->prevMark == FX_HANDLE_NONE
@@ -529,11 +531,11 @@ static void __cdecl FX_AllocAndConstructMark(
     iassert(newMark->pointCount == pointCount);
     iassert(Sys_InterlockedDecrement(&g_markThread[localClientNum]) == 0);
 
-    Sys_LeaveCriticalSection(CRITSECT_ALLOC_MARK);
     FX_CopyMarkTris(marksSystem, markTris, newMark->tris, triCount);
     FX_CopyMarkPoints(marksSystem, markPoints, newMark->points, pointCount);
 
     marksSystem->allocedMarkCount++;
+    Sys_LeaveCriticalSection(CRITSECT_ALLOC_MARK);
 }
 
 static void __cdecl FX_ImpactMark_Generate_Callback(
@@ -1869,7 +1871,7 @@ void __cdecl FX_GenerateMarkVertsForStaticModels(
     camera = system;
     marksSystem->hasCarryIndex = 0;
     indexCount = 0;
-    markEnd = (FxMark *)marksSystem->triGroups;
+    markEnd = marksSystem->marks + FX_MARKS_LIMIT;
     for (mark = marksSystem->marks; mark != markEnd; ++mark)
     {
         if (mark->frameCountDrawn != -1 && mark->prevMark == FX_HANDLE_NONE && (mark->context.modelTypeAndSurf & MARK_MODEL_TYPE_MASK) == 0x40)

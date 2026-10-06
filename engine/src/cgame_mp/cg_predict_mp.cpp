@@ -392,6 +392,12 @@ void __cdecl CG_TouchItemPrediction(int32_t localClientNum)
 
 void __cdecl CG_TouchItem(cg_s *cgameGlob, centity_s *cent)
 {
+#ifdef COD4X1KHZ
+    // Item snapshots do not describe their remaining ammo. Predicting each
+    // touch announces empty/compatible drops again every millisecond. Let the
+    // authoritative 1 kHz pickup event own both the sound and item removal.
+    return;
+#else
     int32_t bitNum; // [esp+0h] [ebp-8h]
 
     iassert(cgameGlob);
@@ -416,6 +422,7 @@ void __cdecl CG_TouchItem(cg_s *cgameGlob, centity_s *cent)
             }
         }
     }
+#endif
 }
 
 void __cdecl CG_InterpolatePlayerState(int32_t localClientNum, int32_t grabAngles)

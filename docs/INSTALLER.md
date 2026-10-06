@@ -46,7 +46,9 @@ console, switching applications, and minimizing release it.
 
 In-game **Start Server** uses localhost regardless of an older profile's
 dedicated/network selection. Use the normal map, game mode, rule, bot-count, and
-four difficulty controls. **Leave** and **Quit** stop that game-owned server.
+four difficulty controls. Press **Esc** during a match for Resume, team/class
+selection, Options, Leave Game and Quit. **Leave** and **Quit** stop that
+game-owned server and clear its map audio.
 The game chooses an available owned-host port independently of manager hosting.
 
 ## Repair and update

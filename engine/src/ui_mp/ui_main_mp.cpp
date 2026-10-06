@@ -5053,6 +5053,9 @@ int __cdecl UI_SetActiveMenu(int localClientNum, uiMenuCommand_t menu)
     case UIMENU_INGAME:
         Key_SetCatcher(localClientNum, KEYCATCH_UI);
         Menus_CloseAll(&uiInfoArray.uiDC);
+#ifdef COD4X1KHZ
+        if (KHZ_UIOpenPauseMenu(&uiInfoArray.uiDC)) return 1;
+#endif
         v3 = CG_ScriptMainMenu(uiInfoArray.uiDC.localClientNum);
         if (!Menus_OpenByName(&uiInfoArray.uiDC, v3))
             Menus_OpenByName(&uiInfoArray.uiDC, "main");

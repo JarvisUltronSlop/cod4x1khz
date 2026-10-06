@@ -8,6 +8,7 @@ struct menuDef_t;
 void KHZ_UIBegin(UiContext* frontend);
 void KHZ_UIEnd(UiContext* frontend);
 menuDef_t* KHZ_UIAdaptMenu(UiContext* context, menuDef_t* original);
+bool KHZ_UIOpenPauseMenu(UiContext* frontend);
 bool KHZ_UIRunMenuScript(UiContext* context, const char* verb, const char** args);
 const char* KHZ_UIStatusJSON();
 const char* KHZ_UIProbe(const char* action);

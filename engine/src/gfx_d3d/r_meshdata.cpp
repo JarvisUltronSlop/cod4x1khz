@@ -11,44 +11,6 @@
 
 GfxMeshGlobals gfxMeshGlob;
 
-char __cdecl R_ReserveMeshIndices(GfxMeshData *mesh, int indexCount, r_double_index_t **indicesOut)
-{
-    uint32_t usedCodeMeshIndexCount; // [esp+0h] [ebp-4h]
-
-    iassert( (indexCount >= 0) );
-    iassert( (!(indexCount & 1)) );
-    iassert( indicesOut );
-    iassert( mesh->indexCount <= mesh->totalIndexCount );
-    usedCodeMeshIndexCount = mesh->indexCount;
-    if (indexCount + mesh->indexCount > mesh->totalIndexCount)
-        return 0;
-    mesh->indexCount = indexCount + usedCodeMeshIndexCount;
-    *indicesOut = (r_double_index_t *)&mesh->indices[usedCodeMeshIndexCount];
-    if (((uint32_t)*indicesOut & 3) != 0)
-        MyAssertHandler(
-            ".\\r_meshdata.cpp",
-            67,
-            0,
-            "%s\n\t((uint)(*indicesOut)) = %i",
-            "(!((uint)(*indicesOut) & 3))",
-            *indicesOut);
-    return 1;
-}
-
-char __cdecl R_ReserveMeshVerts(GfxMeshData *mesh, int vertCount, uint16_t *baseVertex)
-{
-    volatile uint32_t usedCodeMeshVertBytes; // [esp+8h] [ebp-8h]
-
-    iassert( (vertCount >= 0) );
-    iassert( baseVertex );
-    usedCodeMeshVertBytes = mesh->vb.used;
-    mesh->vb.used = mesh->vertSize * vertCount + usedCodeMeshVertBytes;
-    if (mesh->vb.used > mesh->vb.total)
-        return 0;
-    *baseVertex = usedCodeMeshVertBytes / mesh->vertSize;
-    return 1;
-}
-
 uint8_t *__cdecl R_GetMeshVerts(GfxMeshData *mesh, uint16_t baseVertex)
 {
     return &mesh->vb.verts[mesh->vertSize * baseVertex];

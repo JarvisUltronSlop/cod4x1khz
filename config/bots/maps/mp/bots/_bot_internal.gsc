@@ -2327,6 +2327,10 @@ movetowards( goal )
 	stucks = 0;
 	timeslow = 0;
 	time = 0;
+	lastMoveUpdate = gettime();
+	nextMantle = 500;
+	checkedVertical = false;
+	triedCrouch = false;
 	
 	if ( self.bot.issprinting )
 	{
@@ -2344,6 +2348,8 @@ movetowards( goal )
 		if ( time > 3000 )
 		{
 			time = 0;
+			checkedVertical = false;
+			triedCrouch = false;
 			
 			if ( distancesquared( self.origin, lastOri ) < 32 * 32 )
 			{
@@ -2365,20 +2371,24 @@ movetowards( goal )
 			}
 			
 			lastOri = self.origin;
+			lastMoveUpdate = gettime();
 		}
-		else if ( timeslow > 0 && ( timeslow % 1000 ) == 0 )
+		else if ( timeslow >= nextMantle )
 		{
 			self thread doMantle();
+			nextMantle = timeslow + 1000;
 		}
-		else if ( time == 2000 )
+		else if ( time >= 2000 && !triedCrouch )
 		{
+			triedCrouch = true;
 			if ( distancesquared( self.origin, lastOri ) < 32 * 32 )
 			{
 				self crouch();
 			}
 		}
-		else if ( time == 1750 )
+		else if ( time >= 1750 && !checkedVertical )
 		{
+			checkedVertical = true;
 			if ( distancesquared( self.origin, lastOri ) < 32 * 32 )
 			{
 				// check if directly above or below
@@ -2390,15 +2400,22 @@ movetowards( goal )
 		}
 		
 		wait 0.05;
-		time += 50;
+		// Navigation remains a timed 20 Hz decision loop; engine movement runs
+		// at 1 kHz. Use elapsed milliseconds so delayed wakes cannot miss the
+		// obstacle-recovery thresholds or exact modulo/equality checks.
+		moveNow = gettime();
+		moveElapsed = moveNow - lastMoveUpdate;
+		lastMoveUpdate = moveNow;
+		time += moveElapsed;
 		
 		if ( lengthsquared( self getvelocity() ) < 1000 )
 		{
-			timeslow += 50;
+			timeslow += moveElapsed;
 		}
 		else
 		{
 			timeslow = 0;
+			nextMantle = 500;
 		}
 		
 		if ( self.bot.issprinting )

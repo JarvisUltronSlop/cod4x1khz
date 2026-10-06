@@ -1110,7 +1110,11 @@ void __cdecl Com_SetScriptSettings()
 void __cdecl Com_RunAutoExec(int localClientNum, int controllerIndex)
 {
     Dvar_SetInAutoExec(1);
-#ifdef KISAK_MP
+#if defined(COD4X1KHZ)
+    // Retail assets include a developer autoexec that enables warning overlays
+    // and stat monitors. Player startup uses the normal optional autoexec.
+    Cmd_ExecuteSingleCommand(localClientNum, controllerIndex, (char*)"exec autoexec.cfg");
+#elif defined(KISAK_MP)
     Cmd_ExecuteSingleCommand(localClientNum, controllerIndex, (char*)"exec autoexec_dev_mp.cfg");
 #elif KISAK_SP
     Cmd_ExecuteSingleCommand(localClientNum, controllerIndex, (char*)"exec autoexec_dev.cfg");

@@ -3,16 +3,81 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,897,856 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,897,344 bytes).
 SHA-256:
 
 ```text
-d1dde092e0a3631bd7cb0d68da986c6c023dd3e9f4a05074f2841793be65da84
+51cba29027bfd181367b3e82b10e47bf17b1c7ef3afc0a4105d9d66053dfa671
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 pause, movement, impact and audio fixes
+
+- Esc opens **Game Menu** with Resume, Change Team, Change Class, Options,
+  Leave Game and Quit. Native diagnostic key events and stock item actions
+  verified Options, Resume and the Leave confirmation. A separate Vulkan Wetwork
+  Free-for-All match used that confirmation's Yes action to stop its exact owned
+  server and return to the main menu.
+- ADS movement's first 1 ms acceleration is below the retail 1 unit/second
+  friction cutoff. The cutoff now scales with the simulation step, retaining the
+  retail threshold at 50 ms. Tests link production friction and acceleration at
+  1/2/5/10/50 ms, including slow ADS speeds and stopping after input release.
+- Item-touch prediction cannot know a dropped weapon's remaining ammo. At 1 kHz
+  it could repeatedly announce an empty compatible drop. Pickups now use the
+  authoritative server event for sound and removal. The user's exact stairs/ammo
+  pile still requires a hands-on retest.
+- Impact clipping scratch is private to each effects thread; triangle/point
+  copying stays under the allocator lock. A synchronized concurrent-impact
+  regression reproduced overwritten geometry with shared scratch and passed
+  after the change. Additional production tests cover native pool strides,
+  context changes, 1/2/3/31/254/255 clipped triangles, index carry between marks,
+  LRU eviction and exhausted/oversized mesh reservations. Failed reservations
+  leave allocation cursors unchanged.
+- Bot commands already run every millisecond. Navigation stays on a timed 50 ms
+  script loop. Obstacle recovery now measures elapsed time, avoids exact equality
+  and modulo triggers, and starts bounded mantle retries after 500 ms. The ADS
+  friction fix also applies to bots. Every map waypoint, stair and ledge has not
+  been individually verified.
+- Normal startup runs the optional player autoexec instead of the asset bundle's
+  developer autoexec. Fresh native matches reported **developer=0** and
+  **com_statmon=0**, removing developer warning notifications and the GLOW label.
+  Dynamic-light overflow already checks the 32-light bound before writing;
+  diagnostics remain in the console/log.
+- Disconnect stops map sounds before their aliases unload and clears pending
+  physics audio. Wetwork had **33 cgame channels**, including streamed audio,
+  before Leave. Five subsequent main-menu samples had **zero cgame channels**;
+  the stock UI music remained active. This exercised async stream decoding.
+- Native regression suites passed **69/69 x64** and **67/67 Win32**. The installer
+  suite was rebuilt with the final embedded CAB and passed extraction/repair/
+  preservation checks again.
+- A Vulkan Performance Showdown TDM run with 15 Regular bots invoked both allies
+  and axis stock seven-kill helicopter rewards, flight, actual explosive damage
+  (4,000 damage each), crash paths and final destruction. **2/2** completed with
+  no client/server crash, script runtime error, Vulkan validation error or GPU
+  presentation failure. The **119.833-second** interval measured **999.868 Hz**
+  prediction and **1000.003 Hz** server simulation, within 0.1%. Client/server
+  tick debt was **0/0** at both endpoints; final event/snapshot backlogs and
+  queue failures were zero.
+- The helicopter and Wetwork runs used the exact client/server hashes embedded
+  in this installer. Temporary script instrumentation was restored and is
+  excluded from the production payload. Native fixture assertion corrections
+  (full map asset paths and the expected UI music stream) are recorded alongside
+  their original failed reports, rather than represented as engine crashes.
+
+Local evidence is in `results/gameplay-feedback/validation-report.json`,
+`gameplay-summary.json`, `helicopter-audio-vulkan-final/report.json`,
+`wetwork-audio-verified/report.json`, the regression logs, and `package-tests.log`.
+The diagnostic 720p viewpoint is not a matched 1080p player performance benchmark.
+Showdown's perceived prop/impact warping, all bot obstacle cases, and gameplay
+stutter causes are not fully verified by these tests. No desktop automation or
+Internet test was performed. The updated installer is also copied into
+`userTest/cod4x1khz_setup.exe`; repairing the user's installed output remains a
+manual action that preserves profiles.
+
+The following sections describe earlier builds and their validation.
 
 ## October 6 airstrike and mouse fixes
 

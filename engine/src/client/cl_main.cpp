@@ -671,6 +671,11 @@ void __cdecl CL_Disconnect(int localClientNum)
     {
         SCR_StopCinematic(localClientNum);
         CL_SetLocalClientConnectionState(localClientNum, CA_DISCONNECTED);
+#ifdef COD4X1KHZ
+        // Disconnect unloads cgame while the audio device stays alive for UI.
+        // Stop map ambience and announcers before their aliases are unloaded.
+        SND_StopSounds(SND_STOP_ALL);
+#endif
         SND_DisconnectListener(localClientNum);
         //CL_ResetLastGamePadEventTime(); // KISAKTODO
         if (localClientNum)

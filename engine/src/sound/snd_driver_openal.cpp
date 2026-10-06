@@ -99,15 +99,6 @@ void __cdecl SND_Set3DPosition(int index, const float *org)
 }
 
 #ifdef KISAK_OPENAL
-void SND_ReleaseChannelBuffer(int index)
-{
-    if (alGlob.channelBuffer[index])
-    {
-        alSourcei(alGlob.source[index], AL_BUFFER, 0);
-        alDeleteBuffers(1, &alGlob.channelBuffer[index]);
-        alGlob.channelBuffer[index] = 0;
-    }
-}
 
 // Defined near SND_SetRoomtype (Phase 6) below; forward-declared here since
 // SND_StartAlias2D/3DSample and SND_StartAliasStreamOnChannel call it before that point.

@@ -112,7 +112,38 @@ int main() {
         SND_Set2DChannelVolume(0, 0.25f); SND_Set3DChannelVolume(8, 0.5f); SND_SetStreamChannelVolume(40, 0.75f);
         CHECK(SND_Get2DChannelVolume(0) == 0.25f && SND_Get3DChannelVolume(8) == 0.5f && SND_GetStreamChannelVolume(40) == 0.75f);
         CHECK(alGetError() == AL_NO_ERROR);
+        // Steal a still-playing loaded voice, then a paused voice. Verify that
+        // each replacement owns the new buffer and deletes the old one.
+        const std::vector<int16_t> longPcm(44100, 300);
+        for (int channel : {0, 8, 39}) {
+            for (bool paused : {false, true}) {
+                ALuint oldBuffer{}; alGenBuffers(1, &oldBuffer);
+                alBufferData(oldBuffer, AL_FORMAT_MONO16, longPcm.data(), longPcm.size()*2, 44100);
+                alGlob.channelBuffer[channel] = oldBuffer;
+                alSourcei(alGlob.source[channel], AL_BUFFER, oldBuffer);
+                alSourcei(alGlob.source[channel], AL_LOOPING, AL_TRUE);
+                alSourcePlay(alGlob.source[channel]);
+                if (paused) alSourcePause(alGlob.source[channel]);
+                ALint state{}; alGetSourcei(alGlob.source[channel], AL_SOURCE_STATE, &state);
+                CHECK(state == (paused ? AL_PAUSED : AL_PLAYING));
+                CHECK(alGetError() == AL_NO_ERROR);
+                SND_ReleaseChannelBuffer(channel);
+                CHECK(alGetError() == AL_NO_ERROR && !alGlob.channelBuffer[channel]);
+                ALint attached{}; alGetSourcei(alGlob.source[channel], AL_BUFFER, &attached);
+                CHECK(attached == 0 && !alIsBuffer(oldBuffer));
+                ALuint nextBuffer{}; alGenBuffers(1, &nextBuffer);
+                alBufferData(nextBuffer, AL_FORMAT_MONO16, pcm.data(), pcm.size()*2, 44100);
+                alGlob.channelBuffer[channel] = nextBuffer;
+                alSourcei(alGlob.source[channel], AL_BUFFER, nextBuffer);
+                alGetSourcei(alGlob.source[channel], AL_BUFFER, &attached);
+                CHECK(attached == ALint(nextBuffer) && alGetError() == AL_NO_ERROR);
+                alSourcePlay(alGlob.source[channel]);
+                SND_ReleaseChannelBuffer(channel);
+                SND_ReleaseChannelBuffer(channel); // idempotent explicit stop
+                CHECK(alGetError() == AL_NO_ERROR && !alIsBuffer(nextBuffer));
+            }
+        }
         MSS_ShutdownCleanup(); CHECK(!alGlob.context && !alGlob.device && !alGlob.source[0]);
     }
-    std::printf("Native OpenAL: full-pointer mono/stereo PCM loading, both allocators, 53 channels and two device lifecycles passed\n");
+    std::printf("Native OpenAL: full-pointer mono/stereo PCM loading, both allocators, 53 channels, playing/paused voice replacement and two device lifecycles passed\n");
 }

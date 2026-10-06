@@ -37,6 +37,7 @@ $targets += 'khz_asset_wire_tests'
 $targets += 'khz_asset_stream_native_tests'
 $targets += @('khz_model_skin_native_tests','khz_movement_friction_native_tests','khz_fx_mark_mesh_native_tests')
 $targets += 'khz_entity_pose_native_tests'
+$targets += 'khz_ragdoll_reset_native_tests'
 $targets += 'khz_ui_scroll_native_tests'
 $targets += 'khz_hunk_memory_native_tests'
 $targets += 'khz_plugin_sdk_native_tests'
@@ -54,7 +55,7 @@ if ($Architecture -eq 'x64' -and (Test-Path (Join-Path $buildRoot 'CMakeCache.tx
     (Select-String -LiteralPath (Join-Path $buildRoot 'CMakeCache.txt') -Pattern '^KHZ_INSTALLER_PAYLOAD:FILEPATH=.+')) {
     $targets += 'khz_install_package_tests'
 }
-if (!$CoreOnly -and $Architecture -eq 'x64') { $targets += @('cod4x1khz_server_manager','cod4x1khz_network') }
+if (!$CoreOnly -and $Architecture -eq 'x64') { $targets += @('cod4x1khz_server_manager','cod4x1khz_network','khz_sound_openal_native_tests') }
 if (!$CoreOnly) { $targets += @('khz_runtime','khz_vulkan_probe','khz_vulkan_shader_inventory','khz_vulkan_shader_link','khz_vulkan_shader_tests','khz_vulkan_backend') }
 & cmake --build $buildRoot --config $Configuration --target @targets --parallel 8
 if ($LASTEXITCODE) { throw 'Build failed' }

@@ -177,6 +177,19 @@ std::vector<std::vector<std::byte>> materialCases(gfx::Backend& backend,Fixture&
     f.packet.state.alphaTest=false;f.packet.state.blend=true;f.packet.state.src=gfx::Blend::SrcAlpha;f.packet.state.dst=gfx::Blend::InvSrcAlpha;
     f.pc[31]=.5f;f.draw(backend,false);captures.push_back(backend.readback(f.target));
     f.packet.state.blend=false;f.pc[31]=1;
+    {
+        // Screen-space effects read stock VPOS in integer pixel coordinates.
+        // Sample both axes and a non-zero viewport origin against real DX9.
+        const auto code=compile("float4 main(float2 p:VPOS):COLOR0{return float4(p.x/64,p.y/64,0,1);}","ps_3_0");
+        const auto shader=backend.createShader(code,"stock integer pixel position");
+        const auto saved=f.packet.pixelShader;f.packet.pixelShader=shader;
+        for(unsigned offset:{0u,3u}) {
+            f.packet.x=offset;f.packet.y=offset;f.packet.width=f.packet.height=64-offset;
+            f.draw(backend,false);captures.push_back(backend.readback(f.target));
+        }
+        f.packet.x=f.packet.y=0;f.packet.width=f.packet.height=64;
+        f.packet.pixelShader=saved;backend.release(shader);
+    }
     gfx::ImageDesc depth;depth.width=depth.height=64;depth.format=gfx::ImageFormat::DepthStencil;depth.renderTarget=true;depth.sampled=false;
     const auto depthId=backend.createImage(depth);f.packet.depthTarget=depthId;f.packet.state.depthTest=f.packet.state.depthWrite=true;
     for(auto comparison:{gfx::Compare::Less,gfx::Compare::Greater}) {

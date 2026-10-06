@@ -255,6 +255,7 @@ uint32_t *__cdecl MSS_Alloc_FastFile(int bytes);
 #ifndef KISAK_OPENAL
 extern MssLocal milesGlob;
 #else
+void SND_ReleaseChannelBuffer(int index);
 extern AlLocal alGlob;
 #endif
 extern snd_local_t g_snd;

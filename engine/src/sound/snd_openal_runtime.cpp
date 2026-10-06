@@ -7,6 +7,20 @@
 #include <vector>
 #include <limits>
 
+void SND_ReleaseChannelBuffer(int index)
+{
+    // OpenAL refuses AL_BUFFER changes on a playing or paused source. Stop it
+    // before detaching, including voice stealing and explicit sound stops.
+    // Otherwise the next alias restarts the previous buffer on this channel.
+    alSourceStop(alGlob.source[index]);
+    alSourcei(alGlob.source[index], AL_BUFFER, 0);
+    if (alGlob.channelBuffer[index])
+    {
+        alDeleteBuffers(1, &alGlob.channelBuffer[index]);
+        alGlob.channelBuffer[index] = 0;
+    }
+}
+
 char __cdecl MSS_Init()
 {
     int integer = snd_khz->current.integer;

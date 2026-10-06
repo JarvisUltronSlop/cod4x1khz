@@ -10,7 +10,7 @@ LinkedShaders cachedLink(const std::filesystem::path& root,const Context& contex
     // Explicit versioning includes the bytecode emitter, linker, validation
     // environment, native backend lowering and device/driver identity. Padding
     // bytes and pointers never enter the key.
-    constexpr char version[]="cod4x1khz-vk6:mojo-ad5dff84830c2863c841f4b1f4e3df78c705b383:spirv-2025.1:Vulkan1.3:legacy-color0:missing-input-pointcoord-offsets:implicit-legacy-inputs";
+    constexpr char version[]="cod4x1khz-vk7a:stock-vpos-integer:mojo-ad5dff84830c2863c841f4b1f4e3df78c705b383:spirv-2025.1:Vulkan1.3:legacy-color0:missing-input-pointcoord-offsets:implicit-legacy-inputs";
     std::vector<std::byte> key;
     auto append=[&](const void* data,std::size_t bytes){const auto* p=static_cast<const std::byte*>(data);key.insert(key.end(),p,p+bytes);};
     auto number=[&](std::uint32_t value){append(&value,4);};

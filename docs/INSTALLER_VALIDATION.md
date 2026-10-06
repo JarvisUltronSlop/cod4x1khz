@@ -3,16 +3,92 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,898,368 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,906,560 bytes).
 SHA-256:
 
 ```text
-003c11ca8a54798b02a8c0db0d0166635c62cb0b184c1b013ecefca840fe741b
+512773a48bb55b90d77b21bd2c69f5646c07778a67b65e378b768fdfec9cf71b
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 corpse timing, Vulkan pixel positions, scoreboard and sound reuse
+
+- Ragdoll initialization cleared the retail 32-bit byte count, leaving part of
+  the larger native x64 pool uncleared. Initialization now clears the complete
+  typed array. A production-code regression fails with the old implementation
+  and passes across three map lifecycles, including the last of all 32 bodies.
+- Ragdoll velocity used an earlier `Com_Frame` duration instead of the elapsed
+  time between the two presented animation poses. The native regression
+  reproduces a 60 ms pose change being treated as 1 ms. Actual close-up Bog
+  matches also reproduced excessive corpse bounds before the correction
+  (188–260 units). Velocity capture now uses those pose timestamps, and cosmetic
+  ragdoll physics advances once per new presentation time. Server simulation
+  remains at 1 kHz. Repeated timestamps and map-time resets are covered.
+- Vulkan's fragment coordinates include a half-pixel offset that the stock
+  DX9 `VPOS` semantic does not. Stock shader loads now receive the original
+  integer pixel position, while later depth-bias lowering keeps raw depth.
+  The real-GPU DX9/Vulkan comparison fails before this change and passes after,
+  including a nonzero viewport origin. Shader cache versioning invalidates the
+  previous translation. The full GPU material, frame-flight and retirement
+  checks passed with synchronization validation and **zero validation errors**.
+- `r_showMissingLightGrid` previously defaulted to true: its documented engine
+  behavior is rainbow colors for entities outside the light grid. It now
+  defaults to false. Fresh native gameplay confirmed that both light-grid debug
+  displays are disabled, with the gold AK and hands captured in normal lighting.
+- `+scores` and `-scores` now update presentation-owned client state. Real native
+  Tab down/up events showed all **16 players/bots** and hid the scoreboard on
+  release. The binding remains `TAB +scores`; captured gameplay verifies that
+  the scoreboard is actually drawn.
+- A playing or paused OpenAL source rejected detaching its old buffer. Reusing
+  that channel could therefore replay the previous weapon's sound. Cleanup now
+  stops the source before detaching/deleting the buffer. The production helper
+  passes real-device checks for loaded 2D/3D voices, paused/playing replacement,
+  new-buffer attachment, repeated stops and two device lifecycles, without
+  OpenAL errors.
+- Native suites passed **73/73 x64** and **70/70 Win32**. The final presentation
+  clock regression also passed on Win32. The installer regression was rebuilt
+  against this shipping CAB and passed extraction, repair and profile
+  preservation. Its twenty payload files exclude retail assets, benchmark
+  executables, regression plugins and the benchmark RCON credential.
+- The final Performance Showdown test ran for **60.999 seconds** with 15 bots,
+  a gold AK firing at world geometry, a real Tab scoreboard, and traversal of
+  a stair/ledge with a **16-unit** height change. It measured **999.939 Hz**
+  prediction and **1000.002 Hz** server simulation, within 0.1%. At the endpoints
+  client tick debt was **0/3**, server debt **0/0**, snapshot backlog **0/0** and
+  event backlog **0/1**. Sampled backlogs never exceeded **0/1**; queue drops and
+  GPU presentation failures were zero. It averaged **1,638.608 FPS at 720p**
+  in this isolated scene; this is not a general 1080p gameplay guarantee.
+- A final **30-second** Bog close-up test fired the gold AK, captured settled
+  impacts, and mirrored the same immutable draws into DX9. The impact capture's
+  maximum channel difference was **1/255**; all five captured comparisons were
+  within **3/255**, with no channels differing by more than 8/255. Ragdoll bounds
+  stayed below **40.722 units**; the Showdown run stayed below **41.611 units**.
+  No invalid bone coordinates were sampled. Both final clients exited normally
+  and Leave stopped their exact owned servers. Comparison/validation runs carry
+  substantial diagnostic overhead and are not throughput measurements.
+- Tested and embedded SHA-256 hashes:
+
+  ```text
+  client 12b7f0a23f73bc06b377e1ffb5f5e71e7af796f957a76fff0763f4ddcdf7c6e4
+  server b588a253a9866387556a2bc39ad33ff50a950b4782be5a5362fbec7fe241f904
+  ```
+
+Evidence is in `results/bog-corpse-feedback/validation-report.json`, the native
+suite/package logs, `vpos-before`/`vpos-fixed`, the failed corpse-bound reports,
+`final-performance-showdown`, and `final-bog-impact-compare-layer`. The first
+final Bog diagnostic launch exited during startup without the prepared
+validation-layer path; that failed report is retained. The fixture now sets
+the prepared layer path itself when requesting comparison.
+
+The user's intermittent impact stretching and wall-blood flicker were not
+reproduced in these final captures. These checks establish the specific fixes
+above, not that every temporal decal artifact is resolved. No desktop automation
+or Internet test was performed. The installer is copied into
+`userTest/cod4x1khz_setup.exe`; close the game and repair the same output folder
+to apply it. The installed executable and player profiles were left untouched.
 
 ## October 6 volume slider capture fix
 

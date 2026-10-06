@@ -9,7 +9,13 @@
 #include <qcommon/threads.h>
 #include <server_mp/server_mp.h>
 #include <game_mp/g_public_mp.h>
+#include <server/sv_game.h>
 #include <client_mp/client_mp.h>
+#ifndef KISAK_DEDICATED
+#include <cgame_mp/cg_local_mp.h>
+#include <ragdoll/ragdoll.h>
+#include <xanim/dobj.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -103,6 +109,17 @@ void command() {
         if (Cmd_Argc() < 3 || !number(2, value) || value != std::floor(value)) { reply("{\"error\":\"invalid human port\"}"); return; }
         auto* entity = human(static_cast<int>(value));
         if (!entity) { reply("{\"error\":\"active human not found\"}"); return; }
+        if (!std::strcmp(action, "weapon") && Cmd_Argc() == 5) {
+            const unsigned weapon = G_GetWeaponIndexForName(Cmd_Argv(3));
+            float camo = 0;
+            if (!weapon || weapon >= 128 || !number(4, camo) || camo != std::floor(camo) || camo < 0 || camo > 7 ||
+                !BG_GetWeaponDef(weapon)->gunXModel[int(camo)]) { reply("{\"error\":\"invalid loaded weapon/camo\"}"); return; }
+            G_GivePlayerWeapon(&entity->client->ps, weapon, int(camo));
+            G_InitializeAmmo(entity, weapon, int(camo), 0);
+            char selection[32]; std::snprintf(selection, sizeof(selection), "a %u", weapon);
+            SV_GameSendServerCommand(int(entity - g_entities), SV_CMD_RELIABLE, selection);
+            std::snprintf(result, sizeof(result), "{\"weapon\":%u,\"camo\":%d}", weapon, int(camo)); reply(result); return;
+        }
         if (!std::strcmp(action, "place") && Cmd_Argc() == 8) {
             float origin[3]{}, angles[3]{};
             for (int i = 0; i < 3; ++i) if (!number(i + 3, origin[i])) { reply("{\"error\":\"invalid coordinates\"}"); return; }
@@ -141,8 +158,8 @@ void command() {
 #ifndef KISAK_DEDICATED
     if (CL_GetLocalClientConnectionState(0) != 9) { reply("{\"error\":\"client must be active\"}"); return; }
     SceneInput next{}; next.checksum = cm.checksum;
-    if (!std::strcmp(action, "fixed") && Cmd_Argc() == 4) {
-        next.mode = 1;
+    if ((!std::strcmp(action, "fixed") || !std::strcmp(action, "fire")) && Cmd_Argc() == 4) {
+        next.mode = !std::strcmp(action, "fire") ? 3 : 1;
         if (!number(2, next.angles[1]) || !number(3, next.angles[0]) || std::abs(next.angles[0]) > 80) { reply("{\"error\":\"invalid angles\"}"); return; }
     } else if (!std::strcmp(action, "shuttle") && Cmd_Argc() == 11) {
         next.mode = 2;
@@ -157,6 +174,71 @@ void command() {
 #endif
 }
 }
+const char* KHZ_BenchmarkModelsJSON() {
+#ifdef KISAK_DEDICATED
+    return "{}";
+#else
+    static char result[8192];
+    if (!Dvar_GetBool("khz_test_controls") || !Dvar_GetBool("khz_benchmark") || CL_GetLocalClientConnectionState(0) != 9)
+        return "{\"error\":\"requires active isolated benchmark\"}";
+    const auto* cg = CG_GetLocalClientGlobals(0);
+    std::size_t used = 0;
+    bool overflow = false;
+    const auto append = [&](const char* format, auto... values) {
+        if (overflow) return;
+        const int count = std::snprintf(result + used, sizeof(result) - used, format, values...);
+        if (count < 0 || std::size_t(count) >= sizeof(result) - used) { overflow = true; return; }
+        used += count;
+    };
+    append("{\"time\":%d,\"ragdolls\":[", cg->time);
+    bool comma = false;
+    for (int index = 0; index < 32; ++index) {
+        auto& body = ragdollBodies[index];
+        if (body.references <= 0 || body.state < BS_TUNNEL_TEST) continue;
+        const auto* orientations = Ragdoll_BodyBoneOrientations(&body);
+        double radius = 0; unsigned invalid = 0;
+        for (int bone = 0; bone < body.numBones + body.numLerpBones; ++bone) {
+            double squared = 0;
+            for (int axis = 0; axis < 3; ++axis) {
+                const double delta = orientations[bone].origin[axis] - orientations[0].origin[axis];
+                squared += delta * delta;
+                if (!std::isfinite(delta)) ++invalid;
+            }
+            if (std::isfinite(squared)) radius = (std::max)(radius, std::sqrt(squared));
+        }
+        append(
+            "%s{\"handle\":%d,\"entity\":%d,\"state\":%d,\"capture_ms\":%d,\"radius\":%.3f,\"invalid\":%u,\"origin\":[%.3f,%.3f,%.3f]}",
+            comma ? "," : "", index + 1, body.dobj, int(body.state), body.velCaptureMsec, radius, invalid,
+            orientations[0].origin[0], orientations[0].origin[1], orientations[0].origin[2]);
+        comma = true;
+    }
+    append( "],\"corpses\":["); comma = false;
+    for (int index = 64; index < 64 + MAX_CLIENT_CORPSES; ++index) {
+        const auto* entity = CG_GetEntity(0, index);
+        if (!entity->nextValid || entity->nextState.eType != ET_PLAYER_CORPSE) continue;
+        const auto* object = Com_GetClientDObj(index, 0);
+        double radius = 0; unsigned invalid = 0, computed = 0;
+        if (object && object->skel.timeStamp == CL_GetSkelTimeStamp() && object->skel.mat) for (int bone = 0; bone < object->numBones; ++bone) {
+            if (!(object->skel.partBits.skel[bone >> 5] & (0x80000000u >> (bone & 31)))) continue;
+            ++computed;
+            double squared = 0;
+            for (int axis = 0; axis < 3; ++axis) {
+                const double delta = object->skel.mat[bone].trans[axis] + cg->refdef.viewOffset[axis] - entity->pose.origin[axis];
+                squared += delta * delta;
+                if (!std::isfinite(delta)) ++invalid;
+            }
+            if (std::isfinite(squared)) radius = (std::max)(radius, std::sqrt(squared));
+        }
+        append(
+            "%s{\"entity\":%d,\"handle\":%d,\"bones\":%u,\"computed\":%u,\"radius\":%.3f,\"invalid\":%u,\"origin\":[%.3f,%.3f,%.3f]}",
+            comma ? "," : "", index, entity->pose.ragdollHandle, object ? object->numBones : 0, computed, radius, invalid,
+            entity->pose.origin[0], entity->pose.origin[1], entity->pose.origin[2]);
+        comma = true;
+    }
+    append("]}");
+    return overflow ? "{\"error\":\"model diagnostics exceeded capacity\"}" : result;
+#endif
+}
 bool KHZ_BenchmarkSceneInput(usercmd_s* command) {
 #ifdef KISAK_DEDICATED
     return false;
@@ -165,7 +247,7 @@ bool KHZ_BenchmarkSceneInput(usercmd_s* command) {
     const auto& ps = CL_GetLocalClientGlobals(0)->snap.ps;
     if (ps.pm_type != PM_NORMAL || ps.otherFlags & 2) return false;
     float yaw = input.angles[1], pitch = input.angles[0];
-    command->forwardmove = command->rightmove = 0; command->buttons = 0;
+    command->forwardmove = command->rightmove = 0; command->buttons = input.mode == 3 ? 1 : 0;
     if (input.mode == 2) {
         float dx = input.points[input.goal][0] - ps.origin[0], dy = input.points[input.goal][1] - ps.origin[1];
         if (dx * dx + dy * dy < 144) {

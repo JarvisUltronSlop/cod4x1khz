@@ -119,6 +119,7 @@ struct RagdollBody // sizeof=0x9D4
     int stateMsec;
     int stateFrames;
     int velCaptureMsec;
+    int velCaptureTime; // Time of the first animation pose, independent of render submission.
     int numBones;
     Bone bones[14];
     int numLerpBones;
@@ -159,6 +160,7 @@ void __cdecl Ragdoll_InitDvars();
 void __cdecl Ragdoll_Register();
 void __cdecl Ragdoll_Init();
 void __cdecl Ragdoll_Shutdown();
+int Ragdoll_PresentationMsec(int time);
 
 int Ragdoll_CreateRagdollForDObjRaw(int localClientNum, int ragdollDef, const cpose_t *pose, DObj_s *dobj);
 

@@ -3,6 +3,7 @@
 #endif
 #include <universal/q_shared.h>
 #include "khz_ui.h"
+#include "khz_benchmark_scene.h"
 #include "khz_host.h"
 #include "khz_profile.h"
 #include "khz_controls.h"
@@ -449,6 +450,23 @@ const char* KHZ_UIProbe(const char* action) {
     static char result[16384];
     iassert(Sys_IsMainThread());
     if (!Dvar_GetBool("khz_test_controls") || !storage.frontend || !action) return "{\"error\":\"frontend test controls unavailable\"}";
+    if (equal(action, "lighting")) {
+        std::snprintf(result, sizeof(result), "{\"rainbow_missing_grid\":%s,\"show_grid\":%s}",
+            Dvar_GetBool("r_showMissingLightGrid") ? "true" : "false", Dvar_GetBool("r_showLightGrid") ? "true" : "false");
+        return result;
+    }
+    if (equal(action, "models")) return KHZ_BenchmarkModelsJSON();
+    if (!I_strnicmp(action, "scoreboard ", 11)) {
+        const char* phase = action + 11;
+        if (equal(phase, "down") || equal(phase, "up")) {
+            CL_KeyEvent(0, K_TAB, equal(phase, "down"), Sys_Milliseconds());
+        } else if (!equal(phase, "status")) return "{\"error\":\"expected scoreboard down, up or status\"}";
+        const auto* cg = CG_GetLocalClientGlobals(0);
+        std::snprintf(result, sizeof(result), "{\"shown\":%s,\"scores\":%d,\"catchers\":%d,\"tab_binding\":\"%s\"}",
+            cg->showScores ? "true" : "false", cg->numScores, CL_GetLocalClientUIGlobals(0)->keyCatchers,
+            Key_GetBinding(0, K_TAB));
+        return result;
+    }
     KHZ_CommandControlScope controls;
     if (equal(action, "audio")) {
         unsigned active = 0, game = 0, streams = 0;

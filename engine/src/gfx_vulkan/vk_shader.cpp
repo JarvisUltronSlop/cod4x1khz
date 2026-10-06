@@ -8,6 +8,41 @@
 
 namespace gfx::vk {
 namespace {
+void integerPixelPosition(std::vector<std::uint32_t>& words) {
+    // Stock PS3 VPOS has integer pixel centers. The Vulkan builtin is offset
+    // by half a pixel, independent of the viewport's matching raster offset.
+    // Lower only the stock loads; later depth-bias lowering still reads raw Z.
+    unsigned variable=0,type=0,scalar=0;
+    for(std::size_t at=5;at<words.size();at+=words[at]>>16)
+        if((words[at]&65535)==spv::OpDecorate && (words[at]>>16)==4 &&
+            words[at+2]==spv::DecorationBuiltIn && words[at+3]==spv::BuiltInFragCoord)variable=words[at+1];
+    if(!variable)return;
+    for(std::size_t at=5;at<words.size();at+=words[at]>>16)
+        if((words[at]&65535)==spv::OpLoad && words[at+3]==variable)type=words[at+1];
+    for(std::size_t at=5;at<words.size();at+=words[at]>>16)
+        if((words[at]&65535)==spv::OpTypeVector && words[at+1]==type && words[at+3]==4)scalar=words[at+2];
+    if(!type||!scalar)throw std::runtime_error("Stock pixel position lacks a float4 load");
+    auto next=words[3];const auto half=next++,zero=next++,offset=next++;
+    std::vector<std::uint32_t> out(words.begin(),words.begin()+5);out.reserve(words.size()+32);
+    bool constants=false;
+    for(std::size_t at=5;at<words.size();) {
+        const auto count=words[at]>>16,op=words[at]&65535;
+        if(op==spv::OpFunction&&!constants) {
+            const std::uint32_t values[]={4u<<16|spv::OpConstant,scalar,half,0x3f000000,
+                4u<<16|spv::OpConstant,scalar,zero,0,
+                7u<<16|spv::OpConstantComposite,type,offset,half,half,zero,zero};
+            out.insert(out.end(),std::begin(values),std::end(values));constants=true;
+        }
+        const auto first=out.size();out.insert(out.end(),words.begin()+at,words.begin()+at+count);
+        if(op==spv::OpLoad&&words[at+3]==variable) {
+            const auto raw=next++;out[first+2]=raw;
+            const std::uint32_t subtract[]={5u<<16|spv::OpFSub,type,words[at+2],raw,offset};
+            out.insert(out.end(),std::begin(subtract),std::end(subtract));
+        }
+        at+=count;
+    }
+    out[3]=next;words.swap(out);
+}
 // DX9 VS1.1 includes DCL records for its vertex declaration. Reject an
 // undeclared input before the pinned emitter dereferences its missing record.
 // This also gives the actual semantic/register mapping rather than assuming
@@ -144,6 +179,7 @@ LinkedShaders link(const Shader& vertex, const Shader& pixel, std::span<const MO
             result.pixel.insert(result.pixel.begin()+types,std::begin(location),std::end(location));types+=4;
         }
     }
+    integerPixelPosition(result.pixel);
     validateSpirv(result.vertex, vertex.name.c_str()); validateSpirv(result.pixel, pixel.name.c_str());
     return result;
 }

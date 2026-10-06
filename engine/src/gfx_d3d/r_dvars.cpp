@@ -777,7 +777,7 @@ const dvar_t* r_bspPreTessBatch;
      r_showLightGrid = Dvar_RegisterBool("r_showLightGrid", 0, DVAR_CHEAT, "Show light grid debugging information");
      r_showMissingLightGrid = Dvar_RegisterBool(
          "r_showMissingLightGrid",
-         true,
+         false,
          DVAR_NOFLAG,
          "Use rainbow colors for entities that are outside the light grid");
      r_cacheSModelLighting = Dvar_RegisterBool(

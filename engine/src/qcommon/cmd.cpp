@@ -1316,7 +1316,7 @@ void __cdecl Cmd_ExecuteSingleCommand(int32_t  localClientNum, int32_t  controll
     while (scan && *scan && static_cast<unsigned char>(*scan) > ' ' && tokenLength + 1 < sizeof(firstToken)) firstToken[tokenLength++] = *scan++;
     bool presentationOnly = false;
     if (!scan || !*scan || static_cast<unsigned char>(*scan) <= ' ') {
-        for (const char* command : {"khz_stall", "khz_stats", "khz_json", "screenshot", "screenshotJPEG", "screenshotTGA"})
+        for (const char* command : {"khz_stall", "khz_stats", "khz_json", "screenshot", "screenshotJPEG", "screenshotTGA", "+scores", "-scores"})
             if (!I_stricmp(firstToken, command)) presentationOnly = true;
     }
     KHZ_CommandControlScope controls(!presentationOnly);

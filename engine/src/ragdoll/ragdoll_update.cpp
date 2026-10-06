@@ -1494,28 +1494,6 @@ void __cdecl Ragdoll_PrintTunnelFail(RagdollBody *body)
     }
 }
 
-void __cdecl Ragdoll_UpdateVelocityCapture(RagdollBody *body)
-{
-    BoneOrientation *snapshot; // [esp+0h] [ebp-4h]
-    BoneOrientation *snapshota; // [esp+0h] [ebp-4h]
-
-    iassert( body );
-    if (body->stateFrames >= 1)
-    {
-        body->velCaptureMsec = body->stateMsec;
-        body->curOrientationBuffer ^= 1u;
-        snapshota = Ragdoll_BodyBoneOrientations(body);
-        Ragdoll_SnapshotAnimOrientations(body, snapshota);
-        Ragdoll_BodyNewState(body, BodyState_t::BS_TUNNEL_TEST);
-    }
-    else
-    {
-        body->curOrientationBuffer ^= 1u;
-        snapshot = Ragdoll_BodyBoneOrientations(body);
-        Ragdoll_SnapshotAnimOrientations(body, snapshot);
-    }
-}
-
 void __cdecl Ragdoll_SnapshotAnimOrientations(RagdollBody *body, BoneOrientation *snapshot)
 {
     RagdollDef *def; // [esp+0h] [ebp-18h]
@@ -1938,6 +1916,13 @@ void __cdecl Ragdoll_Update(int msec)
         PROF_SCOPED("Ragdoll_Update");
         if (ragdoll_enable->current.enabled && cg_paused && !cg_paused->current.integer)
         {
+#if defined(COD4X1KHZ) && defined(KISAK_MP)
+            // Native animation and the presented world share CG time. Advance
+            // cosmetic ragdolls by that interval, including uncapped frames
+            // that present the same 1 ms simulation sample more than once.
+            msec = Ragdoll_PresentationMsec(CG_GetLocalClientGlobals(0)->time);
+            if (msec <= 0) return;
+#endif
             ragdollTime += msec;
             for (i = 0; i < 32; ++i)
             {

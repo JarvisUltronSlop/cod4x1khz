@@ -434,6 +434,7 @@ set(QCOMMON
 
 set(RAGDOLL
     "${SRC_DIR}/ragdoll/ragdoll.cpp"
+    "${SRC_DIR}/ragdoll/ragdoll_lifecycle.cpp"
     "${SRC_DIR}/ragdoll/ragdoll.h"
     "${SRC_DIR}/ragdoll/ragdoll_controller.cpp"
     "${SRC_DIR}/ragdoll/ragdoll_quat.cpp"

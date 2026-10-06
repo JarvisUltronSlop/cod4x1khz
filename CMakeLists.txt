@@ -168,6 +168,14 @@ if(BUILD_TESTING)
   target_compile_definitions(khz_model_skin_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
   target_compile_options(khz_model_skin_native_tests PRIVATE /fp:precise)
   add_test(NAME khz_model_skin_native COMMAND khz_model_skin_native_tests)
+  add_executable(khz_ragdoll_reset_native_tests tests/ragdoll_reset_native_tests.cpp engine/src/ragdoll/ragdoll_lifecycle.cpp)
+  target_include_directories(khz_ragdoll_reset_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_ragdoll_reset_native_tests PRIVATE KISAK_MP=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_ragdoll_reset_native_tests PRIVATE /Gy /GL /UNDEBUG)
+  target_link_options(khz_ragdoll_reset_native_tests PRIVATE /OPT:REF /LTCG)
+  add_test(NAME khz_ragdoll_reset_native COMMAND khz_ragdoll_reset_native_tests)
   add_executable(khz_movement_friction_native_tests tests/movement_friction_native_tests.cpp
     engine/src/bgame/bg_movement_friction.cpp)
   target_include_directories(khz_movement_friction_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
@@ -413,6 +421,18 @@ if(COD4X1KHZ_BUILD_ENGINE)
     set(KHZ_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
     set(KISAK_OPENAL ON CACHE BOOL "Native audio backend" FORCE)
     include(engine/scripts/extern/openal.cmake)
+    add_executable(khz_sound_openal_native_tests tests/sound_openal_native_tests.cpp
+      engine/src/sound/snd_openal_runtime.cpp engine/src/sound/snd_driver_load_obj.cpp)
+    set_source_files_properties(engine/src/sound/snd_driver_load_obj.cpp PROPERTIES
+      COMPILE_DEFINITIONS "DR_WAV_IMPLEMENTATION;DR_MP3_IMPLEMENTATION")
+    target_include_directories(khz_sound_openal_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+      "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native" "${DXSDK_DIR}/include")
+    target_compile_definitions(khz_sound_openal_native_tests PRIVATE KISAK_MP=1 KISAK_OPENAL=1
+      RELEASE_ASSERTS=1 _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(khz_sound_openal_native_tests PRIVATE /Gy /fp:precise)
+    target_link_options(khz_sound_openal_native_tests PRIVATE /OPT:REF)
+    target_link_libraries(khz_sound_openal_native_tests PRIVATE OpenAL::OpenAL)
+    add_test(NAME khz_sound_openal_native COMMAND khz_sound_openal_native_tests)
     include(cmake/native-video.cmake)
   endif()
   set(CICD 1)

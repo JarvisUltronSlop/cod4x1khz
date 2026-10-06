@@ -988,32 +988,6 @@ void __cdecl Ragdoll_Register()
     ragdollFirstInit = 1;
 }
 
-void __cdecl Ragdoll_Init()
-{
-    int i; // [esp+0h] [ebp-4h]
-
-    iassert( Sys_IsMainThread() );
-    iassert( ragdollFirstInit );
-    if (!ragdollInited)
-    {
-        if (ragdoll_enable->current.enabled && ragdoll_max_simulating->current.integer < 8)
-            Dvar_SetInt((dvar_s *)ragdoll_max_simulating, 8);
-        memset((uint8_t *)ragdollBodies, 0, 0x13A80u);
-        for (i = 0; i < 2; ++i)
-        {
-            ragdollDefs[i].bound = 0;
-            ragdollDefs[i].inUse = 0;
-        }
-        ragdollInited = 1;
-    }
-}
-
-void __cdecl Ragdoll_Shutdown()
-{
-    iassert( Sys_IsMainThread() );
-    ragdollInited = 0;
-}
-
 int Ragdoll_CreateRagdollForDObjRaw(int localClientNum, int ragdollDef, const cpose_t *pose, DObj_s *dobj)
 {
     int UnusedBody; // r3

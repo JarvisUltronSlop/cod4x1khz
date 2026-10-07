@@ -3,16 +3,70 @@
 Latest local validation on October 6, 2026, for `vulkan-testing`, using Windows,
 Ryzen 7 9700X, Radeon RX 9070 XT, and the MSVC/CMake Release x64 toolchain.
 
-The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,906,560 bytes).
+The local artifact is `results/distribution/cod4x1khz_setup.exe` (67,907,072 bytes).
 SHA-256:
 
 ```text
-512773a48bb55b90d77b21bd2c69f5646c07778a67b65e378b768fdfec9cf71b
+72a9f1ad8ced9e5461ae74034c626d34065bd65daf2fa3b320a406b530b239c4
 ```
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
 [INSTALLER.md](INSTALLER.md). No GitHub release was created.
+
+## October 6 wall-mark worker staging correction
+
+The follow-up report of flickering blood and bullet impacts exposed a separate
+geometry-upload defect. World marks were generated on a frontend worker, which
+bypassed CPU staging and wrote directly to the graphics buffer. Main-thread
+model marks then appended through different CPU storage. Uploading that combined
+range replaced the valid world-mark prefix with uninitialized/stale vertices.
+Blood and bullet decals share this world-mark mesh. Comparing DX9 and Vulkan
+draws alone could miss this defect because both received the corrupted geometry.
+
+Registered frontend workers now use the same per-frame CPU storage as the main
+thread. A short mutex protects slot selection and lock metadata; bulk geometry
+generation remains outside it. Existing worker barriers still order appending
+and render-owner upload. Simulation timing and the Performance preset are
+unchanged.
+
+- A regression linked to the production upload implementation poisons fresh CPU
+  storage and reproduces the old failure: world vertices are overwritten after
+  the model append. The corrected implementation preserves the complete vertex
+  payload across eight frames and both backend slots, all four frontend workers,
+  concurrent effect generation, and one graphics upload per completed buffer.
+  Arbitrary/render-owner threads remain excluded; disabled staging still falls
+  back to the native buffer path. The final focused test passes on x64 and Win32.
+- The full native suites passed **74/74 x64** and **71/71 Win32**.
+- Actual Vulkan Showdown gameplay fired the gold AK into a collision-checked
+  wall, captured settled bullet holes, and captured six additional views during
+  **60.809 units** of physical camera movement alongside the wall. A subsequent
+  **60.998-second** Performance interval with 15 bots traversed a stair/ledge
+  with a **16-unit** height change. Prediction measured **1000.010 Hz**, server
+  simulation **999.991 Hz**, and rendering **1932.527 FPS at 720p**. Initial/final
+  client and server tick debt were zero; sampled snapshot/event backlogs,
+  presentation failures and queue drops were zero. This is an isolated scene,
+  not a general gameplay FPS guarantee.
+- A separate **20-second** Bog run used Vulkan validation and the private DX9
+  comparison path. It fired into another loaded wall and captured marks during
+  **55.512 units** of physical camera movement. All nine comparisons differed
+  by at most **8/255 per channel**, with **zero Vulkan validation errors**.
+  Geometry staging remained enabled, uploaded 2,149 additional completed
+  frontend frames, and reported zero ownership failures. Validation/comparison
+  adds substantial overhead; this run is not a throughput measurement. Both
+  native clients exited normally and stopped their exact owned servers.
+- The installer regression was rebuilt against the final shipping CAB and
+  passed extraction, repair, rollback and profile-preservation checks. All
+  twenty payload files passed the production inventory/credential checks;
+  the packaged client/server hashes match both native gameplay runs. The
+  installer in `userTest` has the same SHA-256 as the distribution copy above.
+
+The exact corruption sequence is covered by the regression; the native captures
+supplement it and do not establish that every possible intermittent decal
+artifact is eliminated. Final logs, native reports and payload hashes are
+recorded under `results/decal-feedback`. No desktop automation or Internet
+hosting test was performed. The installed `userTest/output` and player profiles
+remain untouched; the updated installer is supplied for manual repair/retesting.
 
 ## October 6 corpse timing, Vulkan pixel positions, scoreboard and sound reuse
 

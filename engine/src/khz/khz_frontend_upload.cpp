@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <mutex>
 
 namespace {
 // CPU storage follows the existing two backend-data slots. The native worker
@@ -30,6 +31,11 @@ struct Frame {
 Frame slots[2];
 const dvar_t* staging = nullptr;
 bool initialized = false;
+// World marks and FX mesh jobs run on frontend workers, while model marks
+// append on the main thread. All producers must share the same CPU storage.
+// Protect slot selection and lock metadata; geometry writes remain outside
+// this short lock and the existing worker barriers order the append/upload.
+std::mutex stagingMutex;
 std::atomic<std::uint64_t> stagedLocks{0}, uploadFrames{0}, uploadBuffers{0}, uploadBytes{0};
 std::atomic<unsigned> failures{0};
 
@@ -42,8 +48,20 @@ int slotFor(const GfxBackEndData* data) {
     for (int i = 0; i != 2; ++i) if (data == &s_backEndData[i]) return i;
     return -1; // Loading/remote/debug views keep their native synchronized path.
 }
+bool frontendThread() {
+    if (Sys_IsMainThread()) return true;
+    const auto id = Sys_GetCurrentThreadId();
+#if defined(COD4X1KHZ_NATIVE_VULKAN) && defined(KISAK_MP)
+    constexpr unsigned workers = 4;
+#else
+    constexpr unsigned workers = 2;
+#endif
+    for (unsigned worker = 0; worker < workers; ++worker)
+        if (threadId[Sys_WorkerContext(worker)] == id) return true;
+    return false;
+}
 Frame* current() {
-    if (!initialized || !Sys_IsMainThread()) return nullptr;
+    if (!initialized || !frontendThread()) return nullptr;
     const int index = slotFor(frontEndDataOut);
     if (index < 0) return nullptr;
     auto& slot = slots[index];
@@ -106,6 +124,7 @@ void KHZ_FrontendUploadShutdown() {
 }
 
 bool KHZ_FrontendVertexLock(IDirect3DVertexBuffer9* handle, int offset, int bytes, int flags, void** result) {
+    std::lock_guard guard(stagingMutex);
     auto* slot = current();
     if (!slot || !slot->enabled) return false;
     const auto* data = frontEndDataOut;
@@ -117,7 +136,8 @@ bool KHZ_FrontendVertexLock(IDirect3DVertexBuffer9* handle, int offset, int byte
     return false;
 }
 bool KHZ_FrontendVertexUnlock(IDirect3DVertexBuffer9* handle) {
-    if (!initialized || !Sys_IsMainThread()) return false;
+    std::lock_guard guard(stagingMutex);
+    if (!initialized || !frontendThread()) return false;
     const int index = slotFor(frontEndDataOut);
     if (index < 0) return false;
     for (auto& buffer : slots[index].buffers) if (buffer.vertex == handle && buffer.locked) {
@@ -126,13 +146,15 @@ bool KHZ_FrontendVertexUnlock(IDirect3DVertexBuffer9* handle) {
     return false;
 }
 bool KHZ_FrontendIndexLock(IDirect3DIndexBuffer9* handle, int offset, int bytes, int flags, void** result) {
+    std::lock_guard guard(stagingMutex);
     auto* slot = current();
     if (!slot || !slot->enabled || handle != frontEndDataOut->preTessIb) return false;
     auto& buffer = slot->buffers[3]; buffer.index = handle;
     return begin(buffer, offset, bytes, flags, result);
 }
 bool KHZ_FrontendIndexUnlock(IDirect3DIndexBuffer9* handle) {
-    if (!initialized || !Sys_IsMainThread()) return false;
+    std::lock_guard guard(stagingMutex);
+    if (!initialized || !frontendThread()) return false;
     const int index = slotFor(frontEndDataOut);
     if (index < 0) return false;
     auto& buffer = slots[index].buffers[3];

@@ -176,6 +176,16 @@ if(BUILD_TESTING)
   target_compile_options(khz_ragdoll_reset_native_tests PRIVATE /Gy /GL /UNDEBUG)
   target_link_options(khz_ragdoll_reset_native_tests PRIVATE /OPT:REF /LTCG)
   add_test(NAME khz_ragdoll_reset_native COMMAND khz_ragdoll_reset_native_tests)
+  add_executable(khz_frontend_upload_native_tests tests/frontend_upload_native_tests.cpp
+    engine/src/khz/khz_frontend_upload.cpp)
+  target_include_directories(khz_frontend_upload_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/engine/deps" "${CMAKE_CURRENT_SOURCE_DIR}/native"
+    "${CMAKE_CURRENT_SOURCE_DIR}/.deps/dxsdk/9.29.952.8/build/native/include")
+  target_compile_definitions(khz_frontend_upload_native_tests PRIVATE KISAK_MP=1 COD4X1KHZ=1
+    COD4X1KHZ_NATIVE_VULKAN=1 RELEASE_ASSERTS=1)
+  target_compile_options(khz_frontend_upload_native_tests PRIVATE /Gy /UNDEBUG)
+  target_link_options(khz_frontend_upload_native_tests PRIVATE /OPT:REF)
+  add_test(NAME khz_frontend_upload_native COMMAND khz_frontend_upload_native_tests)
   add_executable(khz_movement_friction_native_tests tests/movement_friction_native_tests.cpp
     engine/src/bgame/bg_movement_friction.cpp)
   target_include_directories(khz_movement_friction_native_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/engine/src"

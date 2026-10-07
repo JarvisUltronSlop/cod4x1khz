@@ -38,6 +38,7 @@ $targets += 'khz_asset_stream_native_tests'
 $targets += @('khz_model_skin_native_tests','khz_movement_friction_native_tests','khz_fx_mark_mesh_native_tests')
 $targets += 'khz_entity_pose_native_tests'
 $targets += 'khz_ragdoll_reset_native_tests'
+$targets += 'khz_frontend_upload_native_tests'
 $targets += 'khz_ui_scroll_native_tests'
 $targets += 'khz_hunk_memory_native_tests'
 $targets += 'khz_plugin_sdk_native_tests'

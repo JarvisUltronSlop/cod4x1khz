@@ -18,6 +18,7 @@ parser.add_argument('--map', default='mp_bog')
 parser.add_argument('--backend', choices=('vulkan', 'd3d9'), default='vulkan')
 parser.add_argument('--port', type=int, default=29026)
 parser.add_argument('--impacts', action='store_true', help='Fire a gold AK at loaded world geometry')
+parser.add_argument('--wall-impacts', action='store_true', help='Fire at a collision-checked wall and capture marks while walking past it')
 parser.add_argument('--stairs', action='store_true', help='Walk a shipped stair/ledge navigation pair')
 parser.add_argument('--scoreboard', action='store_true')
 parser.add_argument('--compare', action='store_true', help='Mirror the same immutable packets into private DX9 diagnostics')
@@ -83,6 +84,7 @@ def capture_view(directory):
 try:
     f.start()
     print(f'Native {args.map} match running', flush=True)
+    f.report['uploads_before'] = f.call('khz_ui renderprofile uploads')
     f.report['lighting'] = f.call('khz_ui lighting')
     if f.report['lighting'].get('rainbow_missing_grid') or f.report['lighting'].get('show_grid'): raise ValueError('Shipping lighting enabled debug coloring')
     if args.scoreboard:
@@ -103,6 +105,47 @@ try:
     f.report['place'] = place(f, node['point'], heading['yaw'])
     f.report['input'] = control(f, f"fixed {heading['yaw']} 0")
     wait_view(f, node['point'], heading['yaw'])
+    if args.wall_impacts:
+        import math
+        from native_render_scene_probe import geometry, coordinates
+        rows=(root/'upstream/bot_warfare/scriptdata/waypoints'/f'{args.map}_wp.csv').read_text().splitlines()[1:]
+        points=[list(map(float,row.split(',')[0].split())) for row in rows]
+        probes=[]
+        for point in sorted(points,key=lambda p: math.dist(p,node['point']))[:40]:
+            view=geometry(f,'probe '+coordinates([point]));probes.append({'point':point,'view':view})
+            if not view.get('clear'): continue
+            chosen=None
+            for h in view['headings']:
+                if not (100<h['rays'][2]<240 and max(h['rays'])<400): continue
+                yaw=math.radians(h['yaw']);side=[-math.sin(yaw),math.cos(yaw),0]
+                endpoints=[[point[i]+sign*40*side[i] for i in range(3)] for sign in (-1,1)]
+                if not geometry(f,'segment '+coordinates(endpoints)).get('clear'): continue
+                if not all(geometry(f,'probe '+coordinates([p])).get('clear') for p in endpoints): continue
+                chosen=(h,endpoints);break
+            if chosen: break
+        else: raise ValueError('No loaded wall with a clear parallel walking segment')
+        h,endpoints=chosen
+        look=[point[0]+h['rays'][2]*math.cos(math.radians(h['yaw'])),
+              point[1]+h['rays'][2]*math.sin(math.radians(h['yaw'])),point[2]]
+        evidence=f.report['wall_impacts']={'point':point,'heading':h,'route':endpoints,'probes':probes}
+        evidence['place']=place(f,point,h['yaw']);control(f,f"fixed {h['yaw']} 0")
+        wait_view(f,point,h['yaw'])
+        evidence['weapon']=geometry(f,f'weapon {f.port} ak47_mp 6')
+        if 'error' in evidence['weapon']: raise ValueError(evidence['weapon']['error'])
+        time.sleep(1);control(f,f"fire {h['yaw']} 0");time.sleep(3)
+        control(f,f"fixed {h['yaw']} 0");time.sleep(1)
+        capture=out/'wall-fixed';capture.mkdir();evidence['fixed']=capture_view(capture)
+        place(f,endpoints[0],h['yaw']);control(f,'shuttle '+coordinates([*endpoints,look]))
+        evidence['positions']=[];evidence['captures']=[]
+        for index in range(6):
+            time.sleep(.5)
+            evidence['positions'].append(f.sample()['state']['origin'])
+            capture=out/f'wall-walking-{index}';capture.mkdir();evidence['captures'].append(capture_view(capture))
+        if max(math.dist(a[:2],b[:2]) for a in evidence['positions'] for b in evidence['positions'])<20:
+            raise ValueError('Wall-mark camera did not actually walk')
+        # Wall checks precede the rate interval, which keeps its broad match view.
+        place(f,node['point'],heading['yaw']);control(f,f"fixed {heading['yaw']} 0")
+        wait_view(f,node['point'],heading['yaw'])
     if args.close_up:
         import math
         models = f.call('khz_ui models')
@@ -174,6 +217,11 @@ try:
         if any(c['invalid'] or c['radius'] > 180 for c in models.get('ragdolls', [])): raise ValueError('Ragdoll bones exceeded finite human bounds')
         if models.get('ragdolls'): print('Corpse radii', [(b['entity'], b['state'], b['capture_ms'], b['radius']) for b in models['ragdolls']], flush=True)
     f.report['last_server'] = f.native_server()
+    f.report['uploads_after'] = uploads = f.call('khz_ui renderprofile uploads')
+    if not uploads.get('enabled') or not uploads.get('initialized') or uploads.get('failures'):
+        raise ValueError('Frontend geometry staging was disabled or rejected buffer ownership')
+    if uploads['upload_frames'] <= f.report['uploads_before']['upload_frames']:
+        raise ValueError('No completed frontend frames were uploaded')
     if args.stairs:
         heights=[sample['state']['origin'][2] for sample in samples]
         f.report['stairs']['observed_height_range']=max(heights)-min(heights)

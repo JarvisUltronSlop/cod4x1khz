@@ -1,8 +1,8 @@
 {
   "repository": "JarvisUltronSlop/cod4x1khz",
   "branch": "vulkan-testing",
-  "enabled": true,
+  "enabled": false,
   "interval_minutes": 60,
   "stop_marker": "docs/vulkan-ready.json",
-  "description": "Back up source and changed workspace files only. Do not implement or test Vulkan automatically. Keep repository and release archives private. Read docs/BACKUP.md for recovery."
+  "description": "Release-based workspace backups disabled on 2026-10-29 at the owner's request to retain only releases 0.1 and 0.2. Do not recreate backup releases. Existing source history and local workspace data are retained. Read docs/BACKUP.md for recovery."
 }

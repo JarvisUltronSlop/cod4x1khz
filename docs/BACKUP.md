@@ -1,9 +1,16 @@
 # Private backups and recovery
 
 Repository: `JarvisUltronSlop/cod4x1khz`. The initial source checkpoint is on
-`main`, tagged **v0.1**. `vulkan-testing` starts at the same source commit and is
-the target for ongoing backups. Release 0.1 and the accepted root executable
-retain Direct3D 9; the branch's [native Vulkan work](VULKAN.md) is experimental.
+`main`, tagged **v0.1**. Release **v0.2** on `vulkan-testing` contains the native
+x64 game, Vulkan/DX9 renderers, installer and Server Manager.
+
+On October 29, 2026, the owner requested only releases 0.1 and 0.2 on the releases
+page. The ten `backup-*` releases, including the unfinished draft, are being
+removed as part of that publication. Release-based backups are disabled in
+`config/backup.json` so scheduled invocations cannot recreate them. The v0.1
+release and its recovery assets are retained, as are source commits, Git tags
+and local workspace files. Historical incremental manifests referencing removed
+release assets no longer provide a complete downloadable recovery set.
 
 ## What is saved
 
@@ -31,24 +38,24 @@ This contains the owner's Steam game data and proprietary runtime dependencies.
 redistributable game packages. A future public source release requires a separate
 content/license review and must continue to require each user's owned game.
 
-## Ongoing backups
+## Historical backup mechanism (disabled)
 
 ```powershell
 ./backup.ps1
 ```
 
-Run on `vulkan-testing`. The script verifies the account, private repository,
+The command now exits with "Backup is disabled; no action." The following
+describes the former mechanism, not a request to resume release uploads.
+When enabled on `vulkan-testing`, the script verifies the account, private repository,
 remote and current branch, stages complete source files, commits changes and
 pushes without force. Changed workspace files go into a timestamped private
 prerelease. Unchanged files reference already checked older volumes, so unchanged
 retail assets are not uploaded every hour. Every manifest describes the complete
 workspace, including deletions and its previous checkpoint.
 
-A quiet hourly task in this chat performs this command when files change. It
-skips active game/test processes and active backup work, and does not build, test
-or implement Vulkan. It reports failures needing attention. Keep the computer
-on and the desktop app running for local scheduled work. If another branch is
-checked out, it reports the mismatch rather than switching or committing there.
+A quiet hourly task was configured to run this command when files changed,
+skipping active game/test/build processes. With the backup setting disabled,
+any remaining scheduled invocation exits before staging, pushing or uploading.
 
 Set `config/backup.json`'s `enabled` to false or disable the task in Scheduled
 to stop it. When Vulkan readiness is actually confirmed, the documented
@@ -81,8 +88,9 @@ The destination must be new or empty. The restore tool downloads referenced
 volumes one at a time, checks archive digests and file payload hashes, restores
 modification times, then frees only its downloaded staging volumes. It never
 extracts unrequested entries, follows unsafe archive paths, or overwrites an
-existing project. For a later checkpoint, download that release's manifest;
-it references the necessary unchanged base volumes automatically.
+existing project. The retained v0.1 manifest references its original recovery
+volumes. Removed incremental releases cannot be restored through their former
+download URLs.
 
 Alternatively, download the manifest and all referenced volumes through GitHub's
 release pages, then pass `--archives C:\Recovery\downloaded` to avoid API downloads.

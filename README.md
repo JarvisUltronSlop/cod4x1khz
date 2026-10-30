@@ -1,12 +1,12 @@
 # cod4x1khz
 
-**Release 0.1 is an experimental Direct3D 9 development checkpoint (Build 86).**
-It preserves the current playable multiplayer build and its evidence; the complete
-public CoD4x feature and gameplay acceptance gates remain open. The `vulkan-testing`
-branch contains an experimental native Vulkan 1.3 renderer; the accepted root
-executable and release 0.1 retain DX9. Vulkan is not yet performance-qualified.
+**[Release 0.2](https://github.com/JarvisUltronSlop/cod4x1khz/releases/tag/v0.2)
+adds native x64, Vulkan alongside DX9, a standalone Windows installer and an
+included Server Manager.** Simulation and prediction run at 1,000 Hz while
+rendering runs independently and defaults to uncapped. The release includes the
+gameplay, rendering, audio and interface fixes from user testing.
 
-Experimental Windows Win32 client/server built from KisakCOD at
+Experimental Windows client/server built from KisakCOD at
 `8aadf94cc82795d6829ca06052996a5ec79001c3`. CoD4x Server at
 `ddd65fce1a1093017bad2dbb6840d75d11c0d56f` is retained under `upstream/` as
 the feature reference. This is an early implementation, not a CoD4x feature-parity release.
@@ -15,18 +15,23 @@ All dependencies, copied game data, binaries, logs, and measurements stay inside
 this project directory. **You need your own installed Steam copy of
 [Call of Duty 4: Modern Warfare (2007)](https://store.steampowered.com/app/7940/).**
 Modern Warfare Remastered and later games do not supply the required data.
-Original IWD and fastfile assets remain outside source control. This private
-repository's release archives preserve the owner's local workspace, including
-owned retail data; they are personal backups, not redistributable game packages.
+Original IWD and fastfile assets remain outside source control. The 0.2 installer
+embeds no retail assets and copies them from the selected Steam installation.
+The retained private 0.1 recovery archives contain the owner's workspace and
+retail data; those archives are not redistributable game packages.
 
-See [Windows build instructions](docs/BUILD.md), [release 0.1 state](docs/RELEASE-0.1.md),
-[backup and restoration](docs/BACKUP.md), and [Vulkan development status](docs/VULKAN.md).
+Download **cod4x1khz_setup.exe** from release 0.2, select your Steam CoD4 folder
+and a separate output folder, then launch **cod4x1khz.exe** or
+**cod4x1khz_server_manager.exe** from the output. The installer and manager use a
+dark theme. Fresh profiles select Vulkan / Performance, with DX9 fallback.
+Rerun the installer on the same standalone output to repair/update while
+preserving profiles and server configuration.
 
-The `vulkan-testing` branch also includes the native x64 **Windows installer and
-Server Manager**. Run `./scripts/package-installer.ps1` to build the local installer,
-then select the installed Steam CoD4 folder and a separate standalone output folder.
-It produces the blue-icon game and hosting GUI and embeds no retail assets.
-See [installation, repair, and hosting instructions](docs/INSTALLER.md).
+See [all changes since 0.1](docs/RELEASE-0.2.md), [installation and hosting](docs/INSTALLER.md),
+[validation and remaining limits](docs/INSTALLER_VALIDATION.md), and
+[Windows source builds](docs/BUILD.md). Release 0.1 remains the original Win32
+DX9 checkpoint. The `v0.2` tag and `vulkan-testing` branch contain the x64 release.
+Release-based workspace backups are disabled; see [recovery](docs/BACKUP.md).
 
 ## Build and run
 
@@ -35,8 +40,8 @@ and Visual Studio 2022's Desktop development with C++ workload installed:
 
 ```powershell
 ./prepare.ps1 -GameDirectory 'D:\SteamLibrary\steamapps\common\Call of Duty 4'
-./build.ps1
-./cod4x1khz.exe
+./build.ps1 -Architecture x64 -Configuration Release
+./launch-client.ps1 -Throughput -Resolution 1080p
 ```
 
 `prepare.ps1` defaults to `D:\SteamLibrary\steamapps\common\Call of Duty 4`.
@@ -44,7 +49,9 @@ Pass `-GameDirectory` to select another installation. It downloads and checks
 the pinned DirectX NuGet package. `build.ps1 -CoreOnly` builds the standalone
 clock/queue/protocol tests without the engine or game assets.
 
-The root executable opens the multiplayer menu. Interactive profiles use
+The native launcher opens the multiplayer menu. The source checkout's older
+root executable is the preserved Win32 build; the standalone install's root
+executable is x64. Interactive development profiles use
 `runtime/interactive/players`; benchmark homes are separate. Local hosting is
 managed through Start Server. Source changes for bots and public extensions are
 still undergoing integration and acceptance checks; see `docs/public-capabilities.md`.
@@ -98,7 +105,9 @@ Current results and remaining rendering limits are in
 Engine console commands: `khz_stats`, `khz_json`, and `khz_resetstats`.
 When entering them through the in-game console, prefix with `/`.
 The localhost-only client telemetry endpoint accepts `khz_stats` and `khz_state`.
-The server's project RCON password is `local-khz-benchmark`.
+Development fixtures supply their RCON credential explicitly through
+`KHZ_BENCHMARK_RCON_PASSWORD`. Production RCON is disabled by default; configure
+it through the Server Manager if needed.
 
 `scripts/monitor.py` reads live engine counters and Win32 CPU/memory counters.
 It also samples WDDM GPU engine activity for the benchmark PIDs, CPU time for

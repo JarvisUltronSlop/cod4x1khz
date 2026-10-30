@@ -12,7 +12,9 @@ SHA-256:
 
 The package inventory and individual payload hashes are recorded in
 `results/distribution/package-report.json`. Installation instructions are in
-[INSTALLER.md](INSTALLER.md). No GitHub release was created.
+[INSTALLER.md](INSTALLER.md). This previously local-only artifact is the installer
+selected for [release 0.2](RELEASE-0.2.md) on October 29; the validation dates below
+refer to the original test runs.
 
 ## October 6 wall-mark worker staging correction
 

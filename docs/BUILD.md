@@ -1,99 +1,97 @@
-# Windows build and launch
+# Windows source build
+
+For ordinary installation, download **cod4x1khz_setup.exe** from
+[release 0.2](https://github.com/JarvisUltronSlop/cod4x1khz/releases/tag/v0.2).
+The installer includes the x64 game and Server Manager and asks for your owned
+Steam copy of **Call of Duty 4: Modern Warfare (2007)**. No development tools
+are needed to install or play. See [installation and hosting](INSTALLER.md).
 
 ## Required game and tools
-
-Own and install **Call of Duty 4: Modern Warfare (2007) on Steam**, app 7940.
-[Steam store page](https://store.steampowered.com/app/7940/).
-The installation must contain `main/`, `zone/`, and `localization.txt`.
-The remaster and newer Call of Duty games are incompatible asset sources.
-Steam's Manage > Browse local files locates the installed directory.
 
 Install Git, Python 3, CMake **3.25+**, and Visual Studio 2022 or its Build Tools
 with **Desktop development with C++**, MSVC v143 x86/x64 tools and a Windows SDK.
 Run from PowerShell with `git`, `cmake` and `python` available on PATH.
-The client, dedicated server, updater and regression plugin now build as native
-x64 applications. Native outputs use `bin/x64/Release`; packaging uses
-`runtime/x64`. The existing Win32 deployment remains available and `build.ps1`
-still defaults to Win32 while native acceptance continues. For explicit x64
-commands and current runtime limitations, see [x64 migration status](X64.md).
 
-For the native game on this branch, use:
-
-```powershell
-./build.ps1 -Architecture x64 -Configuration Release
-./launch-client.ps1 -Architecture x64 -Renderer d3d9 -RenderFps 0
-```
-
-The x64 build prepares its verified native FFmpeg dependency automatically.
-It also builds the native Server Manager and networking helper. To create the
-standalone installer with its embedded project-only payload, run
-`./scripts/package-installer.ps1`; see [INSTALLER.md](INSTALLER.md).
-`launch-server.ps1` and `launch-bench.ps1` also accept `-Architecture x64`.
-The regular client renders the game; the headless benchmark executable is for
-simulation/network probes. Use `/com_maxfps 0` for uncapped rendering and
-`/r_vsync 0` to disable synchronization. Simulation continues at 1,000 Hz.
+Install your owned Steam game (app 7940). Steam's **Manage > Browse local files**
+locates its directory, which must contain `iw3mp.exe`, `main/`, `zone/`, and
+`localization.txt`, including the multiplayer fastfiles. Modern Warfare Remastered
+and later Call of Duty games are incompatible asset sources. The repository
+does not provide retail assets, game executables or proprietary middleware
+binaries, including in historical commits.
 
 ## Clone, prepare, build
-
-The repository is currently a private personal backup. Authenticate as an account
-with access before cloning. Its Git tree contains complete edited engine and
-pinned reference snapshots; no submodule initialization is needed.
 
 ```powershell
 git clone https://github.com/JarvisUltronSlop/cod4x1khz.git
 Set-Location cod4x1khz
 ./prepare.ps1 -GameDirectory 'D:\SteamLibrary\steamapps\common\Call of Duty 4'
-./build.ps1 -Configuration Release
-./cod4x1khz.exe
+./build.ps1 -Architecture x64 -Configuration Release
+./launch-client.ps1 -Throughput -Resolution 1080p
 ```
 
-The current branches create the ignored `results/` evidence directory automatically.
-If building the frozen **v0.1 tag**, run `New-Item -ItemType Directory -Force results`
-before `build.ps1`; the fresh-clone check found this assumption after the original
-snapshot was captured. The corrected clean-clone native suite passes all forty tests.
+The public repository includes the edited engine and pinned reference source
+snapshots as ordinary tracked files. No submodule initialization is needed.
+Upstream license notices and source provenance remain in the tree; upstream
+binary bundles are deliberately omitted.
 
-Change `-GameDirectory` to your Steam installation. `prepare.ps1` reads that
-installation and copies its data into `runtime/`; it does not edit the original.
-It obtains the pinned `Microsoft.DXSDK.D3DX` **9.29.952.8** package, verifies its
-SHA-256, and places dependencies beneath `.deps/`. Upstream license notices remain
-in the source tree. The build packages the pinned Bot Warfare source plus the
-project's native integration scripts, compiles the game and helper targets, and
-runs the native tests. A failed command stops the script.
+`prepare.ps1` defaults to x64. It reads the selected installation and copies
+retail assets into the ignored `runtime/` directory without modifying Steam's
+files. It obtains the pinned `Microsoft.DXSDK.D3DX` **9.29.952.8** package,
+verifies its SHA-256 and prepares the pinned Vulkan dependencies beneath `.deps/`.
+The x64 build prepares its verified native FFmpeg dependency automatically.
+It builds the game, dedicated server, updater, Server Manager and network helper,
+packages the Bot Warfare scripts, and runs the native regression suites.
 
-Outputs include root `cod4x1khz.exe`, its four startup DLLs, and
-`runtime/cod4x1khz_server.exe`, `runtime/cod4x1khz_bench.exe`,
-`runtime/cod4x1khz_update.exe` and the adapted SDK fixture DLL.
-The root executable opens the stock-style multiplayer menu. Use Start Server
-for the managed local match. Singleplayer is disabled. Benchmark profiles are
-isolated from `runtime/interactive/players`.
+Native development outputs use `bin/x64/Release` and `runtime/x64`; desktop
+applications build beneath `build/x64/Release/desktop/Release`. The packaged
+installation places the game and Server Manager at its root. Development
+profiles use `runtime/interactive/players`; benchmark profiles are separate.
 
-## Rendering, hosting and short tests
-
-Direct3D 9 is the only implemented renderer in release 0.1. Rendering defaults
-to uncapped with VSync off. Console `/com_maxfps 1000` sets a **1,000 FPS ceiling**;
-`/com_maxfps 0` removes it. Any rendering cap leaves the 1 ms gameplay clock intact.
-The custom client/server protocol is **10002**; legacy or authenticated public
-servers are outside the verified scope.
-
-The `vulkan-testing` branch adds a native experimental Vulkan backend and pinned
-project-local sources during preparation. DX9 remains the automatic default.
-See [Vulkan development status and build commands](VULKAN.md) to test the
-experimental client without replacing the accepted root executable. Stock
-world-rendering and performance gates remain open.
+To build the standalone installer with its project-only embedded payload:
 
 ```powershell
-./build.ps1 -CoreOnly
-./test-quick.ps1
-./test-render-scenes.ps1 -Map mp_killhouse -Resolution 480p
-./test-render-scenes.ps1 -Timing -Map mp_crash -Resolution 720p
+./scripts/package-installer.ps1
 ```
 
-`-CoreOnly` runs the standalone native suites without loading retail game assets.
-Rendered cap stages are eight seconds; strict timing stages are sixty seconds.
-Read [the current measurements](render-performance-20261003.md) before comparing
-FPS. Older camera fixtures can face walls and inflate averages.
+The installer is written beneath `results/distribution`. Its package guard
+rejects retail fastfiles/IWDs (except the project's bot-script package), benchmark
+tools and the benchmark RCON credential. Retail data is copied only on the end
+user's computer after they select their Steam installation.
 
-Existing source-checkpoint tooling originally assumed nested upstream Git
-checkouts. Use `backup.ps1` and the root repository for complete current snapshots.
-The original nested Git histories are retained in the private v0.1 workspace
-archives and need not be restored to build a fresh clone.
+## Rendering and tests
+
+Release 0.2 supports Vulkan and Direct3D 9. Fresh installed profiles select
+Vulkan / Performance, with DX9 fallback. Options > Graphics saves the renderer
+and Performance / Reduced Overlap preset. Rendering is uncapped by default;
+`/com_maxfps 240` sets a cap and `/com_maxfps 0` removes it. Simulation and
+prediction remain at 1,000 Hz. The custom gameplay protocol is **10002**.
+
+To launch DX9 explicitly from a development build:
+
+```powershell
+./launch-client.ps1 -Architecture x64 -Renderer d3d9 -RenderFps 0
+```
+
+`launch-server.ps1` and `launch-bench.ps1` also accept `-Architecture x64`.
+Use the installed Server Manager for ordinary hosting.
+
+```powershell
+./build.ps1 -Architecture x64 -CoreOnly
+```
+
+Core-only builds do not load retail game assets. Engine-dependent native tests
+need the pinned DirectX headers when enabled. See [validation](INSTALLER_VALIDATION.md)
+for the checks performed on the shipped package and remaining limitations.
+Read the [rendering measurements](render-performance-20261003.md) before comparing
+FPS; earlier camera fixtures could face walls and inflate averages.
+
+## Historical Win32 builds
+
+The build and launch scripts retain their historical Win32 defaults; explicitly
+select **x64** for the supported 0.2 source build. The `v0.1` tag is a historical
+Win32/DX9 source checkpoint, with retail/proprietary binaries removed from its
+history. It is not a self-contained playable download. Optional Win32 runtime
+preparation (`prepare.ps1 -Architecture Win32`) copies middleware DLLs only from
+your own installed game. Building the old Win32 engine also requires separately
+licensed import libraries that are not distributed here. Use the 0.2 x64 build
+or installer for the current game.

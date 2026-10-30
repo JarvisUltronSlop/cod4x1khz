@@ -17,8 +17,9 @@ this project directory. **You need your own installed Steam copy of
 Modern Warfare Remastered and later games do not supply the required data.
 Original IWD and fastfile assets remain outside source control. The 0.2 installer
 embeds no retail assets and copies them from the selected Steam installation.
-The retained private 0.1 recovery archives contain the owner's workspace and
-retail data; those archives are not redistributable game packages.
+Retail assets, original game executables and proprietary middleware binaries
+are excluded from the public repository and its history. Release 0.1 is retained
+as a source checkpoint; use the 0.2 installer to install and play.
 
 Download **cod4x1khz_setup.exe** from release 0.2, select your Steam CoD4 folder
 and a separate output folder, then launch **cod4x1khz.exe** or
@@ -31,7 +32,7 @@ See [all changes since 0.1](docs/RELEASE-0.2.md), [installation and hosting](doc
 [validation and remaining limits](docs/INSTALLER_VALIDATION.md), and
 [Windows source builds](docs/BUILD.md). Release 0.1 remains the original Win32
 DX9 checkpoint. The `v0.2` tag and `vulkan-testing` branch contain the x64 release.
-Release-based workspace backups are disabled; see [recovery](docs/BACKUP.md).
+Release-based workspace backups are disabled; see [source and local backups](docs/BACKUP.md).
 
 ## Build and run
 
@@ -45,13 +46,15 @@ and Visual Studio 2022's Desktop development with C++ workload installed:
 ```
 
 `prepare.ps1` defaults to `D:\SteamLibrary\steamapps\common\Call of Duty 4`.
-Pass `-GameDirectory` to select another installation. It downloads and checks
-the pinned DirectX NuGet package. `build.ps1 -CoreOnly` builds the standalone
+Pass `-GameDirectory` to select another installation. Preparation defaults to
+the native x64 runtime and downloads/checks the pinned DirectX NuGet package.
+Use `-Architecture x64` when building; the build script retains its historical
+Win32 default. `build.ps1 -CoreOnly -Architecture x64` builds the standalone
 clock/queue/protocol tests without the engine or game assets.
 
-The native launcher opens the multiplayer menu. The source checkout's older
-root executable is the preserved Win32 build; the standalone install's root
-executable is x64. Interactive development profiles use
+The native launcher opens the multiplayer menu. Native development builds live
+in `runtime/x64`; the standalone install puts the x64 game at its root.
+Interactive development profiles use
 `runtime/interactive/players`; benchmark homes are separate. Local hosting is
 managed through Start Server. Source changes for bots and public extensions are
 still undergoing integration and acceptance checks; see `docs/public-capabilities.md`.
@@ -166,7 +169,7 @@ tools, new engine adapters, a patch against the pinned engine, and binary hashes
 It excludes game data, dependencies and builds; restoration instructions are in
 its manifest.
 
-The editable fork is `engine/`, with its original Git history and license notices.
+The editable fork is `engine/`, with upstream provenance and license notices.
 The shared scheduling/protocol primitives are in `native/`, and engine adapters
 are in `engine/src/khz/`. Original KisakCOD and CoD4x notices remain in their
 respective repositories. Dependencies retain their own notices and license files.

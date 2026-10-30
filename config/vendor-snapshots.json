@@ -1,5 +1,5 @@
 {
-  "description": "Complete project-local source snapshots; engine includes cod4x1khz edits over the stated foundation. Original local nested Git metadata is preserved in the private full-workspace backup, not as Git submodules.",
+  "description": "Project-local source snapshots; engine includes cod4x1khz edits over the stated foundation. Retail assets, proprietary middleware binaries and prebuilt upstream tools are deliberately omitted. These are ordinary tracked files, not Git submodules.",
   "sources": [
     { "path": "engine", "base_commit": "8aadf94cc82795d6829ca06052996a5ec79001c3", "sentinel": "CMakeLists.txt" },
     { "path": "upstream/cod4x_server", "base_commit": "ddd65fce1a1093017bad2dbb6840d75d11c0d56f", "sentinel": "README.md" },

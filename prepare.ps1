@@ -1,15 +1,24 @@
-param([string]$GameDirectory = 'D:\SteamLibrary\steamapps\common\Call of Duty 4')
+param([string]$GameDirectory = 'D:\SteamLibrary\steamapps\common\Call of Duty 4',
+    [ValidateSet('x64','Win32')][string]$Architecture = 'x64')
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
+# Retail files must come from the developer's own installed Steam copy.
+foreach ($required in @('iw3mp.exe', 'localization.txt')) {
+    if (!(Test-Path -LiteralPath (Join-Path $GameDirectory $required) -PathType Leaf)) {
+        throw "Choose your installed Steam Call of Duty 4 (2007) folder; missing $required"
+    }
+}
+foreach ($required in @('main', 'zone')) {
+    if (!(Test-Path -LiteralPath (Join-Path $GameDirectory $required) -PathType Container)) {
+        throw "Choose your installed Steam Call of Duty 4 (2007) folder; missing $required"
+    }
+}
 . (Join-Path $projectRoot 'scripts/source-revision.ps1')
 $pins = Get-Content -LiteralPath (Join-Path $projectRoot 'upstream-lock.json') -Raw | ConvertFrom-Json
 foreach ($entry in @(@('engine', $pins.KisakCOD), @('upstream/cod4x_server', $pins.CoD4x_Server), @('upstream/cod4x_client', $pins.CoD4x_Client), @('upstream/bot_warfare', $pins.Bot_Warfare))) {
     $checkoutPath = Join-Path $projectRoot $entry[0]
     if (!(Test-Path -LiteralPath $checkoutPath)) {
-        & git clone $entry[1].url $checkoutPath
-        if ($LASTEXITCODE) { throw 'Source download failed' }
-        & git -C $checkoutPath checkout --detach $entry[1].commit
-        if ($LASTEXITCODE) { throw 'Pinned checkout failed' }
+        throw "Missing source snapshot: $checkoutPath. Restore it from this repository; upstream binary bundles are not required for the native x64 build."
     }
     $actualRevision = Get-ProjectSourceRevision -ProjectRoot $projectRoot -RelativePath $entry[0]
     if ($actualRevision -ne $entry[1].commit) { throw "Unexpected source revision in $checkoutPath; preserve local edits and inspect before changing the pin" }
@@ -31,14 +40,26 @@ foreach ($directory in @('main', 'zone')) {
     }
 }
 Copy-Item -LiteralPath (Join-Path $GameDirectory 'localization.txt') -Destination $runtimeRoot -Force
-foreach ($source in @('engine/deps/msslib/dlls/*', 'engine/deps/binklib/binkw32.dll', 'engine/deps/steamsdk/steam_api.dll', '.deps/dxsdk/9.29.952.8/build/native/release/bin/x86/*.dll')) {
-    Copy-Item -Path (Join-Path $projectRoot $source) -Destination $runtimeRoot -Recurse -Force
+if ($Architecture -eq 'Win32') {
+    # The historical Win32 runtime is optional and never supplied by Git.
+    foreach ($dependency in @('mss32.dll', 'binkw32.dll', 'steam_api.dll')) {
+        $source = Join-Path $GameDirectory $dependency
+        if (!(Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "The optional Win32 runtime requires $dependency from your owned game. Use the native x64 build for release 0.2."
+        }
+        Copy-Item -LiteralPath $source -Destination $runtimeRoot -Force
+        Copy-Item -LiteralPath $source -Destination $projectRoot -Force
+    }
+    $miles = Join-Path $GameDirectory 'miles'
+    if (Test-Path -LiteralPath $miles -PathType Container) {
+        Copy-Item -LiteralPath $miles -Destination $runtimeRoot -Recurse -Force
+    }
+    $d3dx = Join-Path $sdkRoot 'build/native/release/bin/x86/D3DX9_43.dll'
+    Copy-Item -LiteralPath $d3dx -Destination $runtimeRoot -Force
+    Copy-Item -LiteralPath $d3dx -Destination $projectRoot -Force
 }
 Copy-Item -Path (Join-Path $projectRoot 'config/*.cfg') -Destination (Join-Path $runtimeRoot 'main') -Force
 # The executable creates a fresh stock interactive profile in runtime/interactive.
 # Benchmark profiles are created under runtime/benchmarks and never share its home.
-foreach ($dependency in @('mss32.dll','D3DX9_43.dll','binkw32.dll','steam_api.dll')) {
-    Copy-Item -LiteralPath (Join-Path $runtimeRoot $dependency) -Destination $projectRoot -Force
-}
 Write-Output "Runtime prepared at $runtimeRoot"
 & (Join-Path $projectRoot 'scripts/prepare-vulkan.ps1')

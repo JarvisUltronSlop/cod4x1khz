@@ -477,3 +477,33 @@ supported administration/plugin action have not each received an individual
 end-to-end GUI test. Shared controller/configuration/administration regression
 coverage is recorded above. New upstream CoD4x capabilities remain outside this
 installer and manager implementation.
+
+
+## Public distribution check (October 29, 2026)
+
+Before public publication, all 20 historical commits were rewritten to remove
+37 retail/proprietary binary and prebuilt-tool paths. A comparison of each
+rewritten tree against its original confirmed that the intended removals were
+the only historical file changes. A second scan of reachable file contents
+found no remaining executable, game-asset or library signatures covered by
+the publication checks. Source files, project icons and license notices remain.
+
+Release 0.1 is a source-only historical checkpoint. Private workspace archives
+and the historical Win32 binary package are not attached to the public release.
+Release 0.2 contains only the validated installer, SHA256SUMS.txt and a sanitized
+package manifest. Its 20-file embedded payload contains project applications,
+redistributable dependencies, bot scripts and notices; the installer copies
+retail data from the user's selected Steam installation. The tested installer
+hash and game binaries are unchanged.
+
+Source preparation now obtains any optional historical Win32 middleware DLLs
+from the developer's own game folder. Native x64 preparation no longer depends
+on the proprietary binary copies removed from Git.
+
+The cleaned checkout configured for native x64 and built the Server Manager,
+core test executable, server-profile suite and embedded installer-package suite.
+All **3/3** selected suites passed (9.19 seconds). PowerShell parsed the updated
+preparation script successfully, an invalid Steam folder was rejected before
+downloads/copies, and the disabled backup command exited without Git/network work.
+These publication checks supplement the earlier game measurements; they do not
+represent a new gameplay or Internet-hosting test.

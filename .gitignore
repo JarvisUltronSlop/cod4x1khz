@@ -12,7 +12,28 @@ __pycache__/
 /engine/bin/
 /upstream/*/.git/
 *.pyc
-# Upstream build products stay in the private release backup, outside Git.
+# Local build products and retail/proprietary binaries never belong in Git.
+*.dll
+*.exe
+*.lib
+*.a
+*.so
+*.dylib
+*.asi
+*.flt
+*.flt.orig
+*.bin
+*.bin.htcfg
+*.iwd
+*.ff
+*.iwi
+*.d3dbsp
+*.bik
+*.zip
+*.7z
+*.rar
+*.dmp
+core
 *.obj
 *.pdb
 *.ilk
@@ -24,7 +45,6 @@ __pycache__/
 /service-test-results/
 /userTest/
 # Existing local nested checkouts otherwise appear as untracked repositories.
-# backup.ps1 explicitly stages each vendored source file as a Git blob; tracked
-# source modifications remain visible to Git despite these directory patterns.
+# Tracked source modifications remain visible despite these directory patterns.
 /engine/
 /upstream/

@@ -7,7 +7,9 @@ and introduces a standalone installer with an included Server Manager.
 Authoritative simulation and client prediction retain their fixed **1,000 Hz**
 clock. Rendering runs independently and defaults to uncapped. This release
 includes the subsequent gameplay, rendering, audio and interface fixes through
-game implementation commit `94d1932238d500013f7607978982ddd993f64ff4`.
+game implementation represented by cleaned source commit `3233154a0844305b09d7a8479c75c99265d645e8`.
+Public source history excludes retail assets and proprietary binary bundles; the
+tested installer is unchanged by this source cleanup.
 The game identifies this release as **v0.2.0**.
 
 ## Download and install
